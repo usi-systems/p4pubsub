@@ -9,6 +9,7 @@
 import networkx as nx
 import random
 from math import log
+import json
 
 
 def draw(G):
@@ -22,17 +23,24 @@ class Packet(dict):
         self['src'] = src
         self['dst'] = dst
 
-def optimalRouterFactory(topo, port_map):
+def generateOptimalRoutingConf(topo, port_map):
     next_hop = lambda u,w: nx.shortest_path(topo, u, w)[:2][-1]
     tables = {}
     for v in nx.nodes_iter(topo):
         tables[v] = dict([(u, port_map[v].index(next_hop(v, u))) for u in nx.nodes_iter(topo)])
     avg_table_size = sum(map(len, tables.itervalues())) / float(len(tables))
     print "optimalRouter avg_table_size", avg_table_size
-    router = lambda current_hop, pkt: tables[current_hop][pkt['dst']]
+    labels = dict([(v, v) for v in nx.nodes_iter(topo)])
+    routing_conf = dict(tables=tables, links=topo.edges(), labels=labels, node_ids=labels, port_map=port_map)
+    return routing_conf
+
+def generateOptiRouterFromConf(routing_conf):
+    def router(current_hop, pkt):
+        return routing_conf['tables'][current_hop][routing_conf['node_ids'][pkt['dst']]]
     return router
 
-def tzRouterFactory(topo, port_map):
+
+def generateTZRoutingConf(topo, port_map):
     sp_cache = dict()
     def shortest_path(u, w):
         if (u,w) not in sp_cache:
@@ -41,7 +49,6 @@ def tzRouterFactory(topo, port_map):
             else:
                 sp_cache[(u,w)] = nx.shortest_path(topo, u, w)
         return sp_cache[(u,w)]
-    #shortest_path = lambda u,w: nx.shortest_path(topo, u, w)
     dist = lambda u,w: len(shortest_path(u, w))
     next_hop = lambda u,w: shortest_path(u, w)[:2][-1]
 
@@ -81,8 +88,21 @@ def tzRouterFactory(topo, port_map):
     avg_table_size = sum(map(len, tables.itervalues())) / float(len(tables))
     print "tzRouter avg_table_size", avg_table_size
 
-    #for v in LS:
-    #    tables[v].update(dict([(u, u) for u in nx.neighbors(topo, v)]))
+    def readable_label(v):
+        return (L[v], next_hop(L[v], v), v)
+
+    def labeler(v):
+        lm = v_id[L[v]]
+        return (lm, port_map[L[v]].index(next_hop(L[v], v)), v_id[v])
+
+    labels = dict([(v, labeler(v)) for v in V])
+
+    routing_conf = dict(tables=tables, links=topo.edges(), labels=labels, port_map=port_map, node_ids=v_id)
+    return routing_conf
+
+def generateTZRouterFromConf(routing_conf):
+    tables = routing_conf['tables']
+    v_id = routing_conf['node_ids']
 
     def router(current_hop, pkt):
         landmark, landmark_port, dst_id = pkt['label']
@@ -93,23 +113,15 @@ def tzRouterFactory(topo, port_map):
         else:
             return tables[current_hop][landmark]
 
-    def readable_label(v):
-        return (L[v], next_hop(L[v], v), v)
+    return router
 
-    def labeler(v):
-        lm = v_id[L[v]]
-        return (lm, port_map[L[v]].index(next_hop(L[v], v)), v_id[v])
-
+def generateTZPktClassFromConf(routing_conf):
     class TZPacket(Packet):
         def __init__(self, src, dst):
-            assert src in V
-            assert dst in V
             Packet.__init__(self, src, dst)
-            self.labeler = labeler
-            self['label'] = self.labeler(dst)
-            self['readable'] = readable_label(dst)
+            self['label'] = routing_conf['labels'][dst]
+    return TZPacket
 
-    return (router, TZPacket, tables)
 
 def genPortMap(topo):
     # the 0 (zero) port maps back to us
@@ -157,14 +169,21 @@ if __name__ == '__main__':
 
     port_map = genPortMap(topo)
 
-    tzrouter, TZPacket, tables = tzRouterFactory(topo, port_map)
-    optiRouter = optimalRouterFactory(topo, port_map)
+    tz_routing_conf = generateTZRoutingConf(topo, port_map)
+    tzRouter = generateTZRouterFromConf(tz_routing_conf)
+    TZPacket = generateTZPktClassFromConf(tz_routing_conf)
 
-    net = NetworkSim(topo, default_router=tzrouter, port_map=port_map)
+    opti_routing_conf = generateOptimalRoutingConf(topo, port_map)
+    optiRouter = generateOptiRouterFromConf(opti_routing_conf)
+
+    with open('tz_router.json', 'w') as f:
+        json.dump(tz_routing_conf, f, indent=1)
+
+    net = NetworkSim(topo, default_router=tzRouter, port_map=port_map)
 
     packets = randomPackets(topo, TZPacket, 20)
     for p in packets:
         print
-        print p['readable'], p['label']
+        print p['label']
         print 'tz  ', net.send(p)
         print 'opti', net.send(p, router=optiRouter)
