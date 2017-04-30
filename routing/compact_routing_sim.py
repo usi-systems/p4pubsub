@@ -22,24 +22,34 @@ class Packet(dict):
         self['src'] = src
         self['dst'] = dst
 
-def optimalRouterFactory(topo):
+def optimalRouterFactory(topo, port_map):
+    next_hop = lambda u,w: nx.shortest_path(topo, u, w)[:2][-1]
     tables = {}
     for v in nx.nodes_iter(topo):
-        tables[v] = dict([(u, nx.shortest_path(topo, v, u)[:2][-1]) for u in nx.nodes_iter(topo)])
+        tables[v] = dict([(u, port_map[v].index(next_hop(v, u))) for u in nx.nodes_iter(topo)])
     avg_table_size = sum(map(len, tables.itervalues())) / float(len(tables))
     print "optimalRouter avg_table_size", avg_table_size
     router = lambda current_hop, pkt: tables[current_hop][pkt['dst']]
     return router
 
-def tzRouterFactory(topo):
-    shortest_path = lambda u,w: nx.shortest_path(topo, u, w)
+def tzRouterFactory(topo, port_map):
+    sp_cache = dict()
+    def shortest_path(u, w):
+        if (u,w) not in sp_cache:
+            if (w,u) in sp_cache:
+                sp_cache[(u,w)] = sp_cache[(w,u)][::-1]
+            else:
+                sp_cache[(u,w)] = nx.shortest_path(topo, u, w)
+        return sp_cache[(u,w)]
+    #shortest_path = lambda u,w: nx.shortest_path(topo, u, w)
     dist = lambda u,w: len(shortest_path(u, w))
+    next_hop = lambda u,w: shortest_path(u, w)[:2][-1]
 
     V = topo.nodes()
     n = len(V)
     q = (n / log(n)) ** (1./2)
 
-    print "n=%d, q=%d" % (n, q)
+    print "n=%d, q=%d," % (n, q),
 
     def sample(W):
         p = q / len(W)
@@ -56,47 +66,63 @@ def tzRouterFactory(topo):
         L = dict([(v, sorted([shortest_path(v, l) for l in LS], key=len)[0][-1]) for v in V])
         C = dict([(v, [c for c in V if dist(c, v) < dist(c, L[c]) and c!=v]) for v in V])
         W = [w for w in V if len(C[w]) > (4*n)/q]
+    print "|LS|=%d" % len(LS)
+
+    # assign an ID to each node v
+    v_id = dict([(v, i) for i,v in enumerate(sorted(V))])
 
     tables = dict()
     for v in V:
         tables[v] = dict()
-        tables[v].update(dict([(l, shortest_path(v, l)[:2][-1]) for l in LS if l != v]))
-        tables[v].update(dict([(c, shortest_path(v, c)[:2][-1]) for c in C[v]]))
+        tables[v][v_id[v]] = 0
+        tables[v].update(dict([(v_id[l], port_map[v].index(next_hop(v, l))) for l in LS if l != v]))
+        tables[v].update(dict([(v_id[c], port_map[v].index(next_hop(v, c))) for c in C[v]]))
 
     avg_table_size = sum(map(len, tables.itervalues())) / float(len(tables))
     print "tzRouter avg_table_size", avg_table_size
 
-    for v in LS:
-        tables[v].update(dict([(u, u) for u in nx.all_neighbors(topo, v)]))
+    #for v in LS:
+    #    tables[v].update(dict([(u, u) for u in nx.neighbors(topo, v)]))
 
     def router(current_hop, pkt):
-        landmark, landmark_nhop, _ = pkt['label']
-        if pkt['dst'] in tables[current_hop]:
-            return tables[current_hop][pkt['dst']]
-        elif current_hop == landmark:
-            return tables[current_hop][landmark_nhop]
+        landmark, landmark_port, dst_id = pkt['label']
+        if dst_id in tables[current_hop]:
+            return tables[current_hop][dst_id]
+        elif v_id[current_hop] == landmark:
+            return landmark_port
         else:
             return tables[current_hop][landmark]
 
+    def readable_label(v):
+        return (L[v], next_hop(L[v], v), v)
+
     def labeler(v):
-        return (L[v], shortest_path(L[v], v)[:2][-1], v)
+        lm = v_id[L[v]]
+        return (lm, port_map[L[v]].index(next_hop(L[v], v)), v_id[v])
 
     class TZPacket(Packet):
         def __init__(self, src, dst):
             assert src in V
             assert dst in V
             Packet.__init__(self, src, dst)
-            self['label'] = labeler(dst)
+            self.labeler = labeler
+            self['label'] = self.labeler(dst)
+            self['readable'] = readable_label(dst)
 
-    return (router, TZPacket)
+    return (router, TZPacket, tables)
+
+def genPortMap(topo):
+    # the 0 (zero) port maps back to us
+    return dict([(v, [v]+sorted(nx.neighbors(topo, v))) for v in topo.nodes_iter()])
 
 
 class NetworkSim:
-    def __init__(self, topology, default_router=None):
+    def __init__(self, topology, port_map=None, default_router=None):
         self.topology = topology
         # A router takes two arguments (current node, pkt) and returns the next
         # hop this packet should go to.
-        self.default_router = default_router or optimalRouterFactory(topology)
+        self.port_map = port_map or genPortMap(topology)
+        self.default_router = default_router or optimalRouterFactory(topology, self.port_map)
 
     def send(self, pkt, router=None):
         path = []
@@ -104,28 +130,41 @@ class NetworkSim:
         current_hop = pkt['src']
         path.append(current_hop)
         while current_hop != pkt['dst']:
-            nhop = router(current_hop, pkt)
+            port = router(current_hop, pkt)
+            nhop = port_map[current_hop][port]
             assert self.topology.has_edge(current_hop, nhop), "Edge not in topology: %s" % str((current_hop, nhop))
+            assert nhop not in path, "Cycle in path: %s" % str(path + [nhop])
             path.append(nhop)
             current_hop = nhop
 
         return path
 
-def randomPackets(topo, cnt, PktClass):
+def randomPackets(topo, PktClass, cnt):
     return map(lambda (a,b): PktClass(a, b), [tuple(random.sample(topo.nodes(), 2)) for _ in range(20)])
+
 
 if __name__ == '__main__':
     random.seed(1234)
-    #topo = nx.read_edgelist('./as-caida20040105_small.txt', nodetype=int, delimiter='\t', comments='#')
-    topo = nx.grid_2d_graph(10, 10)
-    #draw(topo)
-    optiRouter = optimalRouterFactory(topo)
-    tzrouter, TZPacket = tzRouterFactory(topo)
-    net = NetworkSim(topo, default_router=tzrouter)
 
-    packets = randomPackets(topo, 20, TZPacket)
+    #topo = nx.read_edgelist('./as-caida20040105_small.txt', nodetype=int, delimiter='\t', comments='#')
+    #nx.relabel_nodes(topo, dict([(num, 's%d'%num) for num in topo.nodes_iter()]), copy=False)
+
+    n, m = 5, 5
+    topo = nx.grid_2d_graph(n, m)
+    nx.relabel_nodes(topo, dict([((i,j), 's%d'%((i*m)+j)) for i,j in topo.nodes_iter()]), copy=False)
+
+    #draw(topo)
+
+    port_map = genPortMap(topo)
+
+    tzrouter, TZPacket, tables = tzRouterFactory(topo, port_map)
+    optiRouter = optimalRouterFactory(topo, port_map)
+
+    net = NetworkSim(topo, default_router=tzrouter, port_map=port_map)
+
+    packets = randomPackets(topo, TZPacket, 20)
     for p in packets:
         print
-        print p['label']
+        print p['readable'], p['label']
         print 'tz  ', net.send(p)
         print 'opti', net.send(p, router=optiRouter)
