@@ -1,0 +1,14 @@
+{
+  "program": "label_router.p4",
+  "language": "p4-16",
+  "targets": {
+    "multiswitch": {
+      "bmv2_log": true,
+      "pcap_dump": true,
+      "cli": false,
+      "topo_module": "custom_topo",
+      "controller_module": "custom_controller",
+      "routing_conf_file": "grid_tz_routing_conf.json"
+    }
+  }
+}
