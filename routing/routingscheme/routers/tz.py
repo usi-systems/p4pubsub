@@ -1,9 +1,8 @@
-import networkx as nx
 from math import log
 import random
-from common import Packet
 
 def generateAbstractRoutingConf(topo):
+    import networkx as nx
     sp_cache = dict()
     def shortest_path(u, w):
         if (u,w) not in sp_cache:
@@ -18,8 +17,6 @@ def generateAbstractRoutingConf(topo):
     V = topo.nodes()
     n = len(V)
     q = (n / log(n)) ** (1./2)
-
-    print "n=%d, q=%d," % (n, q),
 
     def sample(W):
         p = q / len(W)
@@ -37,8 +34,6 @@ def generateAbstractRoutingConf(topo):
         C = dict((v, [c for c in V if dist(c, v) < dist(c, L[c]) and c!=v]) for v in V)
         W = [w for w in V if len(C[w]) > (4*n)/q]
 
-    print "|LS|=%d" % len(LS)
-
     tables = dict()
     for v in V:
         tables[v] = dict()
@@ -46,22 +41,19 @@ def generateAbstractRoutingConf(topo):
         tables[v].update(dict((l, next_hop(v, l)) for l in LS if l != v))
         tables[v].update(dict((c, next_hop(v, c)) for c in C[v]))
 
-    avg_table_size = sum(map(len, tables.itervalues())) / float(len(tables))
-    print "tzRouter avg_table_size", avg_table_size
-
     def labeler(v):
         return (L[v], next_hop(L[v], v), v)
 
     labels = dict([(v, labeler(v)) for v in V])
 
-    routing_conf = dict(tables=tables, links=topo.edges(), labels=labels)
+    routing_conf = dict(tables=tables, links=topo.edges(), labels=labels, l_size=len(LS), q=q)
     return routing_conf
 
 def generateConcreteRoutingConf(routing_conf, port_map):
     V = list(set(sum(map(list, routing_conf['links']), [])))
 
     # assign an ID to each node v
-    v_id = dict((v, i) for i,v in enumerate(sorted(V)))
+    v_id = dict((v, i+1) for i,v in enumerate(sorted(V)))
 
     tables = dict()
     for v in routing_conf['tables']:
@@ -95,11 +87,4 @@ def generateRouterFromConf(routing_conf):
             return tables[current_hop][landmark]
 
     return router
-
-def generatePktClassFromConf(routing_conf):
-    class TZPacket(Packet):
-        def __init__(self, src, dst):
-            Packet.__init__(self, src, dst)
-            self['label'] = routing_conf['labels'][dst]
-    return TZPacket
 

@@ -7,6 +7,7 @@ import routers.tz as tz
 import routers.opti as opti
 
 avg = lambda l: sum(l) / float(len(l))
+avg_tbl_size = lambda tbl: avg(map(len, tbl.itervalues()))
 
 class NetworkSim:
     def __init__(self, topology, port_map=None, default_router=None):
@@ -41,6 +42,13 @@ def draw(G):
 def randomPackets(topo, PktClass, cnt):
     return map(lambda (a,b): PktClass(a, b), [tuple(random.sample(topo.nodes(), 2)) for _ in range(20)])
 
+def makeTZPacketClass(labels):
+    class TZPacket(Packet):
+        def __init__(self, src, dst):
+            Packet.__init__(self, src, dst)
+            self['label'] = labels[dst]
+    return TZPacket
+
 
 if __name__ == '__main__':
     random.seed(1234)
@@ -48,24 +56,25 @@ if __name__ == '__main__':
     #topo = nx.read_edgelist('./as-caida20040105_small.txt', nodetype=int, delimiter='\t', comments='#')
     #nx.relabel_nodes(topo, dict([(num, 's%d'%num) for num in topo.nodes_iter()]), copy=False)
 
-    n, m = 20,20
+    n, m = 3,3
     topo = nx.grid_2d_graph(n, m)
-    nx.relabel_nodes(topo, dict([((i,j), 's%d'%((i*m)+j)) for i,j in topo.nodes_iter()]), copy=False)
+    nx.relabel_nodes(topo, dict([((i,j), 's%02d'%((i*m)+j+1)) for i,j in topo.nodes_iter()]), copy=False)
 
-    #draw(topo)
+    print map(list, topo.edges())
+    draw(topo)
 
     port_map = genPortMap(topo)
 
-    tz_routing_conf = tz.generateAbstractRoutingConf(topo)
-    tz_routing_conf = tz.generateConcreteRoutingConf(tz_routing_conf, port_map)
+    abstract_tz_routing_conf = tz.generateAbstractRoutingConf(topo)
+    tz_routing_conf = tz.generateConcreteRoutingConf(abstract_tz_routing_conf, port_map)
     tzRouter = tz.generateRouterFromConf(tz_routing_conf)
-    TZPacket = tz.generatePktClassFromConf(tz_routing_conf)
+    TZPacket = makeTZPacketClass(tz_routing_conf['labels'])
 
     opti_routing_conf = opti.generateRoutingConf(topo, port_map)
     optiRouter = opti.generateRouterFromConf(opti_routing_conf)
 
-    with open('tz_router.json', 'w') as f:
-        json.dump(tz_routing_conf, f, indent=1)
+    with open('grid_tz_routing_conf.json', 'w') as f:
+        json.dump(abstract_tz_routing_conf, f, indent=1)
 
     net = NetworkSim(topo, default_router=tzRouter, port_map=port_map)
 
