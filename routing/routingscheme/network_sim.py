@@ -14,6 +14,7 @@ class NetworkSim:
         # A router takes two arguments (current node, pkt) and returns the next
         # hop this packet should go to.
         self.port_map = port_map or genPortMap(topology)
+        self.rev_port_map = dict((v, dict((p, v) for v,p in pm.iteritems())) for v,pm in self.port_map.iteritems())
         self.default_router = default_router or optimalRouterFactory(topology, self.port_map)
 
     def send(self, pkt, router=None):
@@ -23,7 +24,7 @@ class NetworkSim:
         path.append(current_hop)
         while current_hop != pkt['dst']:
             port = router(current_hop, pkt)
-            nhop = port_map[current_hop][port]
+            nhop = self.rev_port_map[current_hop][port]
             assert self.topology.has_edge(current_hop, nhop), "Edge not in topology: %s" % str((current_hop, nhop))
             assert nhop not in path, "Cycle in path: %s" % str(path + [nhop])
             path.append(nhop)
@@ -55,7 +56,8 @@ if __name__ == '__main__':
 
     port_map = genPortMap(topo)
 
-    tz_routing_conf = tz.generateRoutingConf(topo, port_map)
+    tz_routing_conf = tz.generateAbstractRoutingConf(topo)
+    tz_routing_conf = tz.generateConcreteRoutingConf(tz_routing_conf, port_map)
     tzRouter = tz.generateRouterFromConf(tz_routing_conf)
     TZPacket = tz.generatePktClassFromConf(tz_routing_conf)
 
@@ -83,7 +85,7 @@ if __name__ == '__main__':
 
     print "avg tz_pathlen", avg(tz_pathlen)
     print "avg opti_pathlen", avg(opti_pathlen)
-    print "% diff", len(filter(lambda (a,b):a!=b, zip(tz_pathlen, opti_pathlen))) / float(len(tz_pathlen))
+    print "diff", len(filter(lambda (a,b):a!=b, zip(tz_pathlen, opti_pathlen))) / float(len(tz_pathlen))
 
     #packets = randomPackets(topo, TZPacket, 20)
     #for p in packets:
