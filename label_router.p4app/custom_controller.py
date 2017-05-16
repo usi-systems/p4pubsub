@@ -51,3 +51,11 @@ class CustomAppController(AppController):
             self.entries[sw].append('table_add forward set_dmac 1 => %s' % host['host_mac'])
             self.entries[sw].append('table_add ipv4_port set_nhop 1 => %s' % host['host_ip'])
 
+        # Disable strict reverse path validation:
+        # https://serverfault.com/questions/163244/linux-kernel-not-passing-through-multicast-udp-packets
+        for h in self.net.hosts:
+            h.cmd('sysctl -n net.ipv4.conf.all.rp_filter=0')
+            h.cmd('sysctl -n net.ipv4.conf.default.rp_filter=0')
+            for iface in h.intfNames():
+                h.cmd('sysctl -n net.ipv4.conf.%s.rp_filter=0' % iface)
+

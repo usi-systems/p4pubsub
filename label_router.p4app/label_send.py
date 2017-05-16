@@ -1,10 +1,21 @@
 #!/usr/bin/env python
 import sys, struct, socket
+from time import sleep
 
-lm, lm_port, dst = int(sys.argv[1], 16), int(sys.argv[2], 16), int(sys.argv[3], 16)
-hdr = struct.pack("!I B I", lm, lm_port, dst)
+host, port = sys.argv[1], int(sys.argv[2])
+
+labels = sys.argv[3:]
+labels = map(lambda x: int(x), labels)
+labels = zip(labels[::3], labels[1::3], labels[2::3])
+
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.settimeout(3)
-s.sendto(hdr, (sys.argv[-2], int(sys.argv[-1])))
+if host == '255.255.255.255':
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-#sys.stderr.write("received '%s' from %s\n" % s.recvfrom(1024))
+for lbl in labels:
+    lm, lm_port, dst = lbl
+    hdr = struct.pack("!I B I", lm, lm_port, dst)
+    s.sendto(hdr, (host, port))
+    sleep(0.01)
+    print "Sent", lbl

@@ -12,22 +12,25 @@ class CustomAppTopo(AppTopo):
             with open(conf['routing_conf_file'], 'r') as f:
                 conf['routing_conf'] = json.load(f)
 
-        conf['links'] = conf['routing_conf']['links']
-        sw_names = sorted(sum(map(list, conf['links']), []))
+        conf['links'] = list(conf['routing_conf']['links'])
+        sw_names = sorted(set(sum(map(list, conf['links']), [])))
 
+        labels = ' '.join(["$%s_label" % sw for sw in sw_names])
         conf['hosts'] = {
                 "h01": {
                     "cmd": "./label_recv.py 1234",
-                    "startup_sleep": 0.2,
+                    "startup_sleep": 0.9,
                     "wait": False
                 },
                 "h02": {
-                    "cmd": "./label_send.py $s01_label 10.0.2.1 1234",
+                    "cmd": "./label_send.py 255.255.255.255 1234 " + labels,
                     "wait": True
                 }
             }
 
-        conf['links'] += [('h01', 's01'), ('h02', 's09')]
+        for i,sw in enumerate(sw_names[:-1]):
+            conf['links'].append(('h01', sw))
+        conf['links'].append(('h02', sw_names[-1]))
 
         AppTopo.__init__(self, *args, **kwargs)
 
