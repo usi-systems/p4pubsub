@@ -10,6 +10,7 @@ signal.signal(signal.SIGINT, signal_handler)
 
 while True:
     hdr, addr = s.recvfrom(1024)
-    tag, f = struct.unpack("!I B", hdr)
-    sys.stderr.write("Got tag %s %d" % (hex(tag), f))
+    tag, f = struct.unpack("!32s B", hdr)
+    tag = bytearray(tag)
+    sys.stderr.write("Got tag %s %d" % (tag, f))
     s.sendto(struct.pack('!I B', 4, 0), addr)

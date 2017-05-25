@@ -38,7 +38,15 @@ header_type udp_t {
 
 header_type tag_t {
     fields {
-        tag: 32;
+        //tag: 256;
+        tag7: 32;
+        tag6: 32;
+        tag5: 32;
+        tag4: 32;
+        tag3: 32;
+        tag2: 32;
+        tag1: 32;
+        tag0: 32;
         flag: 8;
     }
 }
@@ -53,6 +61,12 @@ header_type intrinsic_metadata_t {
         ingress_global_timestamp : 64;
         resubmit_flag : 16;
         recirculate_flag : 16;
+    }
+}
+
+header_type prune_meta_t {
+    fields {
+        keep: 1;
     }
 }
 
