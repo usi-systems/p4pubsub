@@ -67,6 +67,7 @@ header_type intrinsic_metadata_t {
 header_type bs_meta_t {
     fields {
         dont_prune: 1;
+        mgid: 16;
     }
 }
 

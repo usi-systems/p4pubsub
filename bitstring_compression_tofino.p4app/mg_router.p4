@@ -1,3 +1,5 @@
+#include <tofino/intrinsic_metadata.p4>
+#include <tofino/constants.p4>
 #include "header.p4"
 #include "parser.p4"
 
@@ -48,35 +50,43 @@ table forward {
 }
 
 action set_mgid0(mgid) {
-    modify_field(intrinsic_metadata.mcast_grp, mgid, mgid);
+    modify_field(bs_meta.mgid, mgid, mgid);
+    modify_field(ig_intr_md_for_tm.mcast_grp_a, bs_meta.mgid);
 }
 
 action set_mgid1(mgid) {
-    modify_field(intrinsic_metadata.mcast_grp, mgid, mgid);
+    modify_field(bs_meta.mgid, mgid, mgid);
+    modify_field(ig_intr_md_for_tm.mcast_grp_a, bs_meta.mgid);
 }
 
 action set_mgid2(mgid) {
-    modify_field(intrinsic_metadata.mcast_grp, mgid, mgid);
+    modify_field(bs_meta.mgid, mgid, mgid);
+    modify_field(ig_intr_md_for_tm.mcast_grp_a, bs_meta.mgid);
 }
 
 action set_mgid3(mgid) {
-    modify_field(intrinsic_metadata.mcast_grp, mgid, mgid);
+    modify_field(bs_meta.mgid, mgid, mgid);
+    modify_field(ig_intr_md_for_tm.mcast_grp_a, bs_meta.mgid);
 }
 
 action set_mgid4(mgid) {
-    modify_field(intrinsic_metadata.mcast_grp, mgid, mgid);
+    modify_field(bs_meta.mgid, mgid, mgid);
+    modify_field(ig_intr_md_for_tm.mcast_grp_a, bs_meta.mgid);
 }
 
 action set_mgid5(mgid) {
-    modify_field(intrinsic_metadata.mcast_grp, mgid, mgid);
+    modify_field(bs_meta.mgid, mgid, mgid);
+    modify_field(ig_intr_md_for_tm.mcast_grp_a, bs_meta.mgid);
 }
 
 action set_mgid6(mgid) {
-    modify_field(intrinsic_metadata.mcast_grp, mgid, mgid);
+    modify_field(bs_meta.mgid, mgid, mgid);
+    modify_field(ig_intr_md_for_tm.mcast_grp_a, bs_meta.mgid);
 }
 
 action set_mgid7(mgid) {
-    modify_field(intrinsic_metadata.mcast_grp, mgid, mgid);
+    modify_field(bs_meta.mgid, mgid, mgid);
+    modify_field(ig_intr_md_for_tm.mcast_grp_a, bs_meta.mgid);
 }
 
 table mg_ternary0 {
