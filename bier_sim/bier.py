@@ -10,7 +10,6 @@
 # MGID -> bitstring (bs)
 #
 
-
 import random
 
 random.seed(1)
@@ -19,12 +18,11 @@ num_ports = 16
 mgid_bits = 4
 chunk_bits = 4
 
-def bin2(n):
-    return bin(n)[2:]
+bits = (2**chunk_bits)-1 # 1111
+
+def bin2(n): return bin(n)[2:]
 
 mgids = [i for i in range(0, 2**mgid_bits)]
-
-bits = (2**chunk_bits)-1 # 1111
 
 def get_bs(mgid):
     bs = 0
@@ -44,9 +42,6 @@ def select_random_not_in_table():
         if x in forwarding_table.keys(): continue
         return x
 
-def select_random_in_table():
-    return random.choice(forwarding_table.keys())
-
 def get_mgid(bs):
     mgid = 0
     for shift in range(0, mgid_bits):
@@ -64,6 +59,19 @@ def count_spurious(bs):
 
 # Example of counting spurious packets:
 #x = select_random_not_in_table()
-x = int('1111 0010 1011 0000'.replace(' ', ''), 2)
-print "BS", bin2(x), "maps to MGID", bin2(get_mgid(x))
-print "Spurious packets", count_spurious(x)
+#x = int('1111 0010 1011 0000'.replace(' ', ''), 2)
+#print "BS", bin2(x), "maps to MGID", bin2(get_mgid(x))
+#print "Spurious packets", count_spurious(x)
+
+def select_and_count_spurious(total_bitstrings, fraction_not_in_table):
+    n = int(total_bitstrings*fraction_not_in_table)
+    spurious_count = 0
+    for _ in range(n):
+        bs = select_random_not_in_table()
+        spurious_count += count_spurious(bs)
+    return spurious_count
+
+N = 100000
+
+for x in [i*0.01 for i in range(0, 25)]:
+    print "%f\t%d" % (x, select_and_count_spurious(N, x))
