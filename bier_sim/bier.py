@@ -11,67 +11,97 @@
 #
 
 import random
+import multiprocessing
 
-random.seed(1)
-
-num_ports = 16
-mgid_bits = 4
-chunk_bits = 4
-
-bits = (2**chunk_bits)-1 # 1111
+#random.seed(1)
 
 def bin2(n): return bin(n)[2:]
+def int2(s): return int(s.replace(' ', ''), 2)
 
-mgids = [i for i in range(0, 2**mgid_bits)]
+class BIER:
 
-def get_bs(mgid):
-    bs = 0
-    for shift in range(0, mgid_bits):
-        bs |= (((mgid >> shift) & 1) * bits) << shift*chunk_bits
-    return bs
+    def __init__(self, num_ports=16, mgid_bits=4, chunk_bits=None):
+        self.num_ports = num_ports
+        self.mgid_bits = mgid_bits
+        self.chunk_bits = chunk_bits
 
-mgid_to_bs = dict((mgid, get_bs(mgid)) for mgid in mgids)
+        if self.chunk_bits is None:
+            if num_ports % mgid_bits == 0 or num_ports-((num_ports/mgid_bits)*(mgid_bits-1)) < num_ports-(((num_ports/mgid_bits)-1)*(mgid_bits-1)):
+                self.chunk_bits = num_ports/mgid_bits
+            else:
+                self.chunk_bits = (num_ports/mgid_bits)-1
 
-#for mgid,bs in mgid_to_bs.iteritems(): print '%04s' % bin2(mgid), '%016s'%bin2(bs)
+        # The last chunk may be bigger or smaller:
+        self.last_chunk_bits = num_ports - (self.chunk_bits *(mgid_bits-1))
 
-forwarding_table = dict((bs,mgid) for (mgid,bs) in mgid_to_bs.iteritems())
+        self.chunk_mask = [(2**self.chunk_bits)-1 for b in range(self.mgid_bits-1)]
+        self.chunk_mask += [(2**self.last_chunk_bits)-1]
 
-def select_random_not_in_table():
-    while True:
-        x = random.randint(0, 2**num_ports)
-        if x in forwarding_table.keys(): continue
-        return x
-
-def get_mgid(bs):
-    mgid = 0
-    for shift in range(0, mgid_bits):
-        if ((bs >> shift*chunk_bits) & bits) > 0:
-            mgid |= 1 << shift
-    return mgid
-
-def count_spurious(bs):
-    mgid = get_mgid(bs) # this BS maps to this MGID
-    all_ports = get_bs(mgid) # the BS for all the ports of this MGID
-    diff = bs ^ all_ports
-    return bin(diff).count('1')
+        #mgids = [i for i in range(0, 2**mgid_bits)]
+        #mgid_to_bs = dict((mgid, self.get_bs(mgid)) for mgid in mgids)
+        #fmt1, fmt2 = '{:0>%d}' % self.mgid_bits, '{:0>%d}' % self.num_ports
+        #for mgid,bs in mgid_to_bs.iteritems(): print fmt1.format(bin2(mgid)), fmt2.format(bin2(bs))
 
 
+    def get_bs(self, mgid):
+        bs = 0
+        for shift in range(0, self.mgid_bits):
+            bs |= (((mgid >> shift) & 1) * self.chunk_mask[shift]) << shift*self.chunk_bits
+        return bs
 
-# Example of counting spurious packets:
-#x = select_random_not_in_table()
-#x = int('1111 0010 1011 0000'.replace(' ', ''), 2)
-#print "BS", bin2(x), "maps to MGID", bin2(get_mgid(x))
-#print "Spurious packets", count_spurious(x)
+    def get_mgid(self, bs):
+        mgid = 0
+        for shift in range(0, self.mgid_bits):
+            if ((bs >> shift*self.chunk_bits) & self.chunk_mask[shift]) > 0:
+                mgid |= 1 << shift
+        return mgid
 
-def select_and_count_spurious(total_bitstrings, fraction_not_in_table):
-    n = int(total_bitstrings*fraction_not_in_table)
-    spurious_count = 0
-    for _ in range(n):
-        bs = select_random_not_in_table()
-        spurious_count += count_spurious(bs)
-    return spurious_count
+    def select_random_not_in_table(self):
+        while True:
+            bs = random.randint(0, 2**self.num_ports)
+            # check if bs is in the table:
+            if self.get_bs(self.get_mgid(bs)) == bs: continue
+            return bs
 
-N = 100000
+    def count_spurious(self, bs):
+        mgid = self.get_mgid(bs) # this BS maps to this MGID
+        all_ports = self.get_bs(mgid) # the BS for all the ports of this MGID
+        diff = bs ^ all_ports
+        return bin(diff).count('1')
 
-for x in [i*0.01 for i in range(0, 25)]:
-    print "%f\t%d" % (x, select_and_count_spurious(N, x))
+    def select_and_count_spurious(self, total_bitstrings, fraction_not_in_table):
+        n = int(total_bitstrings*fraction_not_in_table)
+        spurious_count = 0
+        for _ in range(n):
+            bs = self.select_random_not_in_table()
+            spurious_count += self.count_spurious(bs)
+        return spurious_count
+
+
+#bier_router = BIER(num_ports=16, mgid_bits=5)
+#bs = bier_router.select_random_not_in_table()
+#print bin2(bs)
+
+#print bin2(bier_router.get_bs(int2('1')))
+#print bin2(bier_router.get_mgid(int2('111000')))
+
+N = 1 * 10**6
+
+def runwith(x):
+    num_ports = 256
+    mgid_bits = 11
+    bier_router = BIER(num_ports=num_ports, mgid_bits=mgid_bits)
+    return (x, bier_router.select_and_count_spurious(N, x))
+
+jobs = multiprocessing.cpu_count()
+#xs = range(2, 12)
+xs = [0.01*i for i in range(1, 25)]
+
+if jobs > 1:
+    p = multiprocessing.Pool(jobs)
+    xy = p.map(runwith, xs)
+else:
+    xy = map(runwith, xs)
+
+for x,y in xy:
+    print "%f\t%d" % (x,y)
