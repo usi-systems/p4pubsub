@@ -1,0 +1,27 @@
+table_add forward set_dmac 255.255.255.255 => ff:ff:ff:ff:ff:ff
+
+mc_mgrp_create 1
+mc_node_create 0 1 2 3
+mc_node_associate 1 0
+
+table_set_default mcast_all_ports _nop
+table_add mcast_all_ports set_mgid => 1
+
+table_set_default check_prune _drop
+table_add check_prune _nop 1 =>
+
+table_set_default egress_prune0 _nop
+table_set_default egress_prune1 _nop
+table_set_default egress_prune2 _nop
+table_set_default egress_prune3 _nop
+table_set_default egress_prune4 _nop
+table_set_default egress_prune5 _nop
+table_set_default egress_prune6 _nop
+table_set_default egress_prune7 _nop
+
+table_add egress_prune0 dont_prune 1 0x1&&&0xff => 1
+table_add egress_prune0 dont_prune 1 0x5&&&0xff => 1
+
+table_add egress_prune0 dont_prune 2 0x2&&&0xff => 1
+table_add egress_prune0 dont_prune 3 0x3&&&0xff => 1
+
