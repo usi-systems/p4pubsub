@@ -37,7 +37,6 @@ class TagRouter:
             self.subscribe(node, tags)
 
     def isSubset(self, tag, subscriptions):
-        print 'comparing', tag, 'to', subscriptions, 'anded', tag & subscriptions
         return tag & subscriptions == tag
 
 
@@ -52,11 +51,14 @@ class TagRouter:
         tag, f = struct.unpack("!32s B", hdr)
         tag = sum(x << i*8 for i,x in enumerate(reversed(bytearray(tag))))
 
+        match_count = 0
         for node, subscription in self.subscriptions.iteritems():
             if self.isSubset(tag, subscription):
                 self.sock.sendto(data, node)
+                match_count += 1
 
-        sys.stderr.write("Got tag %s %d\n" % (tag, f))
+        if match_count < 1:
+            sys.stderr.write("Tag %s didn't match any entries\n" % (tag))
 
 
 router = TagRouter(bind_addr)

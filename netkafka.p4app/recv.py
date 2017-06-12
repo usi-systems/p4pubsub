@@ -11,7 +11,8 @@ signal.signal(signal.SIGINT, signal_handler)
 while True:
     data, addr = s.recvfrom(2048)
     hdr = data[:33]
+    record = data[33:]
     tag, f = struct.unpack("!32s B", hdr)
     tag = bytearray(tag)
     tag = sum(x << i*8 for i,x in enumerate(reversed(bytearray(tag))))
-    sys.stderr.write("Got tag %s %d\n" % (tag, f))
+    sys.stderr.write("Got tag %s. Payload size: %d\n" % (tag, len(record)))
