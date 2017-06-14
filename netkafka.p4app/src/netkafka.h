@@ -16,13 +16,16 @@ struct netkafka_hdr {
 
 struct netkafka_client {
     int sockfd;
-    int serverlen;
-    struct sockaddr_in serveraddr;
+    struct sockaddr_in localaddr;
+    struct sockaddr_in remoteaddr;
+    int remoteaddr_len;
     char buf[NETKAFKA_BUFSIZE];
 } netkafka_client;
 
-struct netkafka_client* netkafka_client_new(char *hostname, int port);
-int netkafka_client_send(struct netkafka_client *cl, unsigned long tag,
-        char *payload, unsigned payload_len);
+struct netkafka_client* netkafka_producer_new(char *hostname, int port);
+struct netkafka_client* netkafka_consumer_new(int port);
+int netkafka_produce(struct netkafka_client *cl, unsigned long tag,
+        char *payload, size_t payload_len);
+int netkafka_consume(struct netkafka_client *cl, char *payload, size_t *payload_len);
 
 #endif // __NETKAFKA_H__
