@@ -25,6 +25,8 @@ parser.add_argument("host", type=str, help="server hostname")
 parser.add_argument("port", type=int, help="server port")
 parser.add_argument("-s", "--size", type=int, help="record size in bytes", default=512)
 parser.add_argument("-r", "--rate", type=int, help="rate (throughput) in messages per second", default=100000)
+parser.add_argument("-c", "--count", type=int, help="send this many packets", default=None)
+parser.add_argument("-t", "--duration", type=float, help="produce for this much time (s)", default=None)
 args = parser.parse_args()
 
 # TODO: parse whole tag, not just first byte
@@ -41,11 +43,17 @@ if args.host == '255.255.255.255':
 def sendPkt(data, addr):
     s.sendto(data, addr)
 
-count = 0
+start_time = time.time()
+
+seq = 0
 inst_num = time.time()
 while True:
-    count += 1
-    record = struct.pack('!I Q', inst_num, count)
-    record += 'X' * (args.size - 12)
+    seq += 1
+    record = '%d: ' % seq
+    record += 'X' * (args.size - len(record))
     data = hdr + record
     sendPkt(data, (args.host, args.port))
+    if args.count is not None and seq >= args.count:
+        break
+    if args.duration is not None and time.time()-start_time > args.duration:
+        break

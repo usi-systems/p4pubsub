@@ -6,45 +6,64 @@ import threading
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.bind(('', int(sys.argv[1])))
 
-last_count = None
+msgs_received = 0
+last_seq = None
+start_time = None
 record_size = 0
 
+
+stats_waiter = threading.Event()
+
 def signal_handler(signal, frame):
-    print "total received:", last_count
+    print "\ntotal received:", msgs_received
+    if start_time and msgs_received: print "avg rate:", msgs_received / float(time.time() - start_time), "msg/s"
+    stats_waiter.set()
+    s.close()
     sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
 
 def stats_thread():
-    interval_s = 5
+    interval_s = 3
     time.sleep(0.1)
     while True:
-        before = last_count
-        time.sleep(interval_s)
+        before = msgs_received
+        if stats_waiter.wait(interval_s):
+            break
         if before is None: continue
-        received = last_count - before
+        received = msgs_received - before
         rate = received / float(interval_s)
         mbps = rate * record_size
         print "%.2f pkt/s (%.2f MB/s)" % (rate, mbps/1024/1024)
 
 t = threading.Thread(target=stats_thread)
+t.daemon = True
 t.start()
 
-inst_num = None
+def receiver_thread():
+    global start_time, msgs_received, record_size
+    while True:
+        data, addr = s.recvfrom(2048)
+        if start_time is None: start_time = time.time()
+        msgs_received += 1
+        record = data[33:]
+        record_size = len(record)
+
+        #hdr = data[:33]
+        #tag, f = struct.unpack("!32s B", hdr)
+        #tag = bytearray(tag)
+        #tag = sum(x << i*8 for i,x in enumerate(reversed(bytearray(tag))))
+
+        seq = int(record.split(':', 1)[0])
+
+        if seq > 1:
+            assert seq == last_seq + 1, "Sequence (%d) should be one more than last_seq (%d)" % (seq, last_seq)
+
+        last_seq = seq
+
+
+t = threading.Thread(target=receiver_thread)
+t.daemon = True
+t.start()
+
 while True:
-    data, addr = s.recvfrom(2048)
-    record = data[33:]
-    record_size = len(record)
-
-    #hdr = data[:33]
-    #tag, f = struct.unpack("!32s B", hdr)
-    #tag = bytearray(tag)
-    #tag = sum(x << i*8 for i,x in enumerate(reversed(bytearray(tag))))
-
-    pkt_inst_num, count = struct.unpack('!I Q', record[:12])
-
-    if pkt_inst_num != inst_num:
-        inst_num = pkt_inst_num
-    else:
-        assert count == last_count + 1, "Count (%d) should be one more than last_count (%d)" % (count, last_count)
-
-    last_count = count
+    time.sleep(5)

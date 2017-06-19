@@ -16,6 +16,12 @@ struct netkafka_client* netkafka_producer_new(char *hostname, int port) {
     if (cl->sockfd < 0)
         error("socket()");
 
+    if (strcmp(hostname, "255.255.255.255") == 0) {
+        int enable_bcast = 1;
+        if (setsockopt(cl->sockfd, SOL_SOCKET, SO_BROADCAST, &enable_bcast, sizeof(int)) < 0)
+            error("setsockopt() SO_BROADCAST");
+    }
+
     struct hostent *server = gethostbyname(hostname);
     if (server == NULL) {
         fprintf(stderr, "bad hostname: %s\n", hostname);
