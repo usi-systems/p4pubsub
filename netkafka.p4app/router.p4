@@ -299,7 +299,7 @@ table check_prune {
 
 control ingress {
     if(valid(ipv4)) {
-        if (valid(tag)) {
+        if (valid(tag) && tag.publish == 1) {
             apply(mg_ternary0);
             apply(mg_ternary1);
             apply(mg_ternary2);
@@ -320,7 +320,7 @@ control ingress {
 
 control egress {
     if (valid(ipv4)) {
-        if (valid(tag)) {
+        if (valid(tag) && tag.publish == 1) {
             apply(egress_prune0);
             apply(egress_prune1);
             apply(egress_prune2);

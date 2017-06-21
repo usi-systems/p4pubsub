@@ -12,7 +12,7 @@
           "LD_PRELOAD": "./src/netkafka_hooks.so",
           "LD_LIBRARY_PATH": "./"
       },
-      "hosts": {
+      "_hosts": {
         "h1": {
             "cmd": "./rdkafka_performance -C -t 03 -p 0 -o end",
             "startup_sleep": 0.2,
@@ -33,7 +33,7 @@
             "wait": true
         }
       },
-      "_py_hosts": {
+      "hosts": {
         "h1": {
             "cmd": "./consumer.py 1234",
             "startup_sleep": 0.2,
@@ -50,7 +50,7 @@
             "wait": false
         },
         "h9": {
-            "cmd": "./producer.py -r 100 -t 5 01 255.255.255.255 1234",
+            "cmd": "./producer.py -b h9 -r 2000 -t 5 01 255.255.255.255 1234",
             "wait": true
         }
       },

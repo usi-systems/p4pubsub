@@ -28,7 +28,15 @@ mc_mgrp_create 7
 mc_node_create 6 2 3
 mc_node_associate 7 6
 
-table_set_default mg_ternary _nop
+table_set_default mg_ternary0 _nop
+table_set_default mg_ternary1 _nop
+table_set_default mg_ternary2 _nop
+table_set_default mg_ternary3 _nop
+table_set_default mg_ternary4 _nop
+table_set_default mg_ternary5 _nop
+table_set_default mg_ternary6 _nop
+table_set_default mg_ternary7 _nop
+
 table_add mg_ternary0 set_mgid0 0x1&&&0xff => 1 1
 table_add mg_ternary0 set_mgid0 0x2&&&0xff => 2 1
 table_add mg_ternary0 set_mgid0 0x3&&&0xff => 3 1

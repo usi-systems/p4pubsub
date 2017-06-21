@@ -38,7 +38,12 @@ header_type udp_t {
 
 header_type tag_t {
     fields {
-        //tag: 256;
+        publish: 8;
+        nack: 8;
+        retransmit: 8;
+        sender_ip: 32;
+        sender_port: 16;
+        seq: 32;
         tag7: 32;
         tag6: 32;
         tag5: 32;
@@ -47,7 +52,6 @@ header_type tag_t {
         tag2: 32;
         tag1: 32;
         tag0: 32;
-        flag: 8;
     }
 }
 
