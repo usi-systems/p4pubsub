@@ -54,7 +54,7 @@ class Producer:
         self.seq = 0
 
         self.bf_size = 8 # bytes of bloom filter for each history entry
-        self.history_size = 10 # maximum size of history to store locally
+        self.history_size = 10000 # maximum size of history to store locally
         self.R = 4 # number of history entries to send in packet
 
         self.history = {}
@@ -69,8 +69,11 @@ class Producer:
 
     def run(self):
         while True:
-            data, addr = self.sock.recvfrom(2048)
-            self.processPkt(data, addr)
+            try:
+                data, addr = self.sock.recvfrom(2048)
+                self.processPkt(data, addr)
+            except:
+                break
 
     def processPkt(self, data, addr):
         publish, nack, retrans, sender_ip, sender_port, seq = struct.unpack("!B B B 4s H I", data[:HDR_SIZE-TAG_SIZE])

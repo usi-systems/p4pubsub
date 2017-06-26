@@ -17,6 +17,7 @@ class Consumer:
         self.subscriptions = []
         self.missing_seqs = set()
         self.repair_cnt = 0
+        self.expired_seqs = 0
 
     def onNewRecord(self, cb):
         self.new_record_callbacks.append(cb)
@@ -65,6 +66,7 @@ class Consumer:
         self.sendNack(sender_addr, missing_seqs)
 
     def sendNack(self, sender_addr, missing_seqs):
+        missing_seqs = list(self.missing_seqs)[:200]
         hdr = struct.pack('!B B B 4s H I', 0, 1, 0, sender_addr[0], sender_addr[1], 0)
         hdr += struct.pack('B', len(missing_seqs))
         for seq in missing_seqs:
@@ -90,6 +92,7 @@ class Consumer:
         if retrans:
             self.repair_cnt += 1
             if tag == 0:
+                self.expired_seqs += 1
                 return
 
         history_hdr_size, missing_seqs = self.checkHistory(sender_addr, data)
@@ -128,6 +131,7 @@ def signal_handler(signal, frame):
     if start_time and msgs_received: print "avg rate:", msgs_received / float(time.time() - start_time), "msg/s"
     print "outstanding seqs:", len(c.missing_seqs)
     print "repaired cnt:", c.repair_cnt
+    print "expired seqs:", c.expired_seqs
     stats_waiter.set()
     c.stop()
     sys.exit(0)
