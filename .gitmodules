@@ -1,0 +1,3 @@
+[submodule "itch.p4app/third-party/libtrading"]
+	path = itch.p4app/third-party/libtrading
+	url = https://github.com/libtrading/libtrading
