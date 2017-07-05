@@ -51,6 +51,7 @@ header_type moldudp_msg_t {
 }
 
 #define ITCH41_MSG_STOCK_DIRECTORY 82 // R
+#define ITCH41_MSG_ADD_ORDER       65 // A
 
 header_type itch_msg_type_t {
     fields {
@@ -68,6 +69,18 @@ header_type itch_stock_directory_t {
         round_lots_only: 8;
     }
 }
+
+header_type itch_add_order_t {
+    fields {
+        timestamp_ns: 32;
+        order_ref_number: 64;
+        buy_sell_indicator: 8;
+        shares: 32;
+        stock: 64;
+        price: 32;
+    }
+}
+
 
 header_type intrinsic_metadata_t {
     fields {

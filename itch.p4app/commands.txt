@@ -28,7 +28,7 @@ mc_mgrp_create 7
 mc_node_create 6 2 3
 mc_node_associate 7 6
 
-table_set_default market_category _nop
+table_set_default add_order _nop
 
-table_add market_category set_mgid 97 => 1
+table_add add_order set_mgid 66 => 1
 

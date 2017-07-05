@@ -54,9 +54,9 @@ int main(int argc, char *argv[]) {
         struct omx_moldudp_header *h = (struct omx_moldudp_header *)buf;
         struct omx_moldudp_message *mm = (struct omx_moldudp_message *) (buf + sizeof(struct omx_moldudp_header));
 
-        struct itch41_msg_stock_directory *m = (struct itch41_msg_stock_directory *)(buf + sizeof(struct omx_moldudp_header) + sizeof(struct omx_moldudp_message));
+        struct itch41_msg_add_order *m = (struct itch41_msg_add_order *)(buf + sizeof(struct omx_moldudp_header) + sizeof(struct omx_moldudp_message));
 
-        printf("Session: %d\nType: %c\nIndicator: %d\n", h->Session[7], m->MessageType, m->FinancialStatusIndicator);
+        printf("Session: %d\nType: %c\nBuySellIndicator: %d\n", h->Session[7], m->MessageType, m->BuySellIndicator);
         fflush(stdout);
 
     }

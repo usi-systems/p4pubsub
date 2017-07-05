@@ -73,13 +73,20 @@ parser parse_moldudp {
     extract(itch_msg_type);
     return select(itch_msg_type.msg_type) {
         ITCH41_MSG_STOCK_DIRECTORY: parse_stock_directory;
+        ITCH41_MSG_ADD_ORDER: parse_add_order;
         default: ingress;
     }
 }
 
 header itch_stock_directory_t itch_stock_directory;
+header itch_add_order_t itch_add_order;
 
 parser parse_stock_directory {
     extract(itch_stock_directory);
+    return ingress;
+}
+
+parser parse_add_order {
+    extract(itch_add_order);
     return ingress;
 }

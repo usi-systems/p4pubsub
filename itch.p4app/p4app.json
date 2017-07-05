@@ -25,7 +25,7 @@
             "wait": false
         },
         "h9": {
-            "cmd": "./sender 255.255.255.255 1234",
+            "cmd": "./replay -s -m 1 -h 255.255.255.255 -p 1234 ./add_order.itch",
             "wait": true
         }
       },

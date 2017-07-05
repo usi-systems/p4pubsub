@@ -46,9 +46,9 @@ action set_mgid(mgid) {
     modify_field(intrinsic_metadata.mcast_grp, mgid, mgid);
 }
 
-table market_category {
+table add_order {
     reads {
-        itch_stock_directory.market_category: exact;
+        itch_add_order.buy_sell_indicator: exact;
     }
     actions {
         _nop;
@@ -75,8 +75,8 @@ table send_frame {
 
 control ingress {
     if(valid(ipv4)) {
-        if (valid(itch_stock_directory)) {
-            apply(market_category);
+        if (valid(itch_add_order)) {
+            apply(add_order);
         }
 
         if (intrinsic_metadata.mcast_grp == 0) {
