@@ -14,8 +14,10 @@
 #include <libgen.h>
 
 
+#include "libtrading/proto/nasdaq_itch50_message.h"
 #include "libtrading/proto/nasdaq_itch41_message.h"
 #include "libtrading/proto/omx_moldudp_message.h"
+#include "../third-party/libtrading/lib/proto/nasdaq_itch50_message.c"
 
 char *progname;
 
@@ -162,7 +164,10 @@ int main(int argc, char *argv[]) {
         const short len = ntohs(*(const short *)(data + pos));
         const char *payload = data + pos + 2;
 
-        struct itch41_message *m = (struct itch41_message *)(payload);
+        struct itch50_message *m = (struct itch50_message *)(payload);
+        int expected_size = itch50_message_size(m->MessageType);
+        if (expected_size != len)
+            fprintf(stderr, "MessageType %c should have size %d, found %d\n", m->MessageType, expected_size, len);
 
         skip = 0;
         if (filter_types) {
@@ -174,9 +179,6 @@ int main(int argc, char *argv[]) {
             if (do_stats) {
                 stats.msg_types[m->MessageType - 65]++;
             }
-
-            //struct itch41_msg_add_order *add_order = (struct itch41_msg_add_order *)m;
-            //printf("%c\n", add_order->BuySellIndicator);
 
             if (sockfd > -1) {
 
