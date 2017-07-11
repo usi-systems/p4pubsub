@@ -72,7 +72,9 @@ header_type itch_stock_directory_t {
 
 header_type itch_add_order_t {
     fields {
-        timestamp_ns: 32;
+        stock_locate: 16;
+        tracking_number: 16;
+        timestamp_ns: 48;
         order_ref_number: 64;
         buy_sell_indicator: 8;
         shares: 32;

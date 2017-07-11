@@ -48,7 +48,7 @@ action set_mgid(mgid) {
 
 table add_order {
     reads {
-        itch_add_order.buy_sell_indicator: exact;
+        itch_add_order.stock: exact;
     }
     actions {
         _nop;

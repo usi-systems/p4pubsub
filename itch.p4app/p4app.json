@@ -7,25 +7,32 @@
       "pcap_dump": true,
       "auto-control-plane": true,
       "cli": false,
-      "links": [["h1", "s1"], ["h2", "s1"], ["h3", "s1"], ["h9", "s1"]],
+      "_cli": true,
+      "controller_module": "itch_controller",
+      "links": [["h1", "s1"], ["h2", "s1"], ["h3", "s1"], ["h4", "s1"], ["h9", "s1"]],
       "hosts": {
         "h1": {
-            "cmd": "./receiver 1234",
+            "cmd": "./controller_proxy.py 1212",
             "startup_sleep": 0.2,
             "wait": false
         },
         "h2": {
-            "cmd": "./receiver 1234",
+            "cmd": "./receiver ABC h1 1212 h2 1234",
             "startup_sleep": 0.2,
             "wait": false
         },
         "h3": {
-            "cmd": "./receiver 1234",
+            "cmd": "./receiver XYZ h1 1212 h3 1234",
+            "startup_sleep": 0.2,
+            "wait": false
+        },
+        "h4": {
+            "cmd": "./receiver ABC,XYZ h1 1212 h4 1234",
             "startup_sleep": 0.2,
             "wait": false
         },
         "h9": {
-            "cmd": "./replay -s -m 1 -h 255.255.255.255 -p 1234 ./add_order.itch",
+            "cmd": "./replay -s -m 6 -h 255.255.255.255 -p 1234 ./add_order.itch",
             "wait": true
         }
       },
