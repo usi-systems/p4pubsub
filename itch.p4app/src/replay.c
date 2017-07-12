@@ -84,6 +84,7 @@ struct rate_limit_state {
     long outstanding_ns;
 };
 
+// XXX this does not work (it sleeps for too long)
 void rate_limiter(struct rate_limit_state *state) {
     if (state->interval.tv_sec == 0 && state->interval.tv_nsec == 0) return;
     struct timespec now;
@@ -96,13 +97,11 @@ void rate_limiter(struct rate_limit_state *state) {
 
         if (wait.tv_sec > 0 || (wait.tv_sec >= 0 && wait.tv_nsec + state->outstanding_ns > MIN_SLEEP_NS)) {
             wait.tv_nsec += state->outstanding_ns;
-            printf("sleep for %ld %ld\n", wait.tv_sec, wait.tv_nsec);
             nanosleep(&wait, NULL);
             state->outstanding_ns = 0;
         }
         else {
             state->outstanding_ns += wait.tv_nsec;
-            printf("Increameting to %ld\n", state->outstanding_ns);
         }
     }
     else { // initialize state

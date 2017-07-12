@@ -7,6 +7,10 @@ import time
 
 CONTROLLER_IPC_FILENAME = '/tmp/itch_controller.sock'
 
+def parseStocks(stocks_with_commas):
+    return ["%-8s" % st for st in stocks_with_commas.split(',')] # pad right with spaces
+
+
 class CustomAppController(AppController):
 
     def __init__(self, *args, **kwargs):
@@ -62,7 +66,7 @@ class CustomAppController(AppController):
         os.remove(CONTROLLER_IPC_FILENAME)
 
     def handleReq(self, data):
-        parts = [s.strip() for s in data.split(',')]
+        parts = [s.strip() for s in data.split('\t')]
         if len(parts) < 1:
             print "Malformed request:", data
             return
@@ -73,47 +77,47 @@ class CustomAppController(AppController):
                 print "Malformed sub request:", data
                 return
 
-            _, host, stock = parts
-            self.subscribe(host, stock)
+            _, host, stocks = parts
+            self.subscribe(host, parseStocks(stocks))
 
         elif cmd == 'unsub':
             if len(parts) != 3:
                 print "Malformed sub request:", data
                 return
 
-            _, host, stock = parts
-            self.unsubscribe(host, stock)
+            _, host, stocks = parts
+            self.unsubscribe(host, parseStocks(stocks))
 
-    def subscribe(self, host, stock):
-        if len(stock) < 8:
-            stock = "%-8s" % stock # pad right with spaces
+    def subscribe(self, host, stocks):
         entries = []
 
-        if stock not in self.stocks:
-            self.last_mcgid += 1
-            self.stocks[stock] = dict(mcgid=self.last_mcgid, subscriptions=dict())
-            entries += ['mc_mgrp_create %d' % self.stocks[stock]['mcgid']]
-            stock_binary = ''.join(format(ord(x), '02x') for x in stock)
-            entries += ['table_add add_order set_mgid 0x%s => %d' % (stock_binary, self.stocks[stock]['mcgid']) ]
+        for stock in stocks:
+            if stock not in self.stocks:
+                self.last_mcgid += 1
+                self.stocks[stock] = dict(mcgid=self.last_mcgid, subscriptions=dict())
+                entries += ['mc_mgrp_create %d' % self.stocks[stock]['mcgid']]
+                stock_binary = ''.join(format(ord(x), '02x') for x in stock)
+                entries += ['table_add add_order set_mgid 0x%s => %d' % (stock_binary, self.stocks[stock]['mcgid']) ]
 
-        self.last_mcnodeid += 1
-        self.stocks[stock]['subscriptions'][host] = self.last_mcnodeid
+            self.last_mcnodeid += 1
+            self.stocks[stock]['subscriptions'][host] = self.last_mcnodeid
 
-        entries += ['mc_node_create %d %d' %
-                (self.stocks[stock]['subscriptions'][host], self.host_ports[host])]
-        entries += ['mc_node_associate %d %d' %
-                (self.stocks[stock]['mcgid'], self.stocks[stock]['subscriptions'][host])]
+            entries += ['mc_node_create %d %d' %
+                    (self.stocks[stock]['subscriptions'][host], self.host_ports[host])]
+            entries += ['mc_node_associate %d %d' %
+                    (self.stocks[stock]['mcgid'], self.stocks[stock]['subscriptions'][host])]
 
         self.add_entries(entries=entries)
 
-    def unsubscribe(self, host, stock):
-        if stock not in self.subscriptions:
-            print "Cannot unsubscribe, because stock doesn't exist:", stock
-            return
-        if host not in self.subscriptions[stock]:
-            print "Cannot unsubscribe, because host is not subscribed:", stock, host
-            return
-        self.subscriptions[stock].remove(host)
-        # TODO: remove these MC groups and nodes from switch
+    def unsubscribe(self, host, stocks):
+        for stock in stocks:
+            if stock not in self.subscriptions:
+                print "Cannot unsubscribe, because stock doesn't exist:", stock
+                return
+            if host not in self.subscriptions[stock]:
+                print "Cannot unsubscribe, because host is not subscribed:", stock, host
+                return
+            self.subscriptions[stock].remove(host)
+            # TODO: remove these MC groups and nodes from switch
 
 

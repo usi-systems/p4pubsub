@@ -15,10 +15,6 @@
 
 char *my_hostname;
 
-#define MAX_STOCKS 24
-
-char subscribe_stocks[MAX_STOCKS][8];
-
 void error(char *msg) {
     perror(msg);
     exit(0);
@@ -53,24 +49,10 @@ void send_to_controller(char *hostname, int port, char *msg, size_t len) {
     close(sockfd);
 }
 
-void subscribe_to_stock(char *controller_hostname, int port, char *stock) {
+void subscribe_to_stocks(char *controller_hostname, int port, char *stocks) {
     char msg[2048];
-    int len = sprintf(msg, "sub,%s,%s\n", my_hostname, stock);
+    int len = sprintf(msg, "sub\t%s\t%s\n", my_hostname, stocks);
     send_to_controller(controller_hostname, port, msg, len);
-}
-
-void parse_stocks(const char *stocks) {
-    bzero(subscribe_stocks[0], sizeof(char)*MAX_STOCKS*8);
-
-    const char *start = stocks;
-    const char *end = start;
-
-    for (int i = 0; *end != '\0' && i < MAX_STOCKS; i++) {
-        end = strchr(start, ',');
-        if (end == NULL) end = strchr(start, '\0');
-        memcpy(subscribe_stocks[i], start, end-start);
-        start = end+1;
-    }
 }
 
 int main(int argc, char *argv[]) {
@@ -85,11 +67,7 @@ int main(int argc, char *argv[]) {
     my_hostname = argv[4];
     int port = atoi(argv[5]);
 
-    parse_stocks(stocks_with_commas);
-    for (i = 0; i < MAX_STOCKS; i++) {
-        if (subscribe_stocks[i][0] == '\0') break;
-        subscribe_to_stock(controller_hostname, controller_port, subscribe_stocks[i]);
-    }
+    subscribe_to_stocks(controller_hostname, controller_port, stocks_with_commas);
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0)
