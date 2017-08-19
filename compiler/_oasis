@@ -16,7 +16,6 @@ Executable bpretty
   BuildDepends:
     core, 
     threads
-  
+
 Test testall
-  Command: test
-  
+  Command: test  
