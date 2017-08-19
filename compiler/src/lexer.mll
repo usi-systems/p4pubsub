@@ -48,9 +48,14 @@
 }
 
 let whitespace = [' ' '\t']+
-let digit = ['0'-'9']+
-let newline = '\r' | '\n' | "\r\n"
-let id = [^' ' '\t' '(' ')' '{' '}'  ',' '\"' '#' '%' '\'' '@' '\r' '\n' '=' ]+ 
+let newline = "\n"
+let id = ['a'-'z' 'A'-'Z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']*
+let decimal = ['0'-'9']+
+let float_ = ['0'-'9']+ '.' ['0'-'9']+
+let hex = "0x" ['0'-'9' 'a'-'f' 'A'-'F']+
+let int_char = ['0' - '9']
+let hex_char = ['0' - '9' 'A' - 'F' 'a' - 'f']
+
 
 rule main = 
   parse
@@ -61,7 +66,10 @@ rule main =
   | id as ident {
         try Hashtbl.find keywords ident (info lexbuf)
         with Not_found -> IDENT(info lexbuf, ident)
-      }      
+      }
+  | decimal as integ {
+        NUMBER(info lexbuf,int_of_string integ)
+      }    
   | newline            { next_line lexbuf; main lexbuf  }  
   | eof                { EOF }
   | _                  { error lexbuf "unknown token" }

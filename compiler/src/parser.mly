@@ -4,7 +4,7 @@
 %}
 
 %token <Ast.info * string> IDENT
-%token <Ast.info * int> NUMBER
+%token< Ast.info * int> NUMBER
 %token <Ast.info>  AND
 %token <Ast.info>  OR
 %token <Ast.info> NOT
@@ -41,5 +41,6 @@ relExpr:
   | primExpr { $1 }
 
 primExpr:
-  | IDENT { let _,id = $1 in Ident(id) } 
+  | IDENT { let _,id = $1 in Ident(id) }
+  | NUMBER { let _,id = $1 in Number(id) }	
 

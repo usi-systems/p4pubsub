@@ -9,5 +9,6 @@ type expr =
   | Gt of expr * expr
   | Eq of expr * expr
   | Ident of string
+  | Number of int
 
 type query = Query of expr
