@@ -14,3 +14,6 @@ s.settimeout(3)
 if host == '255.255.255.255':
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 s.sendto(hdr, (host, port))
+
+import time
+time.sleep(0.5)
