@@ -11,6 +11,7 @@
       "cli": false,
       "links": [["h1", "s1"], ["h2", "s1"], ["h3", "s1"], ["h4", "s1"], ["h5", "s1"]],
       "parameters": {
+          "msg_cnt": "2",
           "ACTIVEMQ_CONF": "/tmp/amq_camus_conf",
           "ACTIVEMQ_USER_CLASSPATH": "/tmp/activemq-all-5.16.0-SNAPSHOT.jar",
           "_ACTIVEMQ_USER_CLASSPATH": "/tmp/activemq-all-5.15.0.jar",
@@ -30,17 +31,17 @@
             "wait": false
         },
         "h3": {
-            "cmd": "./apache-activemq-5.15.0/bin/activemq consumer --destination topic://1 --brokerUrl \"tcp://h1:61616?wireFormat.maxInactivityDuration=0\" --messageCount 2",
+            "cmd": "./apache-activemq-5.15.0/bin/activemq consumer --destination topic://1 --brokerUrl \"tcp://h1:61616?wireFormat.maxInactivityDuration=0\" --messageCount $msg_cnt",
             "startup_sleep": 0.5,
             "wait": true
         },
         "h4": {
-            "cmd": "./apache-activemq-5.15.0/bin/activemq consumer --destination topic://1 --brokerUrl \"tcp://h1:61616?wireFormat.maxInactivityDuration=0\" --messageCount 2",
+            "cmd": "./apache-activemq-5.15.0/bin/activemq consumer --destination topic://1 --brokerUrl \"tcp://h1:61616?wireFormat.maxInactivityDuration=0\" --messageCount $msg_cnt",
             "startup_sleep": 0.5,
             "wait": true
         },
         "h5": {
-            "cmd": "./apache-activemq-5.15.0/bin/activemq producer --destination topic://1 --persistent false --brokerUrl \"tcp://h1:61616?wireFormat.maxInactivityDuration=0\" --messageCount 2",
+            "cmd": "./apache-activemq-5.15.0/bin/activemq producer --destination topic://1 --persistent false --brokerUrl \"tcp://h1:61616?wireFormat.maxInactivityDuration=0\" --messageCount $msg_cnt",
             "wait": true
         }
       },
@@ -51,17 +52,17 @@
             "wait": false
         },
         "h2": {
-            "cmd": "./apache-activemq-5.15.0/bin/activemq consumer --destination topic://1 --brokerUrl \"udp://h1:61616?wireFormat.maxInactivityDuration=0\" --messageCount 2",
+            "cmd": "./apache-activemq-5.15.0/bin/activemq consumer --destination topic://1 --brokerUrl \"udp://h1:61616?wireFormat.maxInactivityDuration=0\" --messageCount $msg_cnt",
             "startup_sleep": 1.0,
             "wait": true
         },
         "h3": {
-            "cmd": "./apache-activemq-5.15.0/bin/activemq consumer --destination topic://1 --brokerUrl \"udp://h1:61616?wireFormat.maxInactivityDuration=0\" --messageCount 2",
+            "cmd": "./apache-activemq-5.15.0/bin/activemq consumer --destination topic://1 --brokerUrl \"udp://h1:61616?wireFormat.maxInactivityDuration=0\" --messageCount $msg_cnt",
             "startup_sleep": 1.0,
             "wait": true
         },
         "h4": {
-            "cmd": "./apache-activemq-5.15.0/bin/activemq producer --destination topic://1 --persistent false --brokerUrl \"udp://h1:61616?wireFormat.maxInactivityDuration=0\" --messageCount 2",
+            "cmd": "./apache-activemq-5.15.0/bin/activemq producer --destination topic://1 --persistent false --brokerUrl \"udp://h1:61616?wireFormat.maxInactivityDuration=0\" --messageCount $msg_cnt",
             "wait": true
         }
       },
