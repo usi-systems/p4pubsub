@@ -1,11 +1,5 @@
-from appcontroller import AppController
-
-import threading
-import socket
-import os, os.path
-import time
-
-CONTROLLER_IPC_FILENAME = '/tmp/camus_controller.sock'
+def strToHexInt(s):
+    return ''.join(format(ord(char), '02x') for char in s)
 
 def parseNodeAddr(hint_addr, control_addr):
     parts = hint_addr.split(':')
@@ -14,23 +8,9 @@ def parseNodeAddr(hint_addr, control_addr):
     port = int(parts[1])
     return (host, port)
 
-def strToHexInt(s):
-    return ''.join(format(ord(char), '02x') for char in s)
-
-
-class CustomAppController(AppController):
+class AbstractController:
 
     def __init__(self, *args, **kwargs):
-        AppController.__init__(self, *args, **kwargs)
-
-        self.topo, self.net = kwargs['topo'], kwargs['net']
-
-        self.ipc_thread = threading.Thread(target=self.ipc_thread)
-        self.ipc_thread.start()
-
-        self.findHostPorts()
-
-
         self.ports_for_topic = {}
         self.mgid_for_topic = {}
         self.mcnode_handle_for_mgid = {}
@@ -39,46 +19,6 @@ class CustomAppController(AppController):
 
         self.last_mgid = 0
         self.last_mcnoderid = -1
-
-    def findHostPorts(self):
-        self.port_for_hostname = {}
-        self.port_for_ip = {}
-        self.ip_for_hostname = {}
-        for h in self.net.hosts:
-            link = self.topo._host_links[h.name].values()[0]
-            self.port_for_ip[link['host_ip']] = link['sw_port']
-            self.port_for_hostname[h.name] = link['sw_port']
-            self.ip_for_hostname[h.name] = link['host_ip']
-
-
-    def start(self):
-        AppController.start(self)
-
-    def stop(self):
-        AppController.stop(self)
-        self.sock.shutdown(socket.SHUT_RDWR)
-        self.sock.close()
-        self.ipc_thread.join()
-
-    def ipc_thread(self):
-        if os.path.exists(CONTROLLER_IPC_FILENAME):
-          os.remove(CONTROLLER_IPC_FILENAME)
-
-        self.sock = socket.socket( socket.AF_UNIX, socket.SOCK_DGRAM )
-        self.sock.bind(CONTROLLER_IPC_FILENAME)
-
-        print "Controller listening..."
-
-        while True:
-          data = self.sock.recv(2048)
-          if not data: break
-          addr_str, msg = data.split('\x00')
-          host, port = addr_str.split(':')
-          addr = (host, int(port))
-          self.handleControlMsg(msg, addr)
-
-        self.sock.close()
-        os.remove(CONTROLLER_IPC_FILENAME)
 
     def handleControlMsg(self, data, addr):
         cmd = data.split('\t')
