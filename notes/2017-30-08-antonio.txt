@@ -1,0 +1,74 @@
+Hi Guys,
+
+I've been struggling to put some time into thinking a bit more deeply
+about our problem.  So, I should first apologize for what might be a
+shallow analysis here.  Anyway, below is my take on some of the ideas
+we've been exchanging.
+
+Premise: we fix an application domain, which means that we fix a set of
+headers and corresponding types and operators.  In other words, we have
+one P4 program for each application domain.  We assume that applications
+domain change very rarely.  Within an application domain, each
+application issues specific requests that therefore change much more
+frequently (queries).
+
+A bit more formally, we fix a set of headers H1, H2, ..., Hk, each with
+a type and a set of relational operators (selection operators).  We then
+have queries that combine those atomic selection operators using the
+usual logical connectors.  More formally, we have N query-action pairs:
+Q_1 -> Action_1, ..., Q_2 -> Action_2, ...
+
+We also have an evaluation semantics for this set of query-action pairs.
+Say, first-match, or perhaps longest-query, meaning the largest
+conjunction -- assuming that queries are conjunctions.
+
+In the most general form, let MATCH() be the matching function resulting
+from the evaluation of the N queries according to the chosen evaluation
+semantics.
+
+action <- MATCH(H1, H2, ..., Hk)
+
+Our goal therefore is to boil down this big, complex MATCH function into
+a fixed and hopefully small set of much simpler functions, which we
+would then realize as table lookups.  So, the general structure for the
+P4 program is a pipeline of table-lookups:
+
+// given headers H1, H2, ..., Hk
+
+m0 <- ...   // initial metadata value, for uniformity and more
+m1 <- match(Table1, H1, m0)
+m2 <- match(Table2, H2, m1)
+// ...
+mk <- match(Table_k, Hk, m_k-1)
+
+action <- action(mk) // just a projection function, no complexity here
+
+m0, m1, ... mk are what we called "metadata", which act as some sort of
+carry-forward information or "state" for the matcher, and we should
+assume that they are fixed-width (though not necessary all the same).
+
+The idea here is that k match functions should be way less complex than
+one big MATCH function.  In particular, assume for simplicity that all
+headers have the same width W_h, and similarly that all meta-data
+parameters are W_m bit wide.  Then the idea is to have K (W_h+W_m)-bit
+tables as opposed to one (K*W_h)-bit wide table.
+
+Now, I think we argue intuitively that both the BDD and Counting
+algorithms fit this model.  The trick -- our challenge, really -- is to
+find and exploit the structure of the big MATCH function to compress the
+meta-data as much as possible, so as to effectively gain by splitting
+MATCH into k smaller match functions.
+
+In the case of the Counting algorithm, the metadata could simply be the
+set of counters.  However, the size of that set is not a bounded
+constant, meaning that it depends on the number of queries, and can be
+large in practice.  However, once again, the structure of the big
+function, given the fixed number of headers and the semantics of the
+operators, etc., might still allow us to compress that information.
+
+Analogous considerations apply to BDDs
+
+I could go on a bit deeper, but I better stop here, since we should be
+talking in 30 minutes anyway...
+
+
