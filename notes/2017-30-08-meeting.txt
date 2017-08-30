@@ -1,0 +1,42 @@
+Date: 08/30/2017
+Attendees: Theo, Antonio, Nate, Robert
+
+SUMMARY:
+
+Antonio presented his formulation of the problem based on his email.
+Without repeating his entire email, the challange is to:
+
+" is to find and exploit the structure of the big MATCH function to compress the
+meta-data as much as possible, so as to effectively gain by splitting
+MATCH into k smaller match functions."
+
+Some reactions:
+
+- Maybe we can trade-off generality for a compact representation.
+  In other words, maybe we don't support all possible queries.
+
+- Maybe we can have multiple pipelines. This would be analagous to
+  a software switch with a "fast" and "slow" path. One pipeline
+  might do filtering, one might foward everything.
+
+- One idea is to do some filtering at end-hosts. We might borrow
+  techniques from Andew Myers' program partitioning work. It mgiht 
+  be interesting to try to formulate "what is the least amount
+  of work that and end-host has to do". But, this might be 
+  infeasible.
+
+NEXT STEPS:
+
+Our next steps are to try to build up some intuition based on
+concrete examples.
+
+Antonio suggests looking at his existing SFF software for an implementation
+of the counting algorithm:
+http://www.inf.usi.ch/carzaniga/siena/forwarding/index.html
+
+Theo will implement a small compiler that takes queries as inputs, 
+translates them to disjunctive normal form, and them to P4.
+As a "short cut" he might just output statistics, e.g., number 
+of tables, number of entries.
+
+
