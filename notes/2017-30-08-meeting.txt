@@ -39,4 +39,11 @@ translates them to disjunctive normal form, and them to P4.
 As a "short cut" he might just output statistics, e.g., number 
 of tables, number of entries.
 
+The code will be stored here:
+https://github.com/usi-systems/p4pubsub
+
+in the compilers directory.
+
+We will also store meeting notes in this repository.
+
 
