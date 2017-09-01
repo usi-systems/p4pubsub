@@ -6,6 +6,11 @@ Authors:     Robert Soule
 License:     LGPL
 Plugins:     META (0.3), StdFiles (0.3), DevFiles (0.3)
 
+XStdFilesREADME: false
+XStdFilesINSTALL: false
+XStdFilesAUTHORS: false
+
+
 Executable bpretty
   Install:    False
   Build$:     flag(is_native)

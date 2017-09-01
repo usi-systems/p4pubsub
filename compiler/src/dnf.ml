@@ -51,16 +51,6 @@ let rec to_nnf = function
    | And(p, q) -> And(to_nnf p, to_nnf q)
    | Or(p, q) -> Or(to_nnf p, to_nnf q)
 
-let test_to_nnf () =
-   let (a, b, c) = (Var("a"), Var("b"), Var("c")) in
-   let t1 = Not(Or(And(a, b), Or(a, b))) in
-   let t2 = Or(And(a, b), Or(a, b)) in
-   assert ((to_nnf a) = a);
-   assert ((to_nnf (Not(Not(a))) ) = a);
-   assert ((to_nnf (Not(a))) = Not(a));
-   assert ((to_nnf t1) = And(Or(Not(a), Not(b)), And(Not(a), Not(b))));
-   assert ((to_nnf t2) = Or(And(a, b), Or(a, b)))
-
 
 let rec conj_fold f acc conj = match conj with 
    | And(((And(_,_) as c1)), ((And(_,_) as c2))) ->
@@ -171,14 +161,3 @@ let to_dnf t =
             disj_filter is_conj_satisfiable         (* remove unsatisfiable conjunctions *)
               (disj_map conj_dedup unreduced_dnf))  (* remove duplicate preds *)
 
-
-let main () =
-   let (x, y, z) = (Var("x"), Var("y"), Var("z")) in
-   let t =  And(Or(x, Or(y, z)), And(Or(x, Or(Not(y), Not(z))), And(Or(y, Or(Not(x),
-   Not(z))), Or(z, Or(Not(x), Not(y)))))) in
-   print_form t;
-   print_form (to_dnf t);
-   print_endline ""
-;;
-
-main ()
