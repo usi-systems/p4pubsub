@@ -1,0 +1,53 @@
+Date: 6th September 2017
+Attendees: Theo, Antonio, Nate, Robert
+
+SUMMARY:
+
+Theo demoed his query to BDD translator and described how it can be used to
+generate tables.
+
+We are still looking for applications other than finance. Calin suggested CDNs
+like Akami.
+
+NEXT STEPS:
+
+
+- Theo: after BDD-to-table translation, count the metadata (this should be the
+  number of nodes that are "ingresses" after the cut). Then generate queries
+  and measure effect on metadata.
+- Nate will email Yaron
+- Robert, talk to Ed about Goldman
+- Antonio will share workload generation scripts
+
+
+
+Some reactions:
+
+- How do we increase the complexity of the queries?
+  - Add more conjuncts
+  - The complexity will depend on the number of "nodes" that
+    are ingresses at cuts.
+
+- Antonio has better framing of counting algorithm
+
+  - If we have a sequence for some sort of normal form
+    for the counting algorithm.
+  - Then, we don't need the counters. We only need 1 bit
+    for every conjunct.
+  - We simply remove things that will not match.
+  - Vectors of bits
+  - Each bit position is this query matches or not
+  - In original counting algorithm, you have a counter for
+    every atomic counter that maps.
+  - But, really, we could simply remember that something can't match.
+  - But, this will only work as a set of conjunctions
+  - The number of bits are the number of queries that are still
+    "active". How big does this grow with the number of queries?
+
+- Antonio: has a lot of workload generators. Can he share the code?
+  - What parameters do you adjust? Headers, values, domain, and distribution
+  - These problems are highly dimensional
+  - High level number: size of query, number of headers,
+    number of unique actions
+
+
