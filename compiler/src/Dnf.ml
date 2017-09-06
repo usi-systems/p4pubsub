@@ -1,51 +1,12 @@
-
-type var = string
-
-type formula =
-   | Empty
-   | Var of var
-   | Not of formula
-   | And of formula * formula
-   | Or of formula * formula
-
-let var_to_string = function
-   | Var(s) -> Printf.sprintf "%s" s
-   | _ -> raise (Failure "only takes vars")
-
-let rec formula_to_string t =
-   let rec and_to_string = function
-      (*
-      | And(p, q) -> Printf.sprintf "%s && %s" (and_to_string p) (and_to_string q)
-      *)
-      | And(p, q) -> Printf.sprintf "%s ∧ %s" (and_to_string p) (and_to_string q)
-      | p -> formula_to_string p
-   in
-   let rec or_to_string = function
-      (*
-      | Or(p, q) -> Printf.sprintf "%s || %s" (or_to_string p) (or_to_string q)
-      *)
-      | Or(p, q) -> Printf.sprintf "%s ∨ %s" (or_to_string p) (or_to_string q)
-      | p -> formula_to_string p
-   in
-   match t with 
-   | Empty -> ""
-   | Var(_) as v -> var_to_string v
-   | And(_, _) as p -> Printf.sprintf "(%s)" (and_to_string p)
-   | Or(_,_) as p-> Printf.sprintf "(%s)" (or_to_string p)
-   (*
-   | Not(a) -> Printf.sprintf "~%s" (formula_to_string a)
-   *)
-   | Not(a) -> Printf.sprintf "¬%s" (formula_to_string a)
-
-let print_form t = print_endline (formula_to_string t)
+open Formula
 
 let rec to_nnf = function
    | Empty | Not(Empty) -> Empty
-   | Var(_) as p -> p
-   | Not(Var(_)) as p -> p
+   | Atom(_) as p -> p
+   | Not(Atom(_)) as p -> p
    | Not(Not(p)) -> to_nnf p
-   | Not(And((Var(_) as p), (Var(_) as q))) -> Or(Not(p), Not(q))
-   | Not(Or((Var(_) as p), (Var(_) as q))) -> And(Not(p), Not(q))
+   | Not(And((Atom(_) as p), (Atom(_) as q))) -> Or(Not(p), Not(q))
+   | Not(Or((Atom(_) as p), (Atom(_) as q))) -> And(Not(p), Not(q))
    | Not(And(p, q)) -> Or(to_nnf (Not(p)), to_nnf (Not(q)))
    | Not(Or(p, q)) -> And(to_nnf (Not(p)), to_nnf (Not(q)))
    | And(p, q) -> And(to_nnf p, to_nnf q)
@@ -77,8 +38,8 @@ let conj_dedup conj =
 
 let is_conj_satisfiable conj =
    let is_opposite p q = match (p, q) with
-      | (Not(Var(a)), Var(b)) when a = b -> true
-      | (Var(a), Not(Var(b))) when a = b -> true
+      | (Not(Atom(a)), Atom(b)) when a = b -> true
+      | (Atom(a), Not(Atom(b))) when a = b -> true
       | _ -> false
    in
    let contains_opposite acc p =
@@ -141,6 +102,52 @@ let disj_dedup disj =
    in
    disj_fold f Empty disj
 
+let cmp_conj_atom a b = match (a, b) with
+   | (Not(Atom(x)), Atom(y)) when x = y -> 1
+   | (Atom(x), Not(Atom(y))) when x = y -> -1
+   | (Not(Atom(x)), Not(Atom(y))) 
+   | (Atom(x), Not(Atom(y)))
+   | (Not(Atom(x)), Atom(y))
+   | (Atom(x), Atom(y)) -> cmp_atoms x y
+   | _ ->
+         raise (Failure "Conj should only contain Atom or Not(Atom)")
+
+let conj_to_list c =
+   List.sort cmp_conj_atom
+      (conj_fold
+         (fun acc x -> (match x with 
+            | Empty -> acc
+            | _ -> x::acc)
+         )
+         [] c)
+let disj_to_list d =
+   disj_fold (fun acc c -> (match conj_to_list c with
+      | [] -> acc
+      | l -> l::acc))
+   [] d
+
+let dnf_canonicalize disj =
+   let rec cmp_atom_list a b = match (a, b) with
+      | (x::a2, y::b2) -> let c = cmp_conj_atom x y in
+            if c = 0 then cmp_atom_list a2 b2 else c
+      | ([], []) -> 0 | ([], _) -> -1 | (_, []) -> 1
+   in
+   let rec list_to_conj conj_atom_list = match conj_atom_list with
+      | a::[] -> a
+      | a::l2 -> And(a, list_to_conj l2)
+      | [] -> Empty
+   in
+   let rec list_to_disj conj_list = match conj_list with
+      | c::[] -> c
+      | c::l2 -> Or(c, list_to_disj l2)
+      | [] -> Empty
+   in
+   list_to_disj
+      (List.map list_to_conj
+         (List.sort cmp_atom_list
+            (disj_to_list disj)))
+   
+
 
 let to_dnf t =
    let rec dist_left l r = match r with
@@ -157,7 +164,8 @@ let to_dnf t =
       | t -> t
    in
    let unreduced_dnf = dist (to_nnf t) in
-   disj_dedup (                                     (* remove duplicate conjunctions *)
-            disj_filter is_conj_satisfiable         (* remove unsatisfiable conjunctions *)
-              (disj_map conj_dedup unreduced_dnf))  (* remove duplicate preds *)
+   dnf_canonicalize (                              (* canonicalize the tree structure *)
+      disj_dedup (                                 (* remove duplicate conjunctions *)
+         disj_filter is_conj_satisfiable           (* remove unsatisfiable conjunctions *)
+            (disj_map conj_dedup unreduced_dnf)))  (* remove duplicate preds *)
 
