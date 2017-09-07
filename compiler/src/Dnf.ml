@@ -2,11 +2,11 @@ open Formula
 
 let rec to_nnf = function
    | Empty | Not(Empty) -> Empty
-   | Atom(_) as p -> p
-   | Not(Atom(_)) as p -> p
+   | Var(_) as p -> p
+   | Not(Var(_)) as p -> p
    | Not(Not(p)) -> to_nnf p
-   | Not(And((Atom(_) as p), (Atom(_) as q))) -> Or(Not(p), Not(q))
-   | Not(Or((Atom(_) as p), (Atom(_) as q))) -> And(Not(p), Not(q))
+   | Not(And((Var(_) as p), (Var(_) as q))) -> Or(Not(p), Not(q))
+   | Not(Or((Var(_) as p), (Var(_) as q))) -> And(Not(p), Not(q))
    | Not(And(p, q)) -> Or(to_nnf (Not(p)), to_nnf (Not(q)))
    | Not(Or(p, q)) -> And(to_nnf (Not(p)), to_nnf (Not(q)))
    | And(p, q) -> And(to_nnf p, to_nnf q)
@@ -38,8 +38,8 @@ let conj_dedup conj =
 
 let is_conj_satisfiable conj =
    let is_opposite p q = match (p, q) with
-      | (Not(Atom(a)), Atom(b)) when a = b -> true
-      | (Atom(a), Not(Atom(b))) when a = b -> true
+      | (Not(Var(a)), Var(b)) when a = b -> true
+      | (Var(a), Not(Var(b))) when a = b -> true
       | _ -> false
    in
    let contains_opposite acc p =
@@ -103,14 +103,14 @@ let disj_dedup disj =
    disj_fold f Empty disj
 
 let cmp_conj_atom a b = match (a, b) with
-   | (Not(Atom(x)), Atom(y)) when x = y -> 1
-   | (Atom(x), Not(Atom(y))) when x = y -> -1
-   | (Not(Atom(x)), Not(Atom(y))) 
-   | (Atom(x), Not(Atom(y)))
-   | (Not(Atom(x)), Atom(y))
-   | (Atom(x), Atom(y)) -> cmp_atoms x y
+   | (Not(Var(x)), Var(y)) when x = y -> 1
+   | (Var(x), Not(Var(y))) when x = y -> -1
+   | (Not(Var(x)), Not(Var(y)))
+   | (Var(x), Not(Var(y)))
+   | (Not(Var(x)), Var(y))
+   | (Var(x), Var(y)) -> cmp_vars x y
    | _ ->
-         raise (Failure "Conj should only contain Atom or Not(Atom)")
+         raise (Failure "Conj should only contain Var or Not(Var)")
 
 let conj_to_list c =
    List.sort cmp_conj_atom

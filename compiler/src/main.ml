@@ -19,7 +19,8 @@ let create_and_print_bdd rules =
    let bdd = bdd_init (mk_var_list tmp_t) in
    List.iter formulas (fun x -> match x with (t, a) -> bdd_insert bdd t a);
    bdd_reduce bdd;
-   print_bdd bdd
+   print_bdd bdd;
+   ()
 
 let print_position outx lexbuf =
   let pos = lexbuf.lex_curr_p in

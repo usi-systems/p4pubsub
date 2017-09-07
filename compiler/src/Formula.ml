@@ -1,16 +1,16 @@
 open Ast
 open Pretty
 
-type atom = expr
+type variable = expr
 
 type formula =
    | Empty
-   | Atom of atom
+   | Var of variable
    | Not of formula
    | And of formula * formula
    | Or of formula * formula
 
-let atom_to_string e = Format.asprintf "%a" format_expr e
+let var_to_string e = Format.asprintf "%a" format_expr e
 
 let is_exp_subset sub sup = match (sub, sup) with
    | (Gt(a, Number(x)), Gt(b, Number(y))) when a=b -> x>=y
@@ -31,7 +31,7 @@ let is_exp_disjoint e1 e2 = match (e1, e2) with
 
 
 (* TODO: sort on expr strength. e.g. "x>10" < "x>100" *)
-let cmp_atoms a b = compare (atom_to_string a) (atom_to_string b)
+let cmp_vars a b = compare (var_to_string a) (var_to_string b)
 
 let rec formula_to_string t =
    let rec and_to_string = function
@@ -44,24 +44,24 @@ let rec formula_to_string t =
    in
    match t with 
    | Empty -> "[Empty]"
-   | Atom(a) -> atom_to_string a
+   | Var(a) -> var_to_string a
    | And(_, _) as p -> Printf.sprintf "(%s)" (and_to_string p)
    | Or(_,_) as p-> Printf.sprintf "(%s)" (or_to_string p)
    | Not(a) -> Printf.sprintf "¬%s" (formula_to_string a)
 
 let print_form t = print_endline (formula_to_string t)
 
-let rec fold_atoms f acc t = match t with
+let rec fold_vars f acc t = match t with
    | Empty -> acc
-   | Atom(a) -> f acc a
-   | Not(x) -> fold_atoms f acc x
-   | Or(x, y) | And(x, y) -> fold_atoms f (fold_atoms f acc y) x
+   | Var(a) -> f acc a
+   | Not(x) -> fold_vars f acc x
+   | Or(x, y) | And(x, y) -> fold_vars f (fold_vars f acc y) x
 
 let rec formula_of_query q = match q with
    | Ast.And(a, b) -> And(formula_of_query a, formula_of_query b)
    | Ast.Not(a) -> Not(formula_of_query a)
    | Ast.Or(a, b) -> Or(formula_of_query a, formula_of_query b)
-   | Eq(Ident _, (Number _ | Ident _)) as p -> Atom(p)
-   | Lt(Ident _, Number _) as p -> Atom(p)
-   | Gt(Ident _, Number _) as p -> Atom(p)
+   | Eq(Ident _, (Number _ | Ident _)) as p -> Var(p)
+   | Lt(Ident _, Number _) as p -> Var(p)
+   | Gt(Ident _, Number _) as p -> Var(p)
    | _ -> raise (Failure "Query not supported")

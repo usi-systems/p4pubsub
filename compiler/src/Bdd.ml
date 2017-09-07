@@ -7,11 +7,11 @@ module IntSet = Set.Make(struct let compare = Pervasives.compare type t = int en
 type leaf_value = int list
 
 type bdd_node =
-   | Node of atom * int * int 
+   | Node of variable * int * int
    | Leaf of leaf_value
 
 type bdd_struct = {
-   vars: atom list;
+   vars: variable list;
    mutable root: int;
    n: int;
    tbl: (int, bdd_node) Hashtbl.t;
@@ -27,7 +27,7 @@ let bdd_to_string ?graph_name:(g="G") bdd =
       s ^ (match node with
       | Node(a, low, high) ->
             Printf.sprintf "n%d [label=\"%s\"];\nn%d -> n%d [style=\"dashed\"];\nn%d -> n%d;\n"
-            u (atom_to_string a) u low u high
+            u (var_to_string a) u low u high
       | Leaf lv -> Printf.sprintf "n%d [label=\"%s\" shape=box style=filled]
       {rank=sink; n%d};\n" u (leaf_value_to_string lv) u
       )
@@ -80,7 +80,7 @@ let bdd_rm_redundant_preds bdd =
    check_redundant bdd.root
 
 
-let bdd_init (sorted_vars: atom list) =
+let bdd_init (sorted_vars: variable list) =
    let bdd = {
       tbl = Hashtbl.create (int_exp 2 (List.length sorted_vars));
       root = 1;
@@ -107,8 +107,8 @@ let bdd_init (sorted_vars: atom list) =
 
 
 let mk_var_list t =
-   List.sort_uniq cmp_atoms
-      (fold_atoms (fun acc a -> a::acc) [] t)
+   List.sort_uniq cmp_vars
+      (fold_vars (fun acc a -> a::acc) [] t)
 
 let rec bdd_insert bdd disj actions =
    let list_concat_uniq l1 l2 =
@@ -119,11 +119,11 @@ let rec bdd_insert bdd disj actions =
     * because the tree has been reduced, so some variables are missing, which
     * means that they won't be consumed from the list as we descend
     *)
-      | (Node(v, l, h), Not(Atom(x))::cl2) when v = x ->
+      | (Node(v, l, h), Not(Var(x))::cl2) when v = x ->
             add_conj l cl2
-      | (Node(v, l, h), Atom(x)::cl2) when v = x -> 
+      | (Node(v, l, h), Var(x)::cl2) when v = x ->
             add_conj h cl2
-      | (Node(v, l, h), _) -> 
+      | (Node(v, l, h), _) ->
             add_conj l conj_list; add_conj h conj_list
       | (Leaf a, []) ->
             Hashtbl.replace bdd.tbl u (Leaf(list_concat_uniq a actions))
@@ -175,38 +175,3 @@ let bdd_reduce bdd =
    in
    repeat_reduce (Hashtbl.length bdd.tbl);
    bdd.root <- find_root ()
-
-
-let main () =
-   (*
-   let (x, y, z) = (Atom(Ident("x")), Atom(Ident("y")), Atom(Ident("z"))) in
-   let t =
-      And(Or(x, Or(y, z)), And(Or(x, Or(Not(y), Not(z))), And(Or(y, Or(Not(x), Not(z))), Or(z, Or(Not(x), Not(y))))))
-   in
-   print_string "// ";
-   print_form t;
-   print_string "// ";
-   print_form (to_dnf t);
-*)
-   let (a, b, c, d) = (
-      Atom(Gt(Ident("p"), Number(10))),
-      Atom(Gt(Ident("p"), Number(20))),
-      Atom(Eq(Ident("s"), Ident("bar"))),
-      Atom(Eq(Ident("s"), Ident("foo"))))
-   in
-   let t = And(a, And(b, And(c, d))) in
-   let bdd = bdd_init (mk_var_list t) in
-   bdd_insert bdd (And(a, c)) [1];
-   bdd_insert bdd (And(b, c)) [2];
-   bdd_insert bdd (d) [3];
-   (*
-   bdd_insert bdd (to_dnf t) [1];
-   *)
-   bdd_reduce bdd;
-   print_bdd bdd;
-   print_endline ""
-;;
-
-(*
-main ()
-*)
