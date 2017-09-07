@@ -16,7 +16,8 @@ let create_and_print_bdd rules =
    in
    let collect_vars acc x = match x with (t, _) -> Formula.And(t, acc) in
    let tmp_t = List.fold_left formulas ~init:Empty ~f:collect_vars in
-   let bdd = bdd_init (mk_var_list tmp_t) in
+   let vars = mk_var_list tmp_t in
+   let bdd = bdd_init vars in
    List.iter formulas (fun x -> match x with (t, a) -> bdd_insert bdd t a);
    bdd_reduce bdd;
    print_bdd bdd;

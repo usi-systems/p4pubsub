@@ -65,3 +65,23 @@ let rec formula_of_query q = match q with
    | Lt(Ident _, Number _) as p -> Var(p)
    | Gt(Ident _, Number _) as p -> Var(p)
    | _ -> raise (Failure "Query not supported")
+
+type evaled_formula =
+   | False
+   | True
+   | Residual of formula
+
+let rec partial_eval_conj resid_conj var value = match (resid_conj, var) with
+   | ((True|False) as x, _) -> x
+   | (Residual(Var x), Var y) when x=y -> value
+   | (Residual(Not(Var x)), Var y) when x=y -> if value=True then False else True
+   | ((Residual(Var _)) as r, _) | ((Residual(Not(Var _))) as r, _) -> r
+   | (Residual(And(a, b)), _) ->
+         (match (partial_eval_conj (Residual a) var value,
+                 partial_eval_conj (Residual b) var value) with
+         | (True, True) -> True
+         | (False, _) | (_, False) -> False
+         | (True, r) | (r, True) -> r
+         | (Residual t1, Residual t2) -> Residual(And(t1, t2))
+         )
+   | ((Residual _) as r, _) -> partial_eval_conj r var value
