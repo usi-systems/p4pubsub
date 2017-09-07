@@ -115,6 +115,10 @@ let rec bdd_insert bdd disj actions =
       l1 @ (List.filter (fun e -> not (List.mem e l1)) l2)
    in
    let rec add_conj u conj_list = match ((Hashtbl.find bdd.tbl u), conj_list) with 
+   (* TODO: also check whether a var is a subset of another one. This is
+    * because the tree has been reduced, so some variables are missing, which
+    * means that they won't be consumed from the list as we descend
+    *)
       | (Node(v, l, h), Not(Atom(x))::cl2) when v = x ->
             add_conj l cl2
       | (Node(v, l, h), Atom(x)::cl2) when v = x -> 

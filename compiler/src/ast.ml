@@ -11,4 +11,10 @@ type expr =
   | Ident of string
   | Number of int
 
+type action_list = int list
+
 type query = Query of expr
+
+type rule = Rule of query * action_list
+
+type rule_list = rule list

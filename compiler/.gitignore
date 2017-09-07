@@ -22,3 +22,4 @@ setup.ml
 configure
 _tags
 Makefile
+myocamlbuild.ml

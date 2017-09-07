@@ -23,8 +23,10 @@
     ((l, c1 - !linestart - 1),(l, c2 - !linestart - 1))
 
   let error lexbuf msg =	 
+    (*
     let i = info lexbuf in
     let t = lexeme lexbuf in
+    *)
     let s = "lexing error" in
     (* TODO: format error messages *)
     raise (SyntaxError s)
@@ -63,6 +65,9 @@ rule main =
   | "<"                { LT (info lexbuf) }	   
   | ">"                { GT (info lexbuf) }
   | "="                { EQ (info lexbuf) }
+  | ":"                { COLON }
+  | ","                { COMMA }
+  | ";"                { SEMICOLON }
   | id as ident {
         try Hashtbl.find keywords ident (info lexbuf)
         with Not_found -> IDENT(info lexbuf, ident)

@@ -8,23 +8,40 @@
 %token <Ast.info>  AND
 %token <Ast.info>  OR
 %token <Ast.info> NOT
+%token <Ast.info> ACTION
 %token <Ast.info> LT
 %token <Ast.info> GT
 %token <Ast.info> EQ
 %token EOF
+%token COLON
+%token COMMA
+%token SEMICOLON
 
-%type <Ast.query option> query
+%type <Ast.query> query
+%type <Ast.rule> rule
+%type <Ast.rule_list> rule_list
+%type <Ast.action_list> action_list
 
 
-%start query
+%start rule_list
 
 %%
 
 /* ----- Basic Grammar ----- */
 
+rule_list:
+  | EOF { [] }
+  | rule SEMICOLON rule_list { $1 :: $3 }
+
+rule:
+  | query COLON action_list { Rule($1, $3) }
+
+action_list:
+   | NUMBER { let _,n = $1 in [n] }
+   | NUMBER COMMA action_list { let _,n = $1 in n :: $3 }
+
 query:
-  | EOF { None }
-  | logicOrExpr { Some(Query($1)) } 
+  | logicOrExpr { Query($1) }
 
 logicOrExpr:
   | logicAndExpr OR logicOrExpr { Or($1,$3) }

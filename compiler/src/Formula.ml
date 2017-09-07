@@ -30,7 +30,7 @@ let is_exp_disjoint e1 e2 = match (e1, e2) with
    | _ -> false
 
 
-(* TODO: does this sort on expr strength? e.g. "x>10" > "x>5" *)
+(* TODO: sort on expr strength. e.g. "x>10" < "x>100" *)
 let cmp_atoms a b = compare (atom_to_string a) (atom_to_string b)
 
 let rec formula_to_string t =
@@ -56,3 +56,12 @@ let rec fold_atoms f acc t = match t with
    | Atom(a) -> f acc a
    | Not(x) -> fold_atoms f acc x
    | Or(x, y) | And(x, y) -> fold_atoms f (fold_atoms f acc y) x
+
+let rec formula_of_query q = match q with
+   | Ast.And(a, b) -> And(formula_of_query a, formula_of_query b)
+   | Ast.Not(a) -> Not(formula_of_query a)
+   | Ast.Or(a, b) -> Or(formula_of_query a, formula_of_query b)
+   | Eq(Ident _, (Number _ | Ident _)) as p -> Atom(p)
+   | Lt(Ident _, Number _) as p -> Atom(p)
+   | Gt(Ident _, Number _) as p -> Atom(p)
+   | _ -> raise (Failure "Query not supported")
