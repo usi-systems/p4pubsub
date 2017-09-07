@@ -14,6 +14,7 @@ type bdd_struct = {
    vars: variable list;
    mutable root: int;
    n: int;
+   mutable rules: (formula * int list) list;
    tbl: (int, bdd_node) Hashtbl.t;
 }
 
@@ -23,6 +24,7 @@ let leaf_value_to_string lv =
 let int_exp x y = (float_of_int x) ** (float_of_int y) |> int_of_float
 
 let bdd_to_string ?graph_name:(g="G") bdd =
+   (Printf.sprintf "digraph %s {\n" g) ^
    (Hashtbl.fold (fun u node s ->
       s ^ (match node with
       | Node(a, low, high) ->
@@ -32,7 +34,14 @@ let bdd_to_string ?graph_name:(g="G") bdd =
       {rank=sink; n%d};\n" u (leaf_value_to_string lv) u
       )
    )
-   bdd.tbl (Printf.sprintf "digraph %s {\n" g)) ^ "}\n"
+   bdd.tbl "") ^
+   "legend [shape=box label=\"" ^
+   (List.fold_left (fun s r -> s ^ (match r with (t, lv) ->
+      Printf.sprintf "%s : %s\\l"
+                                    (formula_to_string t)
+                                    (leaf_value_to_string lv))) "" bdd.rules) ^
+
+   "\"];\n}\n"
 
 let print_bdd ?graph_name:(g="G") bdd = print_endline (bdd_to_string ~graph_name:g bdd)
 
@@ -85,6 +94,7 @@ let bdd_init (sorted_vars: variable list) =
       tbl = Hashtbl.create (int_exp 2 (List.length sorted_vars));
       root = 1;
       vars = sorted_vars;
+      rules = [];
       n = List.length sorted_vars;}
    in
    let height = List.length sorted_vars in
@@ -114,22 +124,19 @@ let rec bdd_insert bdd disj actions =
    let list_concat_uniq l1 l2 =
       l1 @ (List.filter (fun e -> not (List.mem e l1)) l2)
    in
-   let rec add_conj u conj_list = match ((Hashtbl.find bdd.tbl u), conj_list) with 
-   (* TODO: also check whether a var is a subset of another one. This is
-    * because the tree has been reduced, so some variables are missing, which
-    * means that they won't be consumed from the list as we descend
-    *)
-      | (Node(v, l, h), Not(Var(x))::cl2) when v = x ->
-            add_conj l cl2
-      | (Node(v, l, h), Var(x)::cl2) when v = x ->
-            add_conj h cl2
+   let rec add_conj u resid_conj = match (Hashtbl.find bdd.tbl u, resid_conj) with
+      | (_, False) -> () (* the conjunction is false down this path. stop. *)
+      | (Leaf _, Residual _) -> () (* the conj is not fully evaluated on this path *)
       | (Node(v, l, h), _) ->
-            add_conj l conj_list; add_conj h conj_list
-      | (Leaf a, []) ->
+            add_conj l (partial_eval_conj resid_conj (Var v) False);
+            add_conj h (partial_eval_conj resid_conj (Var v) True);
+      | (Leaf a, True) ->
             Hashtbl.replace bdd.tbl u (Leaf(list_concat_uniq a actions))
-      | (Leaf a, _) -> () (* we reached a leaf, but didn't use all the vars *)
    in
-   List.iter (fun c -> add_conj bdd.root c) (disj_to_list disj)
+   bdd.rules <- ([(disj, actions)] @ bdd.rules);
+   List.iter
+      (fun c -> add_conj bdd.root (Residual (list_to_conj c)))
+      (disj_to_list disj)
 
 let bdd_replace_node bdd u1 u2 =  
    Hashtbl.filter_map_inplace (fun u node -> Some(match node with
@@ -157,6 +164,19 @@ let bdd_remove_dupes bdd =
       (fun u node -> if (IntSet.mem u dupes) then None else Some node)
       bdd.tbl
 
+(* TODO: after the last reduction here, remove nodes that don't filter out
+ * anything for their high child. E.g.
+ *
+ *                /--- high ---> x > 20
+ *               /                |
+ *              /                 | low
+ *  -----> x > 10                 |
+ *              \                 v
+ *               \--- low ---> [drop]
+ *
+ * I think this only happens if you insert queries that already have redundant
+ * predicates, e.g. "x > 10 and x > 20"
+ *)
 let bdd_reduce bdd =
    let rm_redundant u node = match node with
       | Node(_, l, h) when l=h ->

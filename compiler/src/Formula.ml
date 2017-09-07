@@ -30,8 +30,11 @@ let is_exp_disjoint e1 e2 = match (e1, e2) with
    | _ -> false
 
 
-(* TODO: sort on expr strength. e.g. "x>10" < "x>100" *)
-let cmp_vars a b = compare (var_to_string a) (var_to_string b)
+let cmp_vars a b = match (a, b) with
+   | (Gt(x, Number n1), Gt(y, Number n2)) when x=y -> compare n1 n2
+   | (Lt(x, Number n1), Gt(y, Number n2)) when x=y -> compare n1 n2
+   | (Eq(x, Number n1), Gt(y, Number n2)) when x=y -> compare n1 n2
+   | _ -> compare (var_to_string a) (var_to_string b)
 
 let rec formula_to_string t =
    let rec and_to_string = function
@@ -71,10 +74,16 @@ type evaled_formula =
    | True
    | Residual of formula
 
-let rec partial_eval_conj resid_conj var value = match (resid_conj, var) with
+let rec partial_eval_conj resid_conj var value =
+   let _not b = if b=False then True else True in
+   match (resid_conj, var) with
    | ((True|False) as x, _) -> x
    | (Residual(Var x), Var y) when x=y -> value
-   | (Residual(Not(Var x)), Var y) when x=y -> if value=True then False else True
+   | (Residual(Not(Var x)), Var y) when x=y -> _not value
+   (*
+   | (Residual(Var x), Var y) when is_exp_subset x y -> True
+   | (Residual(Var x), Var y) when value=True && is_exp_disjoint x y -> False
+   *)
    | ((Residual(Var _)) as r, _) | ((Residual(Not(Var _))) as r, _) -> r
    | (Residual(And(a, b)), _) ->
          (match (partial_eval_conj (Residual a) var value,

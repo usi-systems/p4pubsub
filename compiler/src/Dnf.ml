@@ -120,6 +120,12 @@ let conj_to_list c =
             | _ -> x::acc)
          )
          [] c)
+
+let rec list_to_conj conj_atom_list = match conj_atom_list with
+      | a::[] -> a
+      | a::l2 -> And(a, list_to_conj l2)
+      | [] -> Empty
+
 let disj_to_list d =
    disj_fold (fun acc c -> (match conj_to_list c with
       | [] -> acc
@@ -131,11 +137,6 @@ let dnf_canonicalize disj =
       | (x::a2, y::b2) -> let c = cmp_conj_atom x y in
             if c = 0 then cmp_atom_list a2 b2 else c
       | ([], []) -> 0 | ([], _) -> -1 | (_, []) -> 1
-   in
-   let rec list_to_conj conj_atom_list = match conj_atom_list with
-      | a::[] -> a
-      | a::l2 -> And(a, list_to_conj l2)
-      | [] -> Empty
    in
    let rec list_to_disj conj_list = match conj_list with
       | c::[] -> c
