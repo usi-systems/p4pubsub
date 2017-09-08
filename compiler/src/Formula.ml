@@ -39,8 +39,14 @@ let is_exp_same_table e1 e2 = match (e1, e2) with
 
 let cmp_vars a b = match (a, b) with
    | (Gt(x, Number n1), Gt(y, Number n2)) when x=y -> compare n1 n2
-   | (Lt(x, Number n1), Gt(y, Number n2)) when x=y -> compare n1 n2
-   | (Eq(x, Number n1), Gt(y, Number n2)) when x=y -> compare n1 n2
+   | (Lt(x, Number n1), Lt(y, Number n2)) when x=y -> compare n1 n2
+   | (Eq(x, Number n1), Eq(y, Number n2)) when x=y -> compare n1 n2
+   | (Eq(x, _), Lt(y, _)) when x=y -> 1
+   | (Eq(x, _), Gt(y, _)) when x=y -> 1
+   | (Lt(x, _), Eq(y, _)) when x=y -> -1
+   | (Lt(x, _), Gt(y, _)) when x=y -> -1
+   | (Gt(x, _), Eq(y, _)) when x=y -> -1
+   | (Gt(x, _), Lt(y, _)) when x=y -> 1
    | _ -> compare (var_to_string a) (var_to_string b)
 
 let rec formula_to_string t =

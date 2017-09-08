@@ -24,12 +24,25 @@ let leaf_value_to_string lv =
 let int_exp x y = (float_of_int x) ** (float_of_int y) |> int_of_float
 
 let bdd_to_string ?graph_name:(g="G") bdd =
+   let color_list = ["brown"; "red"; "green"; "blue"; "yellow"; "cyan"; "orange"] in
+   let last_color = ref 0 in
+   let next_color () =
+      last_color := (!last_color + 1) mod (List.length color_list);
+      List.nth color_list !last_color
+   in
+   let color_tbl = Hashtbl.create 10 in
+   let color v =
+      let field = field_name_for_pred v in
+      if not (Hashtbl.mem color_tbl field) then
+         Hashtbl.add color_tbl field (next_color ()) else ();
+      Hashtbl.find color_tbl field
+   in
    (Printf.sprintf "digraph %s {\n" g) ^
    (Hashtbl.fold (fun u node s ->
       s ^ (match node with
       | Node(a, low, high) ->
-            Printf.sprintf "n%d [label=\"%s\"];\nn%d -> n%d [style=\"dashed\"];\nn%d -> n%d;\n"
-            u (var_to_string a) u low u high
+            Printf.sprintf "n%d [label=\"%s\" color=\"%s\"];\nn%d -> n%d [style=\"dashed\"];\nn%d -> n%d;\n"
+            u (var_to_string a) (color a) u low u high
       | Leaf lv -> Printf.sprintf "n%d [label=\"%s\" shape=box style=filled]
       {rank=sink; n%d};\n" u (leaf_value_to_string lv) u
       )
