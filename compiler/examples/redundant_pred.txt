@@ -1,2 +1,2 @@
 a = bar and x > 100: 1;
-a = foo and x > 11 and x > 100: 2;
+a = foo and x < 200 and x > 100: 2;

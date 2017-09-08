@@ -1,0 +1,6 @@
+a=foo and x>10: 1;
+a=bar and x>11: 2;
+a=bar and y=5:  3;
+a=foo and y=6:  4;
+a=foo and z=8:  5;
+a=bar and z=9:  6;

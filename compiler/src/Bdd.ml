@@ -52,7 +52,8 @@ let print_bdd ?graph_name:(g="G") bdd = print_endline (bdd_to_string ~graph_name
  * encountered.
  *
  * TODO: don't just check immediate children for redundancy, but entire
- * subtree.
+ * subtree. This will only be needed when it's possible to have redundant
+ * predicats that aren't adjacent.
  *)
 let bdd_rm_redundant_preds bdd =
    let getn u = Hashtbl.find bdd.tbl u in
@@ -65,25 +66,20 @@ let bdd_rm_redundant_preds bdd =
    let rep u n = Hashtbl.replace bdd.tbl u n in
    let rec check_redundant u = match getn u with
       | Node(p, l, h) -> (match (getn l, getn h) with
-         | (Node(p2, ll, lh), _) when is_exp_subset p2 p -> 
-               rm l;
-               rm_tree lh;
-               rep u (Node(p, ll, h));
-               check_redundant u
          | (_, Node(p2, hl, hh)) when is_exp_subset p p2 -> 
                rm h;
-               rm_tree hl;
-               rep u (Node(p, l, hh));
+               rm_tree hh;
+               rep u (Node(p, l, hl));
                check_redundant u
          | (_, Node(p2, hl, hh)) when is_exp_disjoint p p2 -> 
                rm h;
                rm_tree hh;
                rep u (Node(p, l, hl));
                check_redundant u
-         | (_, Node(p2, hl, hh)) when is_exp_disjoint p p2 ->
-               rm h;
-               rm_tree hl;
-               rep u (Node(p, l, hh));
+         | (Node(p2, ll, lh), _) when is_exp_subset p2 p ->
+               rm l;
+               rm_tree lh;
+               rep u (Node(p, ll, h));
                check_redundant u
          | (Node _, Node _) -> 
                check_redundant l; check_redundant h
