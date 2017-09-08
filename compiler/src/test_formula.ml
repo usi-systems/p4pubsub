@@ -82,12 +82,27 @@ let test_all_partial_eval () =
    test_partial_eval2 ();
    test_partial_eval3 ()
 
+let test_is_exp_disjoint () =
+   let (x, y) = (Ident "x", Ident "y") in
+   assert (is_exp_disjoint (Gt(x, Number 1)) (Lt(x, Number 1)));
+   assert (is_exp_disjoint (Gt(x, Number 6)) (Lt(x, Number 3)));
+   assert (is_exp_disjoint (Gt(x, Number 6)) (Eq(x, Number 3)));
+   assert (is_exp_disjoint (Gt(x, Number 6)) (Eq(x, Number 3)));
+   assert (is_exp_disjoint (Lt(x, Number 6)) (Eq(x, Number 8)));
+   assert (not (is_exp_disjoint (Gt(x, Number 1)) (Lt(y, Number 1))));
+   assert (not (is_exp_disjoint (Gt(x, Number 1)) (Gt(x, Number 2))));
+   assert (not (is_exp_disjoint (Gt(x, Number 1)) (Lt(x, Number 2))));
+   assert (not (is_exp_disjoint (Lt(x, Number 6)) (Eq(x, Number 3))));
+   assert (not (is_exp_disjoint (Gt(x, Number 3)) (Eq(x, Number 6))));
+   ()
+
 let test_all () =
    test_to_nnf ();
    test_conj ();
    test_canonicalization ();
    test_to_dnf ();
    test_all_partial_eval ();
+   test_is_exp_disjoint ();
    print_endline "DNF tests passed"
 ;;
 
