@@ -179,9 +179,17 @@ let bdd_reduce bdd =
                | _ -> Some node)
       | _ -> Some node
    in
+   (* remove when high child is equal to low child's low *)
+   let rm_high_low_low u node = match node with
+      | Node(_, l, h) -> (match getn l with
+               | Node(_, ll, _) when h=ll-> bdd_replace_node bdd u l; None
+               | _ -> Some node)
+      | _ -> Some node
+   in
    let rec repeat_reduce prev_len =
       bdd_remove_dupes bdd;
       Hashtbl.filter_map_inplace rm_high_drop bdd.tbl;
+      Hashtbl.filter_map_inplace rm_high_low_low bdd.tbl;
       Hashtbl.filter_map_inplace rm_redundant bdd.tbl;
       if prev_len = Hashtbl.length bdd.tbl then
          ()
