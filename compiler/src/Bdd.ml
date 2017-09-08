@@ -80,6 +80,11 @@ let bdd_rm_redundant_preds bdd =
                rm_tree hh;
                rep u (Node(p, l, hl));
                check_redundant u
+         | (_, Node(p2, hl, hh)) when is_exp_disjoint p p2 ->
+               rm h;
+               rm_tree hl;
+               rep u (Node(p, l, hh));
+               check_redundant u
          | (Node _, Node _) -> 
                check_redundant l; check_redundant h
          | (Leaf _, Leaf _) -> ()
@@ -164,27 +169,23 @@ let bdd_remove_dupes bdd =
       (fun u node -> if (IntSet.mem u dupes) then None else Some node)
       bdd.tbl
 
-(* TODO: after the last reduction here, remove nodes that don't filter out
- * anything for their high child. E.g.
- *
- *                /--- high ---> x > 20
- *               /                |
- *              /                 | low
- *  -----> x > 10                 |
- *              \                 v
- *               \--- low ---> [drop]
- *
- * I think this only happens if you insert queries that already have redundant
- * predicates, e.g. "x > 10 and x > 20"
- *)
 let bdd_reduce bdd =
+   let getn u = Hashtbl.find bdd.tbl u in
    let rm_redundant u node = match node with
       | Node(_, l, h) when l=h ->
             bdd_replace_node bdd u l; None
       | _ -> Some node
    in
+   (* remove nodes whose high child is `Leaf []` (i.e. drop) *)
+   let rm_high_drop u node = match node with
+      | Node(_, l, h) -> (match getn h with
+               | Leaf [] -> bdd_replace_node bdd u l; None
+               | _ -> Some node)
+      | _ -> Some node
+   in
    let rec repeat_reduce prev_len =
       bdd_remove_dupes bdd;
+      Hashtbl.filter_map_inplace rm_high_drop bdd.tbl;
       Hashtbl.filter_map_inplace rm_redundant bdd.tbl;
       if prev_len = Hashtbl.length bdd.tbl then
          ()

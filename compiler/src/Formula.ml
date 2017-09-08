@@ -29,6 +29,13 @@ let is_exp_disjoint e1 e2 = match (e1, e2) with
    | (Gt(b, Number(y)), Lt(a, Number(x))) when a=b -> x<=y
    | _ -> false
 
+let is_exp_same_table e1 e2 = match (e1, e2) with
+   | (Eq(a, _), Eq(b, _)) | (Eq(a, _), Lt(b, _)) | (Eq(a, _), Gt(b, _))
+   | (Lt(a, _), Eq(b, _)) | (Lt(a, _), Lt(b, _)) | (Lt(a, _), Gt(b, _))
+   | (Gt(a, _), Eq(b, _)) | (Gt(a, _), Lt(b, _)) | (Gt(a, _), Gt(b, _)) ->
+         a=b
+   | _ -> false
+
 
 let cmp_vars a b = match (a, b) with
    | (Gt(x, Number n1), Gt(y, Number n2)) when x=y -> compare n1 n2
