@@ -28,7 +28,7 @@ let abstract_table_to_string ?graph_name:(g="G") atc =
    let next_table_name tn =
       let rec _next = function
          | a::(b::l) -> if a=tn then b else _next (b::l)
-         | a::[] -> "__actions__"
+         | a::[] -> "__fwd__"
          | _ -> raise (Failure ("Couldn't find the successor table for " ^ tn))
       in
       _next atc.table_names
@@ -73,7 +73,7 @@ let bdd_tables_create rules =
    let next_table_name tn =
       let rec _next = function
          | a::(b::l) -> if a=tn then b else _next (b::l)
-         | a::[] -> "__actions__"
+         | a::[] -> "__fwd__"
          | _ -> raise (Failure ("Couldn't find the successor table for " ^ tn))
       in
       _next table_names
@@ -87,8 +87,8 @@ let bdd_tables_create rules =
       tables = Hashtbl.create ((List.length table_names) + 1);
    } in
    List.iter (fun t -> Hashtbl.add atc.tables t (Hashtbl.create 10)) table_names;
-   let action_table = Hashtbl.create 10 in
-   Hashtbl.add atc.tables "__actions__" action_table;
+   let fwd_table = Hashtbl.create 10 in
+   Hashtbl.add atc.tables "__fwd__" fwd_table;
    let last_u = ref 0 in
    last_u := bdd.last_u;
    let get_new_u () = last_u := !last_u + 1; !last_u in
@@ -119,7 +119,7 @@ let bdd_tables_create rules =
    List.iter find_matchgroups entry_nodes;
    let add_leaf_nodes () = Hashtbl.iter (fun u n -> match n with
       | Leaf actions ->
-            Hashtbl.add action_table u (ActionGroup actions)
+            Hashtbl.add fwd_table u (ActionGroup actions)
       | _ -> ())
       bdd.tbl
    in

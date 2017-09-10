@@ -8,6 +8,7 @@ open Formula
 open Dnf
 open Bdd
 open Bdd_Table
+open P4_Runtime
 
 let create_and_print_bdd rules =
    let formulas =
@@ -48,8 +49,11 @@ let parse_and_print lexbuf =
   create_and_print_bdd rules;
   *)
   let tables = bdd_tables_create rules in
+  let runtime_conf = create_p4_runtime_conf tables in
   print_bdd_tables tables;
-  print_endline ("/*\n" ^ (string_of_rules rules) ^ "*/\n")
+  print_endline ("/*\n" ^ (string_of_rules rules) ^ "*/\n");
+  print_endline ("/*\n" ^ (dump_p4_runtime_conf runtime_conf) ^ "\n*/\n");
+  ()
 
 
 let loop filename () =
