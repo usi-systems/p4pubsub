@@ -132,7 +132,7 @@ let bdd_tables_create rules =
       Hashtbl.fold (fun u n found -> match found with
          | Some _ -> found
          | None -> (match n with
-            | Skip dst_u2 when dst_u2=dst_u -> Some n
+            | Skip dst_u2 when dst_u2=dst_u -> Some u
             | _ -> None
          )
       ) tbl None
@@ -142,7 +142,7 @@ let bdd_tables_create rules =
       if Hashtbl.mem tbl dst_u then dst_u
       else (
          match get_skip_node tbl t dst_u with
-            | Some n -> 1
+            | Some existing_u -> existing_u
             | None -> 
                let new_u = get_new_u () in
                Hashtbl.add tbl new_u
