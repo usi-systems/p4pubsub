@@ -37,16 +37,20 @@ let abstract_table_to_string ?graph_name:(g="G") atc =
       if (List.length ml)=0 then "*"
       else escape (String.concat ", " (List.map var_to_string ml))
    in
-   (Printf.sprintf "digraph %s {\nordering=out;\n" g) ^
+   (Printf.sprintf "digraph %s {\n\n" g) ^
    (bdd_to_string ~graph_name:"subgraph" atc.bdd ) ^
    (Hashtbl.fold (fun field tbl s ->
-      s ^ (Printf.sprintf "table_%s [shape=record label=\"{%s}|" field field) ^
+      s ^ (Printf.sprintf
+            "table_%s [shape=none margin=0 label=<
+            <table cellpadding=\"3\" cellspacing=\"0\" border=\"0\" cellborder=\"1\">
+            <tr><td colspan=\"3\"><b>%s</b></td></tr>
+            <tr><td bgcolor=\"gray\">in</td><td bgcolor=\"gray\">match</td><td bgcolor=\"gray\">out</td></tr>" field field) ^
       (String.concat "|" (Hashtbl.fold (fun u n sl -> (match n with
             | MatchGroup(vl, dst) ->
-               Printf.sprintf "{<i%d>%d|%s|<o%d>%d}" u u (matches_to_string vl) dst dst
-            | ActionGroup al -> Printf.sprintf "{%d|%s|null}" u (leaf_value_to_string al)
-            | Skip dst -> Printf.sprintf "{<i%d>%d|_pass_|<o%d>%d}" u u dst dst)::sl
-      ) tbl [])) ^ "\"];\n"
+               Printf.sprintf "<tr><td>%d</td><td>%s</td><td>%d</td></tr>" u (matches_to_string vl) dst
+            | ActionGroup al -> Printf.sprintf "<tr><td>%d</td><td></td><td>%s</td></tr>" u (leaf_value_to_string al)
+            | Skip dst -> Printf.sprintf "<tr><td>%d</td><td><i>skip</i></td><td>%d</td></tr>" u dst)::sl
+      ) tbl [])) ^ "</table>>];\n"
    ) atc.tables "") ^
    (String.concat "" (List.map
          (fun t -> Printf.sprintf "table_%s -> table_%s;\n" t (next_table_name t))
