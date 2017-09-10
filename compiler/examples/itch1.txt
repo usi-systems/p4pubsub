@@ -1,0 +1,3 @@
+shares > 100: 1;
+stock = MSFT and shares > 100: 2;
+stock = AAPL and shares < 60: 3;

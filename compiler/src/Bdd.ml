@@ -13,6 +13,7 @@ type bdd_node =
 type bdd_struct = {
    vars: variable list;
    mutable root: int;
+   last_u: int;
    n: int;
    mutable rules: (formula * int list) list;
    tbl: (int, bdd_node) Hashtbl.t;
@@ -23,7 +24,7 @@ let leaf_value_to_string lv =
 
 let int_exp x y = (float_of_int x) ** (float_of_int y) |> int_of_float
 
-let bdd_to_string ?graph_name:(g="G") bdd =
+let bdd_to_string ?graph_name:(g="digraph G") bdd =
    let color_list = ["brown"; "red"; "green"; "blue"; "yellow"; "cyan"; "orange"] in
    let last_color = ref 0 in
    let next_color () =
@@ -37,7 +38,14 @@ let bdd_to_string ?graph_name:(g="G") bdd =
          Hashtbl.add color_tbl field (next_color ()) else ();
       Hashtbl.find color_tbl field
    in
-   (Printf.sprintf "digraph %s {\n" g) ^
+   (Printf.sprintf "%s {\n" g) ^
+   "legend [shape=box label=\"" ^
+   (List.fold_left (fun s r -> s ^ (match r with (t, lv) ->
+      Printf.sprintf "%s: %s\\l"
+                                    (formula_to_string t)
+                                    (leaf_value_to_string lv))) "" bdd.rules) ^
+
+   "\"];\n" ^
    (Hashtbl.fold (fun u node s ->
       s ^ (match node with
       | Node(a, low, high) ->
@@ -48,15 +56,9 @@ let bdd_to_string ?graph_name:(g="G") bdd =
       )
    )
    bdd.tbl "") ^
-   "legend [shape=box label=\"" ^
-   (List.fold_left (fun s r -> s ^ (match r with (t, lv) ->
-      Printf.sprintf "%s : %s\\l"
-                                    (formula_to_string t)
-                                    (leaf_value_to_string lv))) "" bdd.rules) ^
+   "}\n"
 
-   "\"];\n}\n"
-
-let print_bdd ?graph_name:(g="G") bdd = print_endline (bdd_to_string ~graph_name:g bdd)
+let print_bdd ?graph_name:(g="digraph G") bdd = print_endline (bdd_to_string ~graph_name:g bdd)
 
 
 (* This removes redundant predicates from the BDD. If the predicate of a node's
@@ -104,14 +106,15 @@ let bdd_rm_redundant_preds bdd =
 
 
 let bdd_init (sorted_vars: variable list) =
+   let height = List.length sorted_vars in
    let bdd = {
       tbl = Hashtbl.create (int_exp 2 (List.length sorted_vars));
       root = 1;
       vars = sorted_vars;
+      last_u = (int_exp 2 (height + 1 + 1)) - 1;
       rules = [];
       n = List.length sorted_vars;}
    in
-   let height = List.length sorted_vars in
    let rec add_nodes var depth i =
       let u = ((int_exp 2 depth) + i) in
       let (low, high) = ((2*u), (2*u)+1) in
@@ -167,7 +170,7 @@ let bdd_remove_dupes bdd =
          IntSet.empty
       else
          (Hashtbl.fold (fun u2 node2 d -> 
-            if node2=node && u2!=u then (rep u2 u; IntSet.add u2 d) else d)
+            if node2=node && u2<>u then (rep u2 u; IntSet.add u2 d) else d)
          bdd.tbl
          IntSet.empty))
    in

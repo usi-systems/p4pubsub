@@ -20,7 +20,7 @@ let is_exp_subset sub sup = match (sub, sup) with
    | _ -> false
 
 let is_exp_disjoint e1 e2 = match (e1, e2) with
-   | (Eq(a, x), Eq(b, y)) when a=b -> x!=y
+   | (Eq(a, x), Eq(b, y)) when a=b -> x<>y
    | (Gt(a, Number(x)), Eq(b, Number(y))) when a=b -> y<=x
    | (Eq(b, Number(y)), Gt(a, Number(x))) when a=b -> y<=x
    | (Lt(a, Number(x)), Eq(b, Number(y))) when a=b -> y>=x

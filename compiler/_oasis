@@ -20,6 +20,7 @@ Executable bpretty
   MainIs:     main.ml
   BuildDepends:
     core, 
+    str,
     threads
 
 Test testall

@@ -7,6 +7,7 @@ open Pretty
 open Formula
 open Dnf
 open Bdd
+open Bdd_Table
 
 let create_and_print_bdd rules =
    let formulas =
@@ -43,7 +44,11 @@ let string_of_rules rl =
 
 let parse_and_print lexbuf =
   let rules = parse_with_error lexbuf in
+  (*
   create_and_print_bdd rules;
+  *)
+  let tables = bdd_tables_create rules in
+  print_bdd_tables tables;
   print_endline ("/*\n" ^ (string_of_rules rules) ^ "*/\n")
 
 
