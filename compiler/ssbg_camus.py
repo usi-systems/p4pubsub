@@ -195,203 +195,196 @@ def ssbg(attr_dist_type, attr_space_size, predicates_size, number_of_filters, nu
     # This is where we define distributions for values, names, etc.
     #
     str_values = Distribution({ \
-            '"contract"' : 24370, \
-                '"recent"' : 24558, \
-                '"chang"' : 24598, \
-                '"hous"' : 24675, \
-                '"good"' : 24761, \
-                '"fall"' : 24848, \
-                '"numb"' : 24878, \
-                '"ago"' : 25055, \
-                '"vote"' : 25119, \
-                '"rule"' : 25216, \
-                '"system"' : 25301, \
-                '"bid"' : 25302, \
-                '"half"' : 25348, \
-                '"americ"' : 25481, \
-                '"august"' : 25529, \
-                '"decemb"' : 25590, \
-                '"polit"' : 25679, \
-                '"show"' : 25733, \
-                '"gain"' : 25910, \
-                '"public"' : 26026, \
-                '"announc"' : 26403, \
-                '"made"' : 26480, \
-                '"part"' : 26658, \
-                '"york"' : 26671, \
-                '"pow"' : 26698, \
-                '"remain"' : 26770, \
-                '"support"' : 26875, \
-                '"aver"' : 26959, \
-                '"memb"' : 26989, \
-                '"nov"' : 26996, \
-                '"demand"' : 27146, \
-                '"talk"' : 27444, \
-                '"import"' : 27572, \
-                '"mark"' : 27776, \
-                '"current"' : 28032, \
-                '"earn"' : 28105, \
-                '"strong"' : 28266, \
-                '"develop"' : 28421, \
-                '"forc"' : 28457, \
-                '"london"' : 28488, \
-                '"south"' : 28666, \
-                '"capit"' : 28827, \
-                '"rose"' : 28932, \
-                '"decid"' : 29177, \
-                '"start"' : 29330, \
-                '"larg"' : 29350, \
-                '"prim"' : 29366, \
-                '"austral"' : 29786, \
-                '"growth"' : 30002, \
-                '"japan"' : 30205, \
-                '"major"' : 30501, \
-                '"new"' : 30688, \
-                '"sell"' : 30766, \
-                '"level"' : 30813, \
-                '"direct"' : 30901, \
-                '"cut"' : 31105, \
-                '"cost"' : 31249, \
-                '"reut"' : 31423, \
-                '"long"' : 31562, \
-                '"open"' : 31664, \
-                '"novemb"' : 31699, \
-                '"union"' : 31726, \
-                '"back"' : 31769, \
-                '"due"' : 31885, \
-                '"futur"' : 32074, \
-                '"export"' : 32248, \
-                '"term"' : 32911, \
-                '"oct"' : 33149, \
-                '"hold"' : 33211, \
-                '"move"' : 33414, \
-                '"continu"' : 33462, \
-                '"elect"' : 33499, \
-                '"chin"' : 33555, \
-                '"franc"' : 33830, \
-                '"world"' : 33983, \
-                '"manag"' : 34029, \
-                '"set"' : 34213, \
-                '"servic"' : 34323, \
-                '"gener"' : 34355, \
-                '"exchang"' : 34507, \
-                '"forecast"' : 34777, \
-                '"base"' : 35109, \
-                '"corp"' : 35381, \
-                '"index"' : 35488, \
-                '"late"' : 36306, \
-                '"peopl"' : 36407, \
-                '"incom"' : 36513, \
-                '"dollar"' : 36714, \
-                '"rise"' : 36966, \
-                '"party"' : 37056, \
-                '"fund"' : 37362, \
-                '"call"' : 37828, \
-                '"busi"' : 37842, \
-                '"octob"' : 38027, \
-                '"note"' : 38345, \
-                '"agree"' : 38800, \
-                '"buy"' : 38905, \
-                '"european"' : 39147, \
-                '"work"' : 39249, \
-                '"firm"' : 39387, \
-                '"total"' : 39481, \
-                '"polic"' : 39675, \
-                '"result"' : 39798, \
-                '"increas"' : 40230, \
-                '"intern"' : 40365, \
-                '"includ"' : 40443, \
-                '"meet"' : 40512, \
-                '"foreign"' : 40551, \
-                '"quart"' : 40845, \
-                '"yen"' : 41397, \
-                '"secur"' : 41853, \
-                '"anal"' : 42248, \
-                '"make"' : 42648, \
-                '"loss"' : 43695, \
-                '"tax"' : 43727, \
-                '"ton"' : 44880, \
-                '"countr"' : 44882, \
-                '"commit"' : 45453, \
-                '"oil"' : 45467, \
-                '"bond"' : 45631, \
-                '"septemb"' : 45779, \
-                '"interest"' : 46064, \
-                '"monday"' : 48500, \
-                '"told"' : 48826, \
-                '"friday"' : 49008, \
-                '"nation"' : 49457, \
-                '"industr"' : 49766, \
-                '"profit"' : 50511, \
-                '"thursday"' : 50610, \
-                '"point"' : 50997, \
-                '"early"' : 51035, \
-                '"add"' : 51531, \
-                '"time"' : 51655, \
-                '"wednesday"' : 51965, \
-                '"tuesday"' : 53065, \
-                '"issu"' : 54649, \
-                '"financ"' : 55676, \
-                '"unit"' : 57042, \
-                '"operat"' : 57211, \
-                '"lead"' : 57337, \
-                '"presid"' : 57407, \
-                '"plan"' : 57419, \
-                '"low"' : 57950, \
-                '"deal"' : 58509, \
-                '"net"' : 59540, \
-                '"newsroom"' : 60614, \
-                '"group"' : 60734, \
-                '"pct"' : 62499, \
-                '"day"' : 62721, \
-                '"invest"' : 64709, \
-                '"clos"' : 65764, \
-                '"econom"' : 67127, \
-                '"stock"' : 68228, \
-                '"sale"' : 68551, \
-                '"produc"' : 69071, \
-                '"report"' : 69971, \
-                '"minist"' : 70462, \
-                '"cent"' : 77668, \
-                '"high"' : 78053, \
-                '"expect"' : 78952, \
-                '"week"' : 79484, \
-                '"end"' : 80109, \
-                '"offic"' : 81926, \
-                '"billion"' : 82718, \
-                '"govern"' : 88262, \
-                '"rate"' : 93466, \
-                '"month"' : 96432, \
-                '"pric"' : 108175, \
-                '"compan"' : 114137, \
-                '"stat"' : 118010, \
-                '"bank"' : 122967, \
-                '"shar"' : 137559, \
-                '"market"' : 140363, \
-                '"trad"' : 142435, \
-                '"million"' : 191853, \
-                '"year"' : 207127, \
-                '"percent"' : 214479 \
+            'contract' : 24370, \
+                'recent' : 24558, \
+                'chang' : 24598, \
+                'hous' : 24675, \
+                'good' : 24761, \
+                'fall' : 24848, \
+                'numb' : 24878, \
+                'ago' : 25055, \
+                'vote' : 25119, \
+                'rule' : 25216, \
+                'system' : 25301, \
+                'bid' : 25302, \
+                'half' : 25348, \
+                'americ' : 25481, \
+                'august' : 25529, \
+                'decemb' : 25590, \
+                'polit' : 25679, \
+                'show' : 25733, \
+                'gain' : 25910, \
+                'public' : 26026, \
+                'announc' : 26403, \
+                'made' : 26480, \
+                'part' : 26658, \
+                'york' : 26671, \
+                'pow' : 26698, \
+                'remain' : 26770, \
+                'support' : 26875, \
+                'aver' : 26959, \
+                'memb' : 26989, \
+                'nov' : 26996, \
+                'demand' : 27146, \
+                'talk' : 27444, \
+                'import' : 27572, \
+                'mark' : 27776, \
+                'current' : 28032, \
+                'earn' : 28105, \
+                'strong' : 28266, \
+                'develop' : 28421, \
+                'forc' : 28457, \
+                'london' : 28488, \
+                'south' : 28666, \
+                'capit' : 28827, \
+                'rose' : 28932, \
+                'decid' : 29177, \
+                'start' : 29330, \
+                'larg' : 29350, \
+                'prim' : 29366, \
+                'austral' : 29786, \
+                'growth' : 30002, \
+                'japan' : 30205, \
+                'major' : 30501, \
+                'new' : 30688, \
+                'sell' : 30766, \
+                'level' : 30813, \
+                'direct' : 30901, \
+                'cut' : 31105, \
+                'cost' : 31249, \
+                'reut' : 31423, \
+                'long' : 31562, \
+                'open' : 31664, \
+                'novemb' : 31699, \
+                'union' : 31726, \
+                'back' : 31769, \
+                'due' : 31885, \
+                'futur' : 32074, \
+                'export' : 32248, \
+                'term' : 32911, \
+                'oct' : 33149, \
+                'hold' : 33211, \
+                'move' : 33414, \
+                'continu' : 33462, \
+                'elect' : 33499, \
+                'chin' : 33555, \
+                'franc' : 33830, \
+                'world' : 33983, \
+                'manag' : 34029, \
+                'set' : 34213, \
+                'servic' : 34323, \
+                'gener' : 34355, \
+                'exchang' : 34507, \
+                'forecast' : 34777, \
+                'base' : 35109, \
+                'corp' : 35381, \
+                'index' : 35488, \
+                'late' : 36306, \
+                'peopl' : 36407, \
+                'incom' : 36513, \
+                'dollar' : 36714, \
+                'rise' : 36966, \
+                'party' : 37056, \
+                'fund' : 37362, \
+                'call' : 37828, \
+                'busi' : 37842, \
+                'octob' : 38027, \
+                'note' : 38345, \
+                'agree' : 38800, \
+                'buy' : 38905, \
+                'european' : 39147, \
+                'work' : 39249, \
+                'firm' : 39387, \
+                'total' : 39481, \
+                'polic' : 39675, \
+                'result' : 39798, \
+                'increas' : 40230, \
+                'intern' : 40365, \
+                'includ' : 40443, \
+                'meet' : 40512, \
+                'foreign' : 40551, \
+                'quart' : 40845, \
+                'yen' : 41397, \
+                'secur' : 41853, \
+                'anal' : 42248, \
+                'make' : 42648, \
+                'loss' : 43695, \
+                'tax' : 43727, \
+                'ton' : 44880, \
+                'countr' : 44882, \
+                'commit' : 45453, \
+                'oil' : 45467, \
+                'bond' : 45631, \
+                'septemb' : 45779, \
+                'interest' : 46064, \
+                'monday' : 48500, \
+                'told' : 48826, \
+                'friday' : 49008, \
+                'nation' : 49457, \
+                'industr' : 49766, \
+                'profit' : 50511, \
+                'thursday' : 50610, \
+                'point' : 50997, \
+                'early' : 51035, \
+                'add' : 51531, \
+                'time' : 51655, \
+                'wednesday' : 51965, \
+                'tuesday' : 53065, \
+                'issu' : 54649, \
+                'financ' : 55676, \
+                'unit' : 57042, \
+                'operat' : 57211, \
+                'lead' : 57337, \
+                'presid' : 57407, \
+                'plan' : 57419, \
+                'low' : 57950, \
+                'deal' : 58509, \
+                'net' : 59540, \
+                'newsroom' : 60614, \
+                'group' : 60734, \
+                'pct' : 62499, \
+                'day' : 62721, \
+                'invest' : 64709, \
+                'clos' : 65764, \
+                'econom' : 67127, \
+                'stock' : 68228, \
+                'sale' : 68551, \
+                'produc' : 69071, \
+                'report' : 69971, \
+                'minist' : 70462, \
+                'cent' : 77668, \
+                'high' : 78053, \
+                'expect' : 78952, \
+                'week' : 79484, \
+                'end' : 80109, \
+                'offic' : 81926, \
+                'billion' : 82718, \
+                'govern' : 88262, \
+                'rate' : 93466, \
+                'month' : 96432, \
+                'pric' : 108175, \
+                'compan' : 114137, \
+                'stat' : 118010, \
+                'bank' : 122967, \
+                'shar' : 137559, \
+                'market' : 140363, \
+                'trad' : 142435, \
+                'million' : 191853, \
+                'year' : 207127, \
+                'percent' : 214479 \
                 })
     
-    int_ops = Distribution({ '='  : 40, \
+    int_ops = Distribution({ '='  : 50, \
                                  '<'  : 25, \
                                  '>'  : 25, \
-                                 '!=' : 10  \
+                                 #'!=' : 10  \
                                  })
 
-    # str_ops = Distribution({ '='  : 1, \
-    # 			 })
-    str_ops = Distribution({ '='  : 40, \
-                                 '*=' : 10, \
-                                 '**' : 10, \
-                                 '=*' : 10, \
-                                 '!=' : 10, \
-                                 '>'  : 10, \
-                                 '<'  : 10, \
-                                 })
+    str_ops = Distribution({ '='  : 1 })
 
-    int_values = Uniform(-100, 100)
+    # TODO: uncomment this when we support negative values in Camus
+    #int_values = Uniform(-100, 100)
+    int_values = Uniform(0, 100)
 
     #
     # probability distribution for the type and values of constraints.
@@ -494,7 +487,6 @@ Please, see the documentation within the code.\n\
         i = 0
         for p in predicates:
             i += 1
-            print 'ifconfig', i, ' ',
 
             dsep = ''
             for disjunction in p:
@@ -502,9 +494,11 @@ Please, see the documentation within the code.\n\
                 csep = ''
                 for conjuction in disjunction:
                     sys.stdout.write(csep + conjuction[0] + ' ' + conjuction[1] + ' ' + conjuction[2])
-                    csep = ', '
+                    csep = ' and '
                 sys.stdout.write('\n')
-                dsep = ' | '
+                dsep = ' or '
+
+            print ': %d;' % i
 
         for m in messages:
             sys.stdout.write('select ')
