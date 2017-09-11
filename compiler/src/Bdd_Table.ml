@@ -37,8 +37,16 @@ let abstract_table_to_string ?graph_name:(g="G") atc =
       if (List.length ml)=0 then "*"
       else escape (String.concat ", " (List.map var_to_string ml))
    in
-   (Printf.sprintf "digraph %s {\n\n" g) ^
+   (Printf.sprintf "digraph %s {\n" g) ^
    (bdd_to_string ~graph_name:"subgraph" atc.bdd ) ^
+   "legend [shape=note style=filled label=\"" ^
+   (List.fold_left (fun s r -> s ^ (match r with (t, lv) ->
+      Printf.sprintf "%s: %s\\l"
+                                    (formula_to_string t)
+                                    (leaf_value_to_string lv))) "" atc.bdd.rules) ^
+
+   "\"];\n" ^
+   "subgraph {rank=same;\n" ^
    (Hashtbl.fold (fun field tbl s ->
       s ^ (Printf.sprintf
             "table_%s [shape=none margin=0 label=<
@@ -55,7 +63,7 @@ let abstract_table_to_string ?graph_name:(g="G") atc =
    (String.concat "" (List.map
          (fun t -> Printf.sprintf "table_%s -> table_%s;\n" t (next_table_name t))
          atc.table_names)) ^
-   "}\n"
+   "}}\n"
 
 let print_bdd_tables atc = print_endline (abstract_table_to_string atc)
 

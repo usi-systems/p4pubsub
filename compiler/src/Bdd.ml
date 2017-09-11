@@ -39,13 +39,8 @@ let bdd_to_string ?graph_name:(g="digraph G") bdd =
       Hashtbl.find color_tbl field
    in
    (Printf.sprintf "%s {\n" g) ^
-   "legend [shape=box label=\"" ^
-   (List.fold_left (fun s r -> s ^ (match r with (t, lv) ->
-      Printf.sprintf "%s: %s\\l"
-                                    (formula_to_string t)
-                                    (leaf_value_to_string lv))) "" bdd.rules) ^
-
-   "\"];\n" ^
+   "rank=out; graph [pad=\"0.1\", nodesep=\"0.5\", ranksep=\"1\"];
+    node [margin=\"0.01\"];\n" ^
    (Hashtbl.fold (fun u node s ->
       s ^ (match node with
       | Node(a, low, high) ->

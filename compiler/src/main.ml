@@ -45,9 +45,6 @@ let string_of_rules rl =
 
 let parse_and_print lexbuf =
   let rules = parse_with_error lexbuf in
-  (*
-  create_and_print_bdd rules;
-  *)
   let tables = bdd_tables_create rules in
   let runtime_conf = create_p4_runtime_conf tables in
   print_bdd_tables tables;
