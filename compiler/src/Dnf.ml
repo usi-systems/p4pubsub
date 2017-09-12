@@ -13,16 +13,6 @@ let rec to_nnf = function
    | Or(p, q) -> Or(to_nnf p, to_nnf q)
 
 
-let rec conj_fold f acc conj = match conj with 
-   | And(((And(_,_) as c1)), ((And(_,_) as c2))) ->
-         conj_fold f (conj_fold f acc c1) c2
-   | And(((And(_,_) as c)), a)
-   | And(a, ((And(_,_) as c))) -> 
-         conj_fold f (f acc a) c
-   | And(a, b) -> 
-         f (f acc a) b
-   | a -> f acc a
-
 let conj_contains conj p =
    conj_fold (fun acc q -> if acc then acc else p = q) false conj
 
@@ -101,25 +91,6 @@ let disj_dedup disj =
       | d -> Or(d, conj)
    in
    disj_fold f Empty disj
-
-let cmp_conj_atom a b = match (a, b) with
-   | (Not(Var(x)), Var(y)) when x = y -> 1
-   | (Var(x), Not(Var(y))) when x = y -> -1
-   | (Not(Var(x)), Not(Var(y)))
-   | (Var(x), Not(Var(y)))
-   | (Not(Var(x)), Var(y))
-   | (Var(x), Var(y)) -> cmp_vars x y
-   | _ ->
-         raise (Failure "Conj should only contain Var or Not(Var)")
-
-let conj_to_list c =
-   List.sort cmp_conj_atom
-      (conj_fold
-         (fun acc x -> (match x with 
-            | Empty -> acc
-            | _ -> x::acc)
-         )
-         [] c)
 
 let rec list_to_conj conj_atom_list = match conj_atom_list with
       | a::[] -> a

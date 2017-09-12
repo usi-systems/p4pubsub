@@ -37,7 +37,7 @@ let is_exp_same_table e1 e2 = match (e1, e2) with
    | _ -> false
 
 
-let cmp_vars a b = match (a, b) with
+let cmp_preds a b = match (a, b) with
    | (Gt(x, Number n1), Gt(y, Number n2)) when x=y -> compare n1 n2
    | (Lt(x, Number n1), Lt(y, Number n2)) when x=y -> compare n1 n2
    | (Eq(x, Number n1), Eq(y, Number n2)) when x=y -> compare n1 n2
@@ -82,11 +82,44 @@ let rec formula_of_query q = match q with
    | Gt(Ident _, Number _) as p -> Var(p)
    | _ -> raise (Failure "Query not supported")
 
+let rec conj_fold f acc conj = match conj with
+   | And(((And(_,_) as c1)), ((And(_,_) as c2))) ->
+         conj_fold f (conj_fold f acc c1) c2
+   | And(((And(_,_) as c)), a)
+   | And(a, ((And(_,_) as c))) ->
+         conj_fold f (f acc a) c
+   | And(a, b) ->
+         f (f acc a) b
+   | a -> f acc a
+
+
+let cmp_conj_atom a b = match (a, b) with
+   | (Not(Var(x)), Var(y)) when x = y -> 1
+   | (Var(x), Not(Var(y))) when x = y -> -1
+   | (Not(Var(x)), Not(Var(y)))
+   | (Var(x), Not(Var(y)))
+   | (Not(Var(x)), Var(y))
+   | (Var(x), Var(y)) -> cmp_preds x y
+   | _ ->
+         raise (Failure "Conj should only contain Var or Not(Var)")
+
+let conj_to_list c =
+   List.sort cmp_conj_atom
+      (conj_fold
+         (fun acc x -> (match x with
+            | Empty -> acc
+            | _ -> x::acc)
+         )
+         [] c)
+
 type evaled_formula =
    | False
    | True
    | Residual of formula
 
+(* TODO: maybe this would be faster if the conj were represented by a list of
+ * atoms, instead of an And() of atoms.
+ *)
 let rec partial_eval_conj resid_conj var value =
    let _not b = if b=False then True else True in
    match (resid_conj, var) with

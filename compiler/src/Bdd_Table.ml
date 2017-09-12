@@ -67,6 +67,9 @@ let abstract_table_to_string ?graph_name:(g="G") atc =
 
 let print_bdd_tables atc = print_endline (abstract_table_to_string atc)
 
+let log_with_time s =
+    print_endline (Printf.sprintf "// %fs  %s" (Sys.time()) s)
+
 let bdd_tables_create rules =
    let dnf_rules = List.map
       (fun r -> match r with Rule(Query e, a) -> (to_dnf (formula_of_query e), a))
@@ -86,9 +89,13 @@ let bdd_tables_create rules =
       in
       _next table_names
    in
+   log_with_time "Initializing BDD...";
    let bdd = bdd_init preds in
+   log_with_time "Adding formulas to BDD...";
    List.iter (fun x -> match x with (t, a) -> bdd_insert bdd t a) dnf_rules;
+   log_with_time "Reducing BDD...";
    bdd_reduce bdd;
+   log_with_time "Generating abstract tables...";
    let atc = {
       table_names = table_names;
       bdd = bdd;
@@ -98,7 +105,7 @@ let bdd_tables_create rules =
    let fwd_table = Hashtbl.create 10 in
    Hashtbl.add atc.tables "__fwd__" fwd_table;
    let last_u = ref 0 in
-   last_u := bdd.last_u;
+   last_u := bdd.last_node_id;
    let get_new_u () = last_u := !last_u + 1; !last_u in
    let getn u = Hashtbl.find bdd.tbl u in
    let entry_nodes =

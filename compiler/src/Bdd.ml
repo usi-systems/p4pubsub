@@ -13,7 +13,7 @@ type bdd_node =
 type bdd_struct = {
    vars: variable list;
    mutable root: int;
-   last_u: int;
+   mutable last_node_id: int;
    n: int;
    mutable rules: (formula * int list) list;
    tbl: (int, bdd_node) Hashtbl.t;
@@ -23,6 +23,10 @@ let leaf_value_to_string lv =
    "[" ^ (String.concat ", " (List.map (fun v -> Printf.sprintf "%d" v) lv)) ^ "]"
 
 let int_exp x y = (float_of_int x) ** (float_of_int y) |> int_of_float
+
+let list_concat_uniq l1 l2 =
+   (List.filter (fun e -> not (List.mem e l1)) l2) @ l1
+
 
 let bdd_to_string ?graph_name:(g="digraph G") bdd =
    let color_list = ["brown"; "red"; "green"; "blue"; "yellow"; "cyan"; "orange"] in
@@ -91,7 +95,7 @@ let bdd_rm_redundant_preds bdd =
                rm_tree lh;
                rep u (Node(p, ll, h));
                check_redundant u
-         | (Node _, Node _) -> 
+         | (Node _, Node _) ->
                check_redundant l; check_redundant h
          | (Leaf _, Leaf _) -> ()
          | _ -> ())
@@ -100,13 +104,21 @@ let bdd_rm_redundant_preds bdd =
    check_redundant bdd.root
 
 
+let bdd_replace_node bdd u1 u2 =
+   Hashtbl.filter_map_inplace (fun u node -> Some(match node with
+      | Node(x, l, h) when l=u1 && h=u1 -> Node(x, u2, u2)
+      | Node(x, l, h) when l=u1 -> Node(x, u2, h)
+      | Node(x, l, h) when h=u1 -> Node(x, l, u2)
+      | _ -> node)
+   ) bdd.tbl
+
 let bdd_init (sorted_vars: variable list) =
    let height = List.length sorted_vars in
    let bdd = {
       tbl = Hashtbl.create (int_exp 2 (List.length sorted_vars));
       root = 1;
       vars = sorted_vars;
-      last_u = (int_exp 2 (height + 1 + 1)) - 1;
+      last_node_id = (int_exp 2 (height + 1 + 1)) - 1;
       rules = [];
       n = List.length sorted_vars;}
    in
@@ -127,15 +139,31 @@ let bdd_init (sorted_vars: variable list) =
    bdd
 
 
+(* Return a predicate in `conj` that's an ancestor of `pred`, if any. *)
+let rec get_ancestor pred conj = match conj with
+   | And(a, b) -> (match get_ancestor pred a with
+         | None -> get_ancestor pred b
+         | (Some _) as x -> x)
+   | Var p when (cmp_preds p pred) < 0 -> Some (p, true)
+   | Not (Var p) when (cmp_preds p pred) < 0 -> Some (p, false)
+   | _ -> None
+
+let rec get_first_pred conj = match conj with
+   | And(a, b) -> get_first_pred a
+   | Var p -> (p, true)
+   | (Not (Var p)) -> (p, false)
+   | _ -> raise (Failure "Bad format for conj")
+
+let get_next_node_id bdd =
+   bdd.last_node_id <- bdd.last_node_id + 1;
+   bdd.last_node_id
+
 
 let mk_var_list t =
-   List.sort_uniq cmp_vars
+   List.sort_uniq cmp_preds
       (fold_vars (fun acc a -> a::acc) [] t)
 
 let rec bdd_insert bdd disj actions =
-   let list_concat_uniq l1 l2 =
-      l1 @ (List.filter (fun e -> not (List.mem e l1)) l2)
-   in
    let rec add_conj u resid_conj = match (Hashtbl.find bdd.tbl u, resid_conj) with
       | (_, False) -> () (* the conjunction is false down this path. stop. *)
       | (Leaf _, Residual _) -> () (* the conj is not fully evaluated on this path *)
@@ -149,14 +177,6 @@ let rec bdd_insert bdd disj actions =
    List.iter
       (fun c -> add_conj bdd.root (Residual (list_to_conj c)))
       (disj_to_list disj)
-
-let bdd_replace_node bdd u1 u2 =  
-   Hashtbl.filter_map_inplace (fun u node -> Some(match node with
-      | Node(x, l, h) when l=u1 && h=u1 -> Node(x, u2, u2)
-      | Node(x, l, h) when l=u1 -> Node(x, u2, h)
-      | Node(x, l, h) when h=u1 -> Node(x, l, u2)
-      | _ -> node)
-   ) bdd.tbl
 
 let bdd_remove_dupes bdd =
    let rep = bdd_replace_node bdd in

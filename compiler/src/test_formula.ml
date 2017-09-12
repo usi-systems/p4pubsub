@@ -103,7 +103,7 @@ let test_all () =
    test_to_dnf ();
    test_all_partial_eval ();
    test_is_exp_disjoint ();
-   print_endline "DNF tests passed"
+   print_endline "Formula tests passed"
 ;;
 
 test_all ()
