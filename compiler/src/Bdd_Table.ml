@@ -81,14 +81,6 @@ let bdd_tables_create rules =
                      Empty dnf_rules)
    in
    let table_names = List.sort_uniq compare (List.map field_name_for_pred preds) in
-   let next_table_name tn =
-      let rec _next = function
-         | a::(b::l) -> if a=tn then b else _next (b::l)
-         | a::[] -> "__fwd__"
-         | _ -> raise (Failure ("Couldn't find the successor table for " ^ tn))
-      in
-      _next table_names
-   in
    log_with_time "Initializing BDD...";
    let bdd = bdd_init preds in
    log_with_time "Adding formulas to BDD...";
@@ -106,7 +98,6 @@ let bdd_tables_create rules =
    Hashtbl.add atc.tables "__fwd__" fwd_table;
    let last_u = ref 0 in
    last_u := bdd.last_node_id;
-   let get_new_u () = last_u := !last_u + 1; !last_u in
    let getn u = Hashtbl.find bdd.tbl u in
    let entry_nodes =
       let rec _visit u parent_table = match getn u with
@@ -139,6 +130,19 @@ let bdd_tables_create rules =
       bdd.tbl
    in
    add_leaf_nodes ();
+   (*
+    XXX this is commented out because we don't actually need "pass through".
+    The the state will match when we get to the table that has an entry for it.
+
+   let get_new_u () = last_u := !last_u + 1; !last_u in
+   let next_table_name tn =
+      let rec _next = function
+         | a::(b::l) -> if a=tn then b else _next (b::l)
+         | a::[] -> "__fwd__"
+         | _ -> raise (Failure ("Couldn't find the successor table for " ^ tn))
+      in
+      _next table_names
+   in
    let is_in_next_table u t =
       let tbl = Hashtbl.find atc.tables (next_table_name t) in
       Hashtbl.mem tbl u
@@ -176,5 +180,6 @@ let bdd_tables_create rules =
       ) table_names
    in
    add_skip_nodes ();
+   *)
    atc
 
