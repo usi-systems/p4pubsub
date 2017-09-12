@@ -36,6 +36,11 @@ let is_exp_same_table e1 e2 = match (e1, e2) with
          a=b
    | _ -> false
 
+let rec is_conj_disjoint conj e = match conj with
+   | And(a, b) -> (is_conj_disjoint a e) || (is_conj_disjoint b e)
+   | Var p -> is_exp_disjoint p e
+   | Not (Var p) -> not (is_exp_disjoint p e)
+   | _ -> raise (Failure "Conj should only contain And, Var or Not(Var)")
 
 let cmp_preds a b = match (a, b) with
    | (Gt(x, Number n1), Gt(y, Number n2)) when x=y -> compare n1 n2
@@ -140,3 +145,19 @@ let rec partial_eval_conj resid_conj var value =
          | (Residual t1, Residual t2) -> Residual(And(t1, t2))
          )
    | ((Residual _) as r, _) -> partial_eval_conj r var value
+
+(* Return a predicate in `conj` that's an ancestor of `pred`, if any. *)
+let rec get_preceding_pred pred conj = match conj with
+   | And(a, b) -> (match get_preceding_pred pred a with
+         | None -> get_preceding_pred pred b
+         | (Some _) as x -> x)
+   | Var p when (cmp_preds p pred) < 0 -> Some (p, true)
+   | Not (Var p) when (cmp_preds p pred) < 0 -> Some (p, false)
+   | _ -> None
+
+let rec get_first_pred conj = match conj with
+   | And(a, b) -> get_first_pred a
+   | Var p -> (p, true)
+   | (Not (Var p)) -> (p, false)
+   | _ -> raise (Failure "Bad format for conj")
+

@@ -96,6 +96,28 @@ let test_is_exp_disjoint () =
    assert (not (is_exp_disjoint (Gt(x, Number 3)) (Eq(x, Number 6))));
    ()
 
+let test_get_preceding_pred () =
+   let (w, x, y, z) = (Ident("w"), Ident("x"), Ident("y"), Ident("z")) in
+   let (vw, vx, vy, vz) = (Var w, Var x, Var y, Var z) in
+   let t1 = dnf_canonicalize (And(vy, And(vw, And(vz, vx)))) in
+   let t2 = dnf_canonicalize (And(vy, And(Not(vw), And(vx, vz)))) in
+   assert (get_preceding_pred w t1 = None);
+   assert (get_preceding_pred x t1 = Some (w, true));
+   assert (get_preceding_pred y t1 = Some (w, true));
+   assert (get_preceding_pred w t2 = None);
+   assert (get_preceding_pred x t2 = Some (w, false));
+   assert (get_preceding_pred y t2 = Some (w, false));
+   ()
+
+let test_get_first_pred () =
+   let (w, x, y, z) = (Ident("w"), Ident("x"), Ident("y"), Ident("z")) in
+   let (vw, vx, vy, vz) = (Var w, Var x, Var y, Var z) in
+   let t1 = dnf_canonicalize (And(vy, And(vw, And(vz, vx)))) in
+   let t2 = dnf_canonicalize (And(vy, And(Not(vw), And(vx, vz)))) in
+   assert (get_first_pred t1 = (w, true));
+   assert (get_first_pred t2 = (w, false));
+   ()
+
 let test_all () =
    test_to_nnf ();
    test_conj ();
@@ -103,6 +125,8 @@ let test_all () =
    test_to_dnf ();
    test_all_partial_eval ();
    test_is_exp_disjoint ();
+   test_get_preceding_pred ();
+   test_get_first_pred ();
    print_endline "Formula tests passed"
 ;;
 
