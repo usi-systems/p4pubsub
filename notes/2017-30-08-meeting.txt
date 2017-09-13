@@ -28,13 +28,13 @@ Some reactions:
 NEXT STEPS:
 
 Our next steps are to try to build up some intuition based on
-concrete examples.
+concrete examples. 
 
-Antonio suggests looking at his existing SFF software for an implementation
+- Antonio suggests looking at his existing SFF software for an implementation
 of the counting algorithm:
 http://www.inf.usi.ch/carzaniga/siena/forwarding/index.html
 
-Theo will implement a small compiler that takes queries as inputs, 
+- Theo will implement a small compiler that takes queries as inputs, 
 translates them to disjunctive normal form, and them to P4.
 As a "short cut" he might just output statistics, e.g., number 
 of tables, number of entries.
@@ -46,4 +46,5 @@ in the compilers directory.
 
 We will also store meeting notes in this repository.
 
+- Let's agree on a regular meeting time. Will Wednesdays at 8am PST work for everyone?
 

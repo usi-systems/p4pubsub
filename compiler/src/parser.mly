@@ -4,7 +4,8 @@
 %}
 
 %token <Ast.info * string> IDENT
-%token< Ast.info * int> NUMBER
+%token <Ast.info * Int64.t> IPADDR 
+%token <Ast.info * int> NUMBER
 %token <Ast.info>  AND
 %token <Ast.info>  OR
 %token <Ast.info> NOT
@@ -60,4 +61,4 @@ relExpr:
 primExpr:
   | IDENT { let _,id = $1 in Ident(id) }
   | NUMBER { let _,id = $1 in Number(id) }	
-
+  | IPADDR  { let _,a = $1 in IPV4(a) }   

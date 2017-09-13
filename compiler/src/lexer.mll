@@ -46,7 +46,9 @@
         ; ("or", fun i -> OR i) 
         ; ("not", fun i -> NOT i)
       ]
-    
+
+   let parse_decbyte str = Int64.of_string str
+
 }
 
 let whitespace = [' ' '\t']+
@@ -57,6 +59,8 @@ let float_ = ['0'-'9']+ '.' ['0'-'9']+
 let hex = "0x" ['0'-'9' 'a'-'f' 'A'-'F']+
 let int_char = ['0' - '9']
 let hex_char = ['0' - '9' 'A' - 'F' 'a' - 'f']
+let decbyte =
+  (['0'-'9'] ['0'-'9'] ['0'-'9']) | (['0'-'9'] ['0'-'9']) | ['0'-'9']
 
 
 rule main = 
@@ -74,7 +78,16 @@ rule main =
       }
   | decimal as integ {
         NUMBER(info lexbuf,int_of_string integ)
-      }    
+      }
+
+ | (decbyte as b4) "." (decbyte as b3) "." (decbyte as b2) "." (decbyte as b1)
+          { let open Int64 in
+            IPADDR(info lexbuf,
+              (logor (shift_left (parse_decbyte b4) 24)
+                 (logor (shift_left (parse_decbyte b3) 16)
+                    (logor (shift_left (parse_decbyte b2) 8)
+                       (parse_decbyte b1))))) }
+
   | newline            { next_line lexbuf; main lexbuf  }  
   | eof                { EOF }
   | _                  { error lexbuf "unknown token" }

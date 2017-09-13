@@ -10,6 +10,7 @@ type expr =
   | Eq of expr * expr
   | Ident of string
   | Number of int
+  | IPV4 of Int64.t
 
 type action_list = int list
 
