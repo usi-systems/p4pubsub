@@ -10,6 +10,7 @@ let rec format_expr fmt = function
   | Eq(e1,e2) -> Format.fprintf fmt "%a = %a" format_expr e1 format_expr e2
   | Ident(s) -> Format.fprintf fmt "%s" s
   | Number(n) -> Format.fprintf fmt "%d" n
+  | IPV4(n) -> Format.fprintf fmt "IP(%Lx)" n
 
 let rec format_action_list fmt = function
   | al -> Format.fprintf fmt "%s" (String.concat ", " (List.map string_of_int al))
