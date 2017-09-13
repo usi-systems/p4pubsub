@@ -1,0 +1,67 @@
+Date: 13th September 2017
+Attendees: Theo, Antonio, Nate, Robert
+
+SUMMARY:
+
+We discussed how to present this to Jane Street, Goldman and Tower and how to
+address conflict of interest and IP concerns.
+
+Theo showed the tables generated from the BDD. For states that don't hit in a
+table, we will do a second lookup in a "miss table" to do the state transition.
+
+There are other applications that are a subset of Camus, including IPv4 routing
+and ILA. 
+
+
+NEXT STEPS:
+
+- Theo will finish optimization, and fix bugs in BDD. Then measure table size
+  as a function of # ports, total # of predicates and # predicates in
+  conjunction.
+
+- Robert is meeting with Goldman to discuss this and possibly find data we can
+  use
+
+- We should see how different routing schemes can be mapped onto Camus
+
+
+Some reactions:
+
+- Theo asks: if we expand the query language, can we express arbitrary
+  programs? This would require adding new variables that represent state on the
+  switch (stored in registers). Chang (Robert, Chang and Theo spoke afterwards)
+  thought it would be useful to have an AVG() or MAX() operator.
+
+- Could this query language be used for IPv4 routing?
+
+    - Antonio says that the benefit of the control plane is aggregation. Doing
+      this all at the switch may lose the bigger picture and lead to
+      inefficiencies.
+
+- How many ports are we forwarding to? Antonio: in our example we assume 100s,
+  but maybe in fintech they have 10K or 100K.
+    
+    - VMWare has billions of virtual hosts, but does routing at two levels
+    - Antonio: we could have two layers of Camus: first at the switch, and then
+      closer to the edge for final filtering.
+
+- Robert: we could implement ILA with Camus. We map the task description to an
+  address.
+
+- For the paper, we could find some existing routing schemes, and show that
+  there is an equivalent Camus query for them. i.e. they are all subsets of
+  Camus. Start with IPv4 and ILA.
+
+    - FB could be interested in this, since they like ILA.
+    - Could we give them a demo?
+
+- First we have to understand how the queries scale. Vary:
+    - number of ports
+    - number of unique predicates
+    - number of predicates per conjunction
+    - in order to see the effect on the number of table entries.
+    - for the same variables above, see the variance in # of table entries.
+
+- Another idea to limit the size of the tree is to add constraints:
+    - express relationship between variables
+    - find functional dependencies (or disjunctions) to eliminate nodes in tree
