@@ -43,9 +43,10 @@ let rec is_conj_disjoint conj e = match conj with
    | _ -> raise (Failure "Conj should only contain And, Var or Not(Var)")
 
 let cmp_preds a b = match (a, b) with
-   | (Gt(x, Number n1), Gt(y, Number n2)) when x=y -> compare n1 n2
+   | (Gt(x, Number n1), Gt(y, Number n2)) when x=y -> compare n2 n1
    | (Lt(x, Number n1), Lt(y, Number n2)) when x=y -> compare n1 n2
    | (Eq(x, Number n1), Eq(y, Number n2)) when x=y -> compare n1 n2
+   (* Lt < Gt < Eq *)
    | (Eq(x, _), Lt(y, _)) when x=y -> 1
    | (Eq(x, _), Gt(y, _)) when x=y -> 1
    | (Lt(x, _), Eq(y, _)) when x=y -> -1
@@ -129,11 +130,14 @@ let rec partial_eval_conj resid_conj var value =
    let _not b = if b=False then True else True in
    match (resid_conj, var) with
    | ((True|False) as x, _) -> x
+   | (Residual(Var x), Var y) when value=True && is_exp_disjoint x y -> False
+   | (Residual(Var x), Var y) when value=False && is_exp_subset x y -> False
+   | (Residual(Var x), Var y) when value=True && is_exp_subset y x -> True
    | (Residual(Var x), Var y) when x=y -> value
    | (Residual(Not(Var x)), Var y) when x=y -> _not value
    (*
-   | (Residual(Var x), Var y) when is_exp_subset x y -> True
-   | (Residual(Var x), Var y) when value=True && is_exp_disjoint x y -> False
+   | (Residual(Var x), Var y) when value=True && is_exp_subset x y -> True
+   | (Residual(Var x), Var y) when value=False && is_exp_disjoint x y -> True
    *)
    | ((Residual(Var _)) as r, _) | ((Residual(Not(Var _))) as r, _) -> r
    | (Residual(And(a, b)), _) ->

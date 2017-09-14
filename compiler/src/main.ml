@@ -16,12 +16,8 @@ let create_and_print_bdd rules =
          ~init:[]
          ~f:(fun l r -> (match r with Rule(Query(e), a) -> (to_dnf (formula_of_query e), a)::l))
    in
-   let collect_vars acc x = match x with (t, _) -> Formula.And(t, acc) in
-   let tmp_t = List.fold_left formulas ~init:Empty ~f:collect_vars in
-   let vars = mk_var_list tmp_t in
-   let bdd = bdd_init vars in
-   List.iter formulas (fun x -> match x with (t, a) -> bdd_insert bdd t a);
-   bdd_reduce bdd;
+   let bdd = bdd_init 1000 in
+   List.iter formulas (fun x -> match x with (t, a) -> bdd_add_query bdd t a);
    print_bdd bdd;
    ()
 

@@ -123,6 +123,7 @@ let create_p4_runtime_conf atc =
          ) tbl l
       ) atc.tables []
    in
+   (* TODO: create unique mcast_groups *)
    let (fwd_table_entries, mcast_grps) = Hashtbl.fold (fun table_name tbl (el, grps)->
          Hashtbl.fold (fun meta_in n (el, grps) ->
             let last_mgid = (match grps with [] -> 0 | McastGroup(i, _)::_ -> i) in

@@ -67,27 +67,21 @@ let abstract_table_to_string ?graph_name:(g="G") atc =
 
 let print_bdd_tables atc = print_endline (abstract_table_to_string atc)
 
-let log_with_time s =
-    print_endline (Printf.sprintf "// %fs  %s" (Sys.time()) s)
-
 let bdd_tables_create rules =
    let dnf_rules = List.map
       (fun r -> match r with Rule(Query e, a) -> (to_dnf (formula_of_query e), a))
       (List.rev rules)
    in
    let preds =
-      mk_var_list (List.fold_left
+      mk_pred_list (List.fold_left
                      (fun conj x -> let t,_ = x in Formula.And(t, conj))
                      Empty dnf_rules)
    in
    let table_names = List.sort_uniq compare (List.map field_name_for_pred preds) in
-   log_with_time "Initializing BDD...";
-   let bdd = bdd_init preds in
-   log_with_time "Adding formulas to BDD...";
-   List.iter (fun x -> match x with (t, a) -> bdd_insert bdd t a) dnf_rules;
-   log_with_time "Reducing BDD...";
-   bdd_reduce bdd;
-   log_with_time "Generating abstract tables...";
+   let bdd = bdd_init 1000 in
+   List.iter (fun x -> match x with (t, a) -> bdd_add_query bdd t a) dnf_rules;
+   assert (Hashtbl.length bdd.tbl_inv = 0);
+   bdd.root <- reduce_tree bdd (Hashtbl.create 10) bdd.root;
    let atc = {
       table_names = table_names;
       bdd = bdd;
