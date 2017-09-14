@@ -107,7 +107,7 @@ class CustomAppController(AppController):
             entries += ['mc_node_associate %d %d' %
                     (self.stocks[stock]['mcgid'], self.stocks[stock]['subscriptions'][host])]
 
-        self.add_entries(entries=entries)
+        self.sendCommands(entries)
 
     def unsubscribe(self, host, stocks):
         for stock in stocks:
