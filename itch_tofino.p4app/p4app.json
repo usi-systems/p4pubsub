@@ -17,17 +17,17 @@
             "wait": false
         },
         "h2": {
-            "cmd": "./receiver ABC h1 1212 h2 1234",
+            "cmd": "./receiver -l h2 -p 1234 h1 1212 ABC",
             "startup_sleep": 0.2,
             "wait": false
         },
         "h3": {
-            "cmd": "./receiver XYZ h1 1212 h3 1234",
+            "cmd": "./receiver -l h3 -p 1234 h1 1212 XYZ",
             "startup_sleep": 0.2,
             "wait": false
         },
         "h4": {
-            "cmd": "./receiver ABC,XYZ h1 1212 h4 1234",
+            "cmd": "./receiver -l h4 -p 1234 h1 1212 ABC,XYZ",
             "startup_sleep": 0.8,
             "wait": false
         },

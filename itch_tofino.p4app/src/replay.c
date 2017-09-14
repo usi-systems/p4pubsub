@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
 
     long double min_interval_secs =msgs_per_s > 0 ? 1 / msgs_per_s : 0;
     secs2ts(min_interval_secs, &rate_state.interval);
-    printf("min_interval: %lds %ldns\n", rate_state.interval.tv_sec, rate_state.interval.tv_nsec);
+    //printf("min_interval: %lds %ldns\n", rate_state.interval.tv_sec, rate_state.interval.tv_nsec);
 
     fd = open(filename, O_RDONLY);
     if (fd < 0)
@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
             error("open() out_filename");
     }
 
-    printf("Replaying: %s\n", filename);
+    fprintf(stderr, "Replaying: %s\n", filename);
 
     status = fstat(fd, &s);
     if (status < 0) error("fstat()");
@@ -222,6 +222,8 @@ int main(int argc, char *argv[]) {
     const char *fake_stocks[] = {"ABC     ", "XYZ     ", "IJK     "};
     int x = 0;
 
+    char symbol_buf[9];
+    symbol_buf[8] = 0;
 
     int skip = 0;
     int pos = 0;
@@ -239,6 +241,16 @@ int main(int argc, char *argv[]) {
         if (filter_types) {
             if (!strchr(filter_types, m->MessageType))
                 skip = 1;
+        }
+
+        if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
+            struct itch50_msg_add_order *ao = (struct itch50_msg_add_order *)(payload);
+            memcpy(symbol_buf, ao->Stock, 8);
+            //printf("%s\n", symbol_buf);
+            //printf("MessageType: %c, StockLocate: %u, TrackingNumber: %u, Timestamp: %u, OrderReferenceNumber: %u, BuySellIndicator: %c, Shares: %u, Stock: %s, Price: %u\n",
+            //        ao->MessageType, ao->StockLocate, ao->TrackingNumber, ao->Timestamp[0], ao->OrderReferenceNumber,
+            //        ao->BuySellIndicator, ao->Shares, symbol_buf, ao->Price);
+
         }
 
         if (!skip) {

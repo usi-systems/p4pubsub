@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <string.h>
+#include <libgen.h>
 
 #include "libtrading/proto/nasdaq_itch50_message.h"
 #include "libtrading/proto/omx_moldudp_message.h"
@@ -14,6 +15,8 @@
 #define BUFSIZE 2048
 
 char *my_hostname;
+
+char *progname;
 
 void error(char *msg) {
     perror(msg);
@@ -55,19 +58,69 @@ void subscribe_to_stocks(char *controller_hostname, int port, char *stocks) {
     send_to_controller(controller_hostname, port, msg, len);
 }
 
+void usage(int rc) {
+    printf("Usage: %s [-l LISTEN_HOST -p LISTEN_PORT] CONTROLLER_HOST CONTROLLER_PORT STOCKS\n", progname);
+    exit(rc);
+}
+
+
 int main(int argc, char *argv[]) {
+    int opt;
+    char *stocks_with_commas = 0;
+    char *controller_hostname = 0;
+    int controller_port = 0;
+    my_hostname = "127.0.0.1";
+    int port = 1234;
+    int dont_listen = 0;
+
+    progname = basename(argv[0]);
+
+    while ((opt = getopt(argc, argv, "hxl:p:")) != -1) {
+        switch (opt) {
+            case 'x':
+                dont_listen = 1;
+                break;
+            case 'p':
+                port = atoi(optarg);
+                break;
+            case 'l':
+                my_hostname = optarg;
+                break;
+            case 'h':
+                usage(0);
+            default: /* '?' */
+                usage(-1);
+        }
+    }
+
+    if (argc - optind != 3)
+        usage(-1);
+
+    controller_hostname = argv[optind];
+    controller_port = atoi(argv[optind+1]);
+    stocks_with_commas = argv[optind+2];
+
+    if ((my_hostname && !port) || (port && !my_hostname))
+        usage(-1);
+
+    if (!controller_hostname || !controller_port)
+        usage(-1);
+
+    if (!stocks_with_commas)
+        usage(-1);
+
+
+
+
     int sockfd, i, n;
     struct sockaddr_in localaddr;
     struct sockaddr_in remoteaddr;
     char buf[BUFSIZE];
 
-    char *stocks_with_commas = argv[1];
-    char *controller_hostname = argv[2];
-    int controller_port = atoi(argv[3]);
-    my_hostname = argv[4];
-    int port = atoi(argv[5]);
-
     subscribe_to_stocks(controller_hostname, controller_port, stocks_with_commas);
+
+    if (dont_listen)
+        exit(0);
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0)
