@@ -28,17 +28,6 @@ type p4_runtime_conf = {
    registers: (int * int) list;
 }
 
-let get_min_max range_preds =
-   let nums = List.sort compare
-      (List.map (fun p -> match p with
-         | Lt(_, Number i) | Gt(_, Number i) | Eq(_, Number i) -> i
-         | _ -> raise (Failure ("Unexpected pred format: " ^ (var_to_string p)))
-      )
-      range_preds)
-   in
-   (List.hd nums, List.nth nums ((List.length nums) - 1))
-
-
 let get_field_name preds = match preds with
    | ((Eq(Ident f, _)) | (Lt(Ident f, _)) | (Gt(Ident f, _)))::_ -> f
          | _ -> raise (Failure "Unexpected pred format")

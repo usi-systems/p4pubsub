@@ -67,6 +67,59 @@ let abstract_table_to_string ?graph_name:(g="G") atc =
 
 let print_bdd_tables atc = print_endline (abstract_table_to_string atc)
 
+let get_min_max range_preds =
+   let nums = List.sort compare
+      (List.map (fun p -> match p with
+         | Lt(_, Number i) | Gt(_, Number i) | Eq(_, Number i) -> i
+         | _ -> raise (Failure ("Unexpected pred format: " ^ (var_to_string p)))
+      )
+      range_preds)
+   in
+   (List.hd nums, List.nth nums ((List.length nums) - 1))
+
+
+let contains_eq matches =
+   List.exists (fun p -> match p with
+   | Eq(_,_) -> true | _ -> false) matches
+
+let containts_lt matches =
+   List.exists (fun p -> match p with
+   | Lt(_,_) -> true | _ -> false) matches
+
+let containts_gt matches =
+   List.exists (fun p -> match p with
+   | Gt(_,_) -> true | _ -> false) matches
+
+let is_unbounded_range matches =
+   let lt, gt = containts_lt matches, containts_gt matches in
+   (lt && (not gt)) || (gt && (not lt))
+
+let is_bounded_range matches =
+   let lt, gt = containts_lt matches, containts_gt matches in
+   lt && gt
+
+let cmp_unbounded_range m1 m2 =
+   let min1, max1 = get_min_max m1 in
+   let min2, max2 = get_min_max m2 in
+   match (containts_lt m1, containts_gt m1, containts_lt m2, containts_gt m2) with
+   | (true, _, true, _) -> if (min min1 min2)=min1 then -1 else 1
+   | (_, true, _, true) -> if (max max1 max2)=max1 then -1 else 1
+   | _ -> 0 (* they are disjoint; order doesn't matter *)
+
+let cmp_match_group ga gb = match (ga, gb) with
+   | (MatchGroup([], _), MatchGroup([], _)) -> 0
+   | (MatchGroup([], _), _) -> 1
+   | (_, MatchGroup([], _)) -> -1
+   | (MatchGroup(a, _), MatchGroup(b, _)) when contains_eq a && contains_eq b -> 0
+   | (MatchGroup(a, _), MatchGroup(b, _)) when contains_eq a -> -1
+   | (MatchGroup(a, _), MatchGroup(b, _)) when contains_eq b -> 1
+   | (MatchGroup(a, _), MatchGroup(b, _)) when is_bounded_range a && is_bounded_range b -> 0
+   | (MatchGroup(a, _), MatchGroup(b, _)) when is_unbounded_range a && is_unbounded_range b ->
+         cmp_unbounded_range a b
+   | (MatchGroup(a, _), MatchGroup(b, _)) when is_bounded_range a && is_unbounded_range b -> -1
+   | (MatchGroup(a, _), MatchGroup(b, _)) when is_unbounded_range a && is_bounded_range b -> 1
+   | _ -> raise (Failure "Unexpected types of matches")
+
 let bdd_tables_create rules =
    let dnf_rules = List.map
       (fun r -> match r with Rule(Query e, a) -> (to_dnf (formula_of_query e), a))
@@ -112,9 +165,10 @@ let bdd_tables_create rules =
    in
    let find_matchgroups = function (current_tbl, u) -> 
             let tbl = Hashtbl.find atc.tables current_tbl in
-            if not (Hashtbl.mem tbl u) then
-               List.iter (Hashtbl.add tbl u)
-                     (follow_path current_tbl u [])
+            assert (not (Hashtbl.mem tbl u));
+            List.iter (Hashtbl.add tbl u)
+               (List.sort cmp_match_group
+                  (follow_path current_tbl u []))
    in
    List.iter find_matchgroups entry_nodes;
    let add_leaf_nodes () = Hashtbl.iter (fun u n -> match n with
