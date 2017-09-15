@@ -1,2 +1,2 @@
-x > 10 and y = foo: 1;
-x > 20 and y = bar: 2, 3;
+x > 10 and y = "foo": 1;
+x > 20 and y = "bar": 2, 3;

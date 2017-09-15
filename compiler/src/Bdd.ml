@@ -39,6 +39,8 @@ let list_concat_uniq l1 l2 =
 
 let bdd_to_string ?graph_name:(g="digraph G") ?node_ns:(ns="") bdd =
    let color_list = ["brown"; "red"; "green"; "blue"; "yellow"; "cyan"; "orange"] in
+   let rep a b = Str.global_replace (Str.regexp_string a) b in
+   let escape s = rep "\"" "\\\"" s in
    let last_color = ref 0 in
    let next_color () =
       last_color := (!last_color + 1) mod (List.length color_list);
@@ -46,7 +48,7 @@ let bdd_to_string ?graph_name:(g="digraph G") ?node_ns:(ns="") bdd =
    in
    let color_tbl = Hashtbl.create 10 in
    let color v =
-      let field = field_name_for_pred v in
+      let field = table_name_for_pred v in
       if not (Hashtbl.mem color_tbl field) then
          Hashtbl.add color_tbl field (next_color ()) else ();
       Hashtbl.find color_tbl field
@@ -58,7 +60,7 @@ let bdd_to_string ?graph_name:(g="digraph G") ?node_ns:(ns="") bdd =
       s ^ (match node with
       | Node(a, low, high) ->
             Printf.sprintf "%sn%d [label=\"%s\" color=\"%s\"];\n%sn%d -> %sn%d [style=\"dashed\"];\n%sn%d -> %sn%d;\n"
-            ns u (var_to_string a) (color a) ns u ns low ns u ns high
+            ns u (escape (var_to_string a)) (color a) ns u ns low ns u ns high
       | Leaf lv -> Printf.sprintf "%sn%d [label=\"%s\" shape=box style=filled]
       {rank=sink; %sn%d};\n" ns u (leaf_value_to_string lv) ns u
       )

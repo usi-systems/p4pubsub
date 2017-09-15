@@ -13,20 +13,20 @@ type formula =
 let var_to_string e = Format.asprintf "%a" format_expr e
 
 let is_exp_subset sub sup = match (sub, sup) with
-   | (Gt(a, Number(x)), Gt(b, Number(y))) when a=b -> x>=y
-   | (Lt(a, Number(x)), Lt(b, Number(y))) when a=b -> x<=y
-   | (Eq(a, Number(x)), Gt(b, Number(y))) when a=b -> x>y
-   | (Eq(a, Number(x)), Lt(b, Number(y))) when a=b -> x<y
+   | (Gt(a, NumberLit(x)), Gt(b, NumberLit(y))) when a=b -> x>=y
+   | (Lt(a, NumberLit(x)), Lt(b, NumberLit(y))) when a=b -> x<=y
+   | (Eq(a, NumberLit(x)), Gt(b, NumberLit(y))) when a=b -> x>y
+   | (Eq(a, NumberLit(x)), Lt(b, NumberLit(y))) when a=b -> x<y
    | _ -> false
 
 let is_exp_disjoint e1 e2 = match (e1, e2) with
    | (Eq(a, x), Eq(b, y)) when a=b -> x<>y
-   | (Gt(a, Number(x)), Eq(b, Number(y))) when a=b -> y<=x
-   | (Eq(b, Number(y)), Gt(a, Number(x))) when a=b -> y<=x
-   | (Lt(a, Number(x)), Eq(b, Number(y))) when a=b -> y>=x
-   | (Eq(b, Number(y)), Lt(a, Number(x))) when a=b -> y>=x
-   | (Lt(a, Number(x)), Gt(b, Number(y))) when a=b -> x<=y
-   | (Gt(b, Number(y)), Lt(a, Number(x))) when a=b -> x<=y
+   | (Gt(a, NumberLit(x)), Eq(b, NumberLit(y))) when a=b -> y<=x
+   | (Eq(b, NumberLit(y)), Gt(a, NumberLit(x))) when a=b -> y<=x
+   | (Lt(a, NumberLit(x)), Eq(b, NumberLit(y))) when a=b -> y>=x
+   | (Eq(b, NumberLit(y)), Lt(a, NumberLit(x))) when a=b -> y>=x
+   | (Lt(a, NumberLit(x)), Gt(b, NumberLit(y))) when a=b -> x<=y
+   | (Gt(b, NumberLit(y)), Lt(a, NumberLit(x))) when a=b -> x<=y
    | _ -> false
 
 let is_exp_same_table e1 e2 = match (e1, e2) with
@@ -43,9 +43,10 @@ let rec is_conj_disjoint conj e = match conj with
    | _ -> raise (Failure "Conj should only contain And, Var or Not(Var)")
 
 let cmp_preds a b = match (a, b) with
-   | (Gt(x, Number n1), Gt(y, Number n2)) when x=y -> compare n2 n1
-   | (Lt(x, Number n1), Lt(y, Number n2)) when x=y -> compare n1 n2
-   | (Eq(x, Number n1), Eq(y, Number n2)) when x=y -> compare n1 n2
+   | (Eq(x, StringLit s1), Eq(y, StringLit s2)) when x=y -> compare s1 s2
+   | (Gt(x, NumberLit n1), Gt(y, NumberLit n2)) when x=y -> compare n2 n1
+   | (Lt(x, NumberLit n1), Lt(y, NumberLit n2)) when x=y -> compare n1 n2
+   | (Eq(x, NumberLit n1), Eq(y, NumberLit n2)) when x=y -> compare n1 n2
    (* Lt < Gt < Eq *)
    | (Eq(x, _), Lt(y, _)) when x=y -> 1
    | (Eq(x, _), Gt(y, _)) when x=y -> 1
@@ -64,7 +65,7 @@ let rec formula_to_string t =
       | Or(p, q) -> Printf.sprintf "%s ∨ %s" (or_to_string p) (or_to_string q)
       | p -> formula_to_string p
    in
-   match t with 
+   match t with
    | Empty -> "[Empty]"
    | Var(a) -> var_to_string a
    | And(_, _) as p -> Printf.sprintf "(%s)" (and_to_string p)
@@ -83,9 +84,9 @@ let rec formula_of_query q = match q with
    | Ast.And(a, b) -> And(formula_of_query a, formula_of_query b)
    | Ast.Not(a) -> Not(formula_of_query a)
    | Ast.Or(a, b) -> Or(formula_of_query a, formula_of_query b)
-   | Eq(Ident _, (Number _ | Ident _)) as p -> Var(p)
-   | Lt(Ident _, Number _) as p -> Var(p)
-   | Gt(Ident _, Number _) as p -> Var(p)
+   | Eq(Field _, (NumberLit _ | StringLit _ | IpAddr _)) as p -> Var(p)
+   | Lt(Field _, NumberLit _) as p -> Var(p)
+   | Gt(Field _, NumberLit _) as p -> Var(p)
    | _ -> raise (Failure "Query not supported")
 
 let rec conj_fold f acc conj = match conj with

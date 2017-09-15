@@ -25,6 +25,7 @@ type abstract_table_collection = {
 let abstract_table_to_string ?graph_name:(g="G") atc =
    let rep a b = Str.global_replace (Str.regexp_string a) b in
    let escape s = rep "<" "&lt;" (rep ">" "&gt;" s) in
+   let escape_quote s = rep "\"" "\\\"" s in
    let next_table_name tn =
       let rec _next = function
          | a::(b::l) -> if a=tn then b else _next (b::l)
@@ -42,7 +43,7 @@ let abstract_table_to_string ?graph_name:(g="G") atc =
    "legend [shape=note style=filled label=\"" ^
    (List.fold_left (fun s r -> s ^ (match r with (t, lv) ->
       Printf.sprintf "%s: %s\\l"
-                                    (formula_to_string t)
+                                    (escape_quote (formula_to_string t))
                                     (leaf_value_to_string lv))) "" atc.bdd.rules) ^
 
    "\"];\n" ^
@@ -70,7 +71,7 @@ let print_bdd_tables atc = print_endline (abstract_table_to_string atc)
 let get_min_max range_preds =
    let nums = List.sort compare
       (List.map (fun p -> match p with
-         | Lt(_, Number i) | Gt(_, Number i) | Eq(_, Number i) -> i
+         | Lt(_, NumberLit i) | Gt(_, NumberLit i) | Eq(_, NumberLit i) -> i
          | _ -> raise (Failure ("Unexpected pred format: " ^ (var_to_string p)))
       )
       range_preds)
@@ -130,7 +131,7 @@ let bdd_tables_create rules =
                      (fun conj x -> let t,_ = x in Formula.And(t, conj))
                      Empty dnf_rules)
    in
-   let table_names = List.sort_uniq compare (List.map field_name_for_pred preds) in
+   let table_names = List.sort_uniq compare (List.map table_name_for_pred preds) in
    let bdd = bdd_init 1000 in
    List.iter (fun x -> match x with (t, a) -> bdd_add_query bdd t a) dnf_rules;
    assert (Hashtbl.length bdd.tbl_inv = 0);
@@ -149,7 +150,7 @@ let bdd_tables_create rules =
    let entry_nodes =
       let rec _visit u parent_table = match getn u with
          | Node(p, l, h) ->
-               let t = field_name_for_pred p in
+               let t = table_name_for_pred p in
                (if t <> parent_table then [(t, u)] else []) @
                   (_visit l t) @ (_visit h t)
          | Leaf _ -> []
@@ -157,7 +158,7 @@ let bdd_tables_create rules =
       List.sort_uniq compare (_visit bdd.root "")
    in
    let rec follow_path current_tbl u matches = match getn u with
-      | Node(p, l, h) when (field_name_for_pred p)=current_tbl ->
+      | Node(p, l, h) when (table_name_for_pred p)=current_tbl ->
             (follow_path current_tbl l matches) @ (follow_path current_tbl h (p::matches))
       | Node _
       | Leaf _ ->

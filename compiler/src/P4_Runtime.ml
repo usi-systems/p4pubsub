@@ -5,15 +5,14 @@ open Bdd
 open Bdd_Table
 
 
-type p4_field = string
 type p4_arg = int
 type p4_action = string
 type p4_table_name = string
 
 type p4_match =
-   | RangeMatch of p4_field * int * int
-   | ExactIntMatch of p4_field * int
-   | ExactStrMatch of p4_field * string
+   | RangeMatch of expr * int * int
+   | ExactIntMatch of expr * int
+   | ExactStrMatch of expr * string
 
 type p4_rule =
    | MatchAction of p4_table_name * p4_match list * p4_action * p4_arg list
@@ -28,36 +27,36 @@ type p4_runtime_conf = {
    registers: (int * int) list;
 }
 
-let get_field_name preds = match preds with
-   | ((Eq(Ident f, _)) | (Lt(Ident f, _)) | (Gt(Ident f, _)))::_ -> f
+let get_field_from_preds preds = match preds with
+   | ((Eq(f, _)) | (Lt(f, _)) | (Gt(f, _)))::_ -> f
          | _ -> raise (Failure "Unexpected pred format")
 
 let mk_single_match pred = match pred with
-   | Eq(Ident f, Number i) -> ExactIntMatch(f, i)
-   | Eq(Ident f, Ident s) -> ExactStrMatch(f, s)
-   | Lt(Ident f, Number i) -> RangeMatch(f, 0, i-1)
-   | Gt(Ident f, Number i) -> RangeMatch(f, i+1, max_int)
+   | Eq(f, (NumberLit i | IpAddr i)) -> ExactIntMatch(f, i)
+   | Eq(f, StringLit s) -> ExactStrMatch(f, s)
+   | Lt(f, NumberLit i) -> RangeMatch(f, 0, i-1)
+   | Gt(f, NumberLit i) -> RangeMatch(f, i+1, max_int)
    | _ -> raise (Failure ("Unexpected pred format: " ^ (var_to_string pred)))
 
 let mk_range_match preds =
-   let field = get_field_name preds in
+   let field = get_field_from_preds preds in
    let high, low = get_min_max preds in
    RangeMatch(field, low+1, high-1)
 
-let preds_to_rule t preds meta_in meta_out = 
-   let meta_in = ExactIntMatch("meta", meta_in) in
+let preds_to_rule t preds meta_in meta_out =
+   let meta_in = ExactIntMatch(Field(Some "meta", "state"), meta_in) in
    match preds with
       | p::[] -> (* exact match *)
             MatchAction(t, [meta_in; mk_single_match p], "set_meta", [meta_out])
       | _::_ -> (* range match *)
-            MatchAction(t, [meta_in; mk_range_match preds], "set_meta", [meta_out])
+            MatchAction(t, [meta_in; mk_range_match  preds], "set_meta", [meta_out])
       | [] ->
             raise (Failure "Expected there to be some preds")
 
-let fwd_action_to_rule last_mgid meta_in out_ports = 
-   let meta_in = ExactIntMatch("meta", meta_in) in
+let fwd_action_to_rule last_mgid meta_in out_ports =
+   let meta_in = ExactIntMatch(Field(Some "meta", "state"), meta_in) in
    match out_ports with
-      | p::[] -> 
+      | p::[] ->
             (MatchAction("__fwd__", [meta_in], "set_out_port", [p]), None)
       | _::_ ->
             let mgid = last_mgid + 1 in
@@ -99,20 +98,19 @@ let dump_p4_runtime_conf rtc =
    "\n\n------------------\n      Stats\n------------------\n" ^
    (Printf.sprintf "table_entries: %d\nmcast_groups: %d\nregisters: %d\n"
          (List.length rtc.table_entries) (List.length rtc.mcast_groups) (List.length rtc.registers))
-   
 
 let print_p4_runtime_conf rtc = print_endline (dump_p4_runtime_conf rtc)
 
-let create_p4_runtime_conf atc = 
+let create_p4_runtime_conf atc =
    let field_table_entries = Hashtbl.fold (fun table_name tbl l ->
          Hashtbl.fold (fun meta_in n l -> match n with
-            | MatchGroup(preds, meta_out) when (List.length preds) > 0 -> 
+            | MatchGroup(preds, meta_out) when (List.length preds) > 0 ->
                (preds_to_rule table_name preds meta_in meta_out)::l
             | _ -> l
          ) tbl l
       ) atc.tables []
    in
-   let (fwd_table_entries, mcast_grps) = Hashtbl.fold (fun table_name tbl (el, grps)->
+   let (fwd_table_entries, mcast_grps) = Hashtbl.fold (fun table_name tbl (el, grps) ->
          Hashtbl.fold (fun meta_in n (el, grps) ->
             let last_mgid = (match grps with [] -> 0 | McastGroup(i, _)::_ -> i) in
             match n with
@@ -126,7 +124,7 @@ let create_p4_runtime_conf atc =
    in
    let registers = Hashtbl.fold (fun table_name tbl l ->
          Hashtbl.fold (fun meta_in n l -> match n with
-            | MatchGroup([], meta_out) | Skip meta_out -> 
+            | MatchGroup([], meta_out) | Skip meta_out ->
                   (meta_in, meta_out)::l
             | _ -> l
          ) tbl l
