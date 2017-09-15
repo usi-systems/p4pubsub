@@ -24,7 +24,6 @@ type p4_mcast_group =
 type p4_runtime_conf = {
    table_entries: p4_rule list;
    mcast_groups: p4_mcast_group list;
-   registers: (int * int) list;
 }
 
 let get_field_from_preds preds = match preds with
@@ -50,8 +49,8 @@ let preds_to_rule t preds meta_in meta_out =
             MatchAction(t, [meta_in; mk_single_match p], "set_meta", [meta_out])
       | _::_ -> (* range match *)
             MatchAction(t, [meta_in; mk_range_match  preds], "set_meta", [meta_out])
-      | [] ->
-            raise (Failure "Expected there to be some preds")
+      | [] -> (* default match *)
+            MatchAction(t ^ "_miss", [meta_in], "set_meta", [meta_out])
 
 let fwd_action_to_rule last_mgid meta_in out_ports =
    let meta_in = ExactIntMatch(Field(Some "meta", "state"), meta_in) in
@@ -91,20 +90,16 @@ let dump_p4_runtime_conf rtc =
    (String.concat "\n" (List.map (fun g -> match g with McastGroup(mgid, ports) ->
       Printf.sprintf "%d -> [%s]" mgid (args_to_str ports)
    ) rtc.mcast_groups)) ^
-   "\n\n------------------\n    Registers\n------------------\n" ^
-   (String.concat "\n" (List.map (fun r -> match r with (in_meta, out_meta) ->
-      Printf.sprintf "reg[%d] = %d" in_meta out_meta
-   ) rtc.registers)) ^
    "\n\n------------------\n      Stats\n------------------\n" ^
-   (Printf.sprintf "table_entries: %d\nmcast_groups: %d\nregisters: %d\n"
-         (List.length rtc.table_entries) (List.length rtc.mcast_groups) (List.length rtc.registers))
+   (Printf.sprintf "table_entries: %d\nmcast_groups: %d\n"
+         (List.length rtc.table_entries) (List.length rtc.mcast_groups))
 
 let print_p4_runtime_conf rtc = print_endline (dump_p4_runtime_conf rtc)
 
 let create_p4_runtime_conf atc =
    let field_table_entries = Hashtbl.fold (fun table_name tbl l ->
          Hashtbl.fold (fun meta_in n l -> match n with
-            | MatchGroup(preds, meta_out) when (List.length preds) > 0 ->
+            | MatchGroup(preds, meta_out) ->
                (preds_to_rule table_name preds meta_in meta_out)::l
             | _ -> l
          ) tbl l
@@ -122,14 +117,6 @@ let create_p4_runtime_conf atc =
          ) tbl (el, grps)
       ) atc.tables ([], [])
    in
-   let registers = Hashtbl.fold (fun table_name tbl l ->
-         Hashtbl.fold (fun meta_in n l -> match n with
-            | MatchGroup([], meta_out) | Skip meta_out ->
-                  (meta_in, meta_out)::l
-            | _ -> l
-         ) tbl l
-      ) atc.tables []
-   in
    let default_table_entries = List.map (fun table_name ->
       DefaultAction(table_name, "default_set_meta", [])
 
@@ -138,5 +125,4 @@ let create_p4_runtime_conf atc =
    {
       table_entries = default_table_entries @ fwd_table_entries @ field_table_entries;
       mcast_groups = mcast_grps;
-      registers = registers;
    }
