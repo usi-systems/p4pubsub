@@ -30,4 +30,4 @@ Just get the latency for each packet:
 
 Plot the CDF for both baseline and filtering on the same graph:
 
-    ./cdf2.py baseline.tsv filtering.tsv baseline filtering
+    ../plot_scripts/cdf2.py baseline.tsv filtering.tsv baseline filtering
