@@ -134,8 +134,6 @@ let bdd_tables_create rules =
    let table_names = List.sort_uniq compare (List.map table_name_for_pred preds) in
    let bdd = bdd_init 1000 in
    List.iter (fun x -> match x with (t, a) -> bdd_add_query bdd t a) dnf_rules;
-   assert (Hashtbl.length bdd.tbl_inv = 0);
-   bdd.root <- reduce_tree bdd (Hashtbl.create 10) bdd.root;
    let atc = {
       table_names = table_names;
       bdd = bdd;
@@ -147,16 +145,17 @@ let bdd_tables_create rules =
    let last_u = ref 0 in
    last_u := bdd.last_node_id;
    let getn u = Hashtbl.find bdd.tbl u in
-   let entry_nodes =
-      let rec _visit u parent_table = match getn u with
-         | Node(p, l, h) ->
-               let t = table_name_for_pred p in
-               (if t <> parent_table then [(t, u)] else []) @
-                  (_visit l t) @ (_visit h t)
-         | Leaf _ -> []
-      in
-      List.sort_uniq compare (_visit bdd.root "")
+   let entry_nodes = Hashtbl.create 100 in
+   let rec _visit u parent_table = match getn u with
+      | Node(p, l, h) ->
+            let t = table_name_for_pred p in
+            if t <> parent_table then (
+               if not (Hashtbl.mem entry_nodes u) then Hashtbl.add entry_nodes u t
+            );
+            _visit l t; _visit h t
+      | Leaf _ -> ()
    in
+   _visit bdd.root "";
    let rec follow_path current_tbl u matches = match getn u with
       | Node(p, l, h) when (table_name_for_pred p)=current_tbl ->
             (follow_path current_tbl l matches) @ (follow_path current_tbl h (p::matches))
@@ -164,14 +163,14 @@ let bdd_tables_create rules =
       | Leaf _ ->
             [MatchGroup(matches, u)]
    in
-   let find_matchgroups = function (current_tbl, u) -> 
+   let find_matchgroups u current_tbl =
             let tbl = Hashtbl.find atc.tables current_tbl in
             assert (not (Hashtbl.mem tbl u));
             List.iter (Hashtbl.add tbl u)
                (List.sort cmp_match_group
                   (follow_path current_tbl u []))
    in
-   List.iter find_matchgroups entry_nodes;
+   Hashtbl.iter find_matchgroups entry_nodes;
    let add_leaf_nodes () = Hashtbl.iter (fun u n -> match n with
       | Leaf actions ->
             Hashtbl.add fwd_table u (ActionGroup actions)
@@ -179,56 +178,5 @@ let bdd_tables_create rules =
       bdd.tbl
    in
    add_leaf_nodes ();
-   (*
-    XXX this is commented out because we don't actually need "pass through".
-    The the state will match when we get to the table that has an entry for it.
-
-   let get_new_u () = last_u := !last_u + 1; !last_u in
-   let next_table_name tn =
-      let rec _next = function
-         | a::(b::l) -> if a=tn then b else _next (b::l)
-         | a::[] -> "__fwd__"
-         | _ -> raise (Failure ("Couldn't find the successor table for " ^ tn))
-      in
-      _next table_names
-   in
-   let is_in_next_table u t =
-      let tbl = Hashtbl.find atc.tables (next_table_name t) in
-      Hashtbl.mem tbl u
-   in
-   let rec get_skip_node tbl t dst_u =
-      Hashtbl.fold (fun u n found -> match found with
-         | Some _ -> found
-         | None -> (match n with
-            | Skip dst_u2 when dst_u2=dst_u -> Some u
-            | _ -> None
-         )
-      ) tbl None
-   in
-   let rec add_skip_node t dst_u =
-      let tbl = Hashtbl.find atc.tables t in
-      if Hashtbl.mem tbl dst_u then dst_u
-      else (
-         match get_skip_node tbl t dst_u with
-            | Some existing_u -> existing_u
-            | None -> 
-               let new_u = get_new_u () in
-               Hashtbl.add tbl new_u
-                  (Skip (add_skip_node (next_table_name t) dst_u));
-               new_u
-      )
-   in
-   let add_skip_nodes () = List.iter (fun t -> 
-         let tbl = Hashtbl.find atc.tables t in
-         Hashtbl.filter_map_inplace (fun u n -> Some (match n with
-            | MatchGroup(vl, dst_u) when not (is_in_next_table dst_u t) ->
-                     MatchGroup(vl, add_skip_node (next_table_name t) dst_u)
-            | _ -> n
-            )
-         ) tbl
-      ) table_names
-   in
-   add_skip_nodes ();
-   *)
    atc
 

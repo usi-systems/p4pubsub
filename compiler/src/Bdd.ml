@@ -105,12 +105,10 @@ let bdd_mk_node bdd node =
       (*
       Hashtbl.add bdd.tbl_inv node u;
       *)
+      (*
+      Hashtbl.add bdd.tbl_inv node u;
+      *)
       u
-
-let bdd_update_node bdd u node =
-   Hashtbl.remove bdd.tbl_inv node;
-   Hashtbl.add bdd.tbl_inv node u;
-   Hashtbl.replace bdd.tbl u node
 
 
 let rec clone_tree bdd clone_map u =
@@ -166,6 +164,24 @@ let rec clone_high_branch bdd clone_map p u =
       )
    )
 
+let bdd_prune_unreachable bdd =
+   let reachable = Hashtbl.create (Hashtbl.length bdd.tbl) in
+   let getn u = Hashtbl.find bdd.tbl u in
+   let rec find_reachable u =
+      Hashtbl.add reachable u 0;
+      match getn u with
+      | Node(_, l, h) -> find_reachable l; find_reachable h
+      | Leaf _ -> ()
+   in
+   find_reachable bdd.root;
+   Hashtbl.iter (fun u node ->
+      if not (Hashtbl.mem reachable u) then (
+         Hashtbl.remove bdd.tbl u;
+         try Hashtbl.remove bdd.tbl_inv node
+         with Not_found -> ()
+      )
+   ) bdd.tbl
+
 let rec rm_tree bdd del_map u =
    if u <> bdd.empty_leaf then
    try Hashtbl.find del_map u
@@ -178,7 +194,6 @@ let rec rm_tree bdd del_map u =
       | Leaf _ -> ()
       );
       Hashtbl.add del_map u ();
-      Hashtbl.remove bdd.tbl u;
       ()
    )
 
@@ -191,8 +206,6 @@ let rec prune_low_branch bdd prune_map p u =
       | Node(p2, l, h) when is_exp_subset p2 p ->
             (* TODO: will this leave dangling edges if we delete this node *)
             let u2 = prune_low_branch bdd prune_map p l in
-            rm_tree bdd (Hashtbl.create 10) h;
-            Hashtbl.remove bdd.tbl u;
             Hashtbl.add prune_map u u2;
             u2
       | Node(p2, l, h) ->
@@ -208,7 +221,6 @@ let rec prune_low_branch bdd prune_map p u =
 let rec reduce_tree bdd red_map u =
    try
       let u2 = Hashtbl.find red_map u in
-      if u <> u2 then Hashtbl.remove bdd.tbl u;
       u2
    with Not_found -> (
       let old_node = Hashtbl.find bdd.tbl u in
@@ -225,7 +237,6 @@ let rec reduce_tree bdd red_map u =
       in
       try
          let u2 = Hashtbl.find bdd.tbl_inv new_node in
-         Hashtbl.remove bdd.tbl u;
          Hashtbl.add red_map u u2;
          u2
       with Not_found ->
@@ -269,15 +280,11 @@ let bdd_add_node bdd parent child p visitor =
          update_parent u;
          visitor parent u
    | Node _ ->
-         let child_clone = clone_high_branch bdd (Hashtbl.create 10) p child in
-         let pruned_child = prune_low_branch bdd (Hashtbl.create 10) p child in
+         let child_clone = clone_high_branch bdd (Hashtbl.create 100) p child in
+         let pruned_child = prune_low_branch bdd (Hashtbl.create 100) p child in
          let u = bdd_mk_node bdd (Node(p, pruned_child, child_clone)) in
          update_parent u;
          visitor parent u;
-         (*
-         let child_clone2 = reduce_tree bdd (Hashtbl.create 10) child_clone in
-         bdd_update_node bdd u (Node(p, pruned_child, child_clone2));
-            *)
          ()
 
 let bdd_add_query bdd disj actions =
@@ -322,13 +329,13 @@ let bdd_add_query bdd disj actions =
    bdd.rules <- ([(disj, actions)] @ bdd.rules);
    bdd.vars <- merge_pred_list bdd.vars (mk_pred_list disj);
    bdd.n <- List.length bdd.vars;
-   print_string "// Added disj: "; print_form disj;
+   print_string (Printf.sprintf "// Adding disj %d: " (List.length bdd.rules)); print_form disj;
    List.iter
       (fun c -> visitor (Residual (list_to_conj c)) 0 bdd.root)
       (disj_to_list disj);
-   (* TODO: reduce tree incrementally, after each query insertion *)
-   (*
-   bdd.root <- reduce_tree bdd (Hashtbl.create 10) bdd.root;
-   *)
+   Hashtbl.clear bdd.tbl_inv;
+   bdd_prune_unreachable bdd;
+   let red_map = Hashtbl.create (Hashtbl.length bdd.tbl) in
+   bdd.root <- reduce_tree bdd red_map bdd.root;
    ()
 
