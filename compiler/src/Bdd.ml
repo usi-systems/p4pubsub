@@ -11,13 +11,22 @@ type bdd_node =
    | Leaf of leaf_value
 
 type bdd_struct = {
-   vars: variable list;
+   mutable vars: variable list;
    mutable root: int;
+   empty_leaf: int;
    mutable last_node_id: int;
-   n: int;
+   mutable n: int;
    mutable rules: (formula * int list) list;
    tbl: (int, bdd_node) Hashtbl.t;
+   tbl_inv: (bdd_node, int) Hashtbl.t;
 }
+
+let mk_pred_list t =
+   List.sort_uniq cmp_preds
+      (fold_vars (fun acc a -> a::acc) [] t)
+
+let merge_pred_list l1 l2 =
+   List.sort cmp_preds ((List.filter (fun e -> not (List.mem e l1)) l2) @ l1)
 
 let leaf_value_to_string lv =
    "[" ^ (String.concat ", " (List.map (fun v -> Printf.sprintf "%d" v) lv)) ^ "]"
@@ -25,11 +34,13 @@ let leaf_value_to_string lv =
 let int_exp x y = (float_of_int x) ** (float_of_int y) |> int_of_float
 
 let list_concat_uniq l1 l2 =
-   (List.filter (fun e -> not (List.mem e l1)) l2) @ l1
+   List.sort compare ((List.filter (fun e -> not (List.mem e l1)) l2) @ l1)
 
 
-let bdd_to_string ?graph_name:(g="digraph G") bdd =
+let bdd_to_string ?graph_name:(g="digraph G") ?node_ns:(ns="") bdd =
    let color_list = ["brown"; "red"; "green"; "blue"; "yellow"; "cyan"; "orange"] in
+   let rep a b = Str.global_replace (Str.regexp_string a) b in
+   let escape s = rep "\"" "\\\"" s in
    let last_color = ref 0 in
    let next_color () =
       last_color := (!last_color + 1) mod (List.length color_list);
@@ -37,7 +48,7 @@ let bdd_to_string ?graph_name:(g="digraph G") bdd =
    in
    let color_tbl = Hashtbl.create 10 in
    let color v =
-      let field = field_name_for_pred v in
+      let field = table_name_for_pred v in
       if not (Hashtbl.mem color_tbl field) then
          Hashtbl.add color_tbl field (next_color ()) else ();
       Hashtbl.find color_tbl field
@@ -48,186 +59,283 @@ let bdd_to_string ?graph_name:(g="digraph G") bdd =
    (Hashtbl.fold (fun u node s ->
       s ^ (match node with
       | Node(a, low, high) ->
-            Printf.sprintf "n%d [label=\"%s\" color=\"%s\"];\nn%d -> n%d [style=\"dashed\"];\nn%d -> n%d;\n"
-            u (var_to_string a) (color a) u low u high
-      | Leaf lv -> Printf.sprintf "n%d [label=\"%s\" shape=box style=filled]
-      {rank=sink; n%d};\n" u (leaf_value_to_string lv) u
+            Printf.sprintf "%sn%d [label=\"%s\" color=\"%s\"];\n%sn%d -> %sn%d [style=\"dashed\"];\n%sn%d -> %sn%d;\n"
+            ns u (escape (var_to_string a)) (color a) ns u ns low ns u ns high
+      | Leaf lv -> Printf.sprintf "%sn%d [label=\"%s\" shape=box style=filled]
+      {rank=sink; %sn%d};\n" ns u (leaf_value_to_string lv) ns u
       )
    )
    bdd.tbl "") ^
    "}\n"
 
-let print_bdd ?graph_name:(g="digraph G") bdd = print_endline (bdd_to_string ~graph_name:g bdd)
+let print_bdd ?graph_name:(g="digraph G") ?node_ns:(ns="") bdd = print_endline (bdd_to_string ~graph_name:g ~node_ns:ns bdd)
 
 
-(* This removes redundant predicates from the BDD. If the predicate of a node's
- * child is redundant, the child is replaced with either the child's low or
- * high branch. This is performed recursively until a non-redundant child is
- * encountered.
- *
- * TODO: don't just check immediate children for redundancy, but entire
- * subtree. This will only be needed when it's possible to have redundant
- * predicats that aren't adjacent.
- *)
-let bdd_rm_redundant_preds bdd =
-   let getn u = Hashtbl.find bdd.tbl u in
-   let rm u = Hashtbl.remove bdd.tbl u in
-   let rec rm_tree u = (match getn u with
-      | Node(_, l, h) -> rm_tree l; rm_tree h
-      | Leaf _ -> ());
-      rm u
-   in
-   let rep u n = Hashtbl.replace bdd.tbl u n in
-   let rec check_redundant u = match getn u with
-      | Node(p, l, h) -> (match (getn l, getn h) with
-         | (_, Node(p2, hl, hh)) when is_exp_subset p p2 -> 
-               rm h;
-               rm_tree hh;
-               rep u (Node(p, l, hl));
-               check_redundant u
-         | (_, Node(p2, hl, hh)) when is_exp_disjoint p p2 -> 
-               rm h;
-               rm_tree hh;
-               rep u (Node(p, l, hl));
-               check_redundant u
-         | (Node(p2, ll, lh), _) when is_exp_subset p2 p ->
-               rm l;
-               rm_tree lh;
-               rep u (Node(p, ll, h));
-               check_redundant u
-         | (Node _, Node _) ->
-               check_redundant l; check_redundant h
-         | (Leaf _, Leaf _) -> ()
-         | _ -> ())
-      | Leaf _ -> raise (Failure "This should never be applied to a leaf")
-   in
-   check_redundant bdd.root
-
-
-let bdd_replace_node bdd u1 u2 =
-   Hashtbl.filter_map_inplace (fun u node -> Some(match node with
-      | Node(x, l, h) when l=u1 && h=u1 -> Node(x, u2, u2)
-      | Node(x, l, h) when l=u1 -> Node(x, u2, h)
-      | Node(x, l, h) when h=u1 -> Node(x, l, u2)
-      | _ -> node)
-   ) bdd.tbl
-
-let bdd_init (sorted_vars: variable list) =
-   let height = List.length sorted_vars in
+let bdd_init initial_size =
    let bdd = {
-      tbl = Hashtbl.create (int_exp 2 (List.length sorted_vars));
+      (* TODO: find a more reasonable initial tree size here *)
+      tbl_inv = Hashtbl.create initial_size;
+      tbl = Hashtbl.create initial_size;
       root = 1;
-      vars = sorted_vars;
-      last_node_id = (int_exp 2 (height + 1 + 1)) - 1;
+      empty_leaf = 1;
+      last_node_id = 1;
+      vars = [];
       rules = [];
-      n = List.length sorted_vars;}
+      n = 0;
+      }
    in
-   let rec add_nodes var depth i =
-      let u = ((int_exp 2 depth) + i) in
-      let (low, high) = ((2*u), (2*u)+1) in
-      Hashtbl.add bdd.tbl u (Node(var, low, high));
-      if depth+1=height then (
-         Hashtbl.add bdd.tbl low (Leaf []);
-         Hashtbl.add bdd.tbl high (Leaf []));
-      if i = 0 then (depth+1) else add_nodes var depth (i-1)
-   in
-   let add_var depth var =
-      add_nodes var depth ((int_exp 2 depth)-1)
-   in
-   ignore (List.fold_left add_var 0 sorted_vars);
-   bdd_rm_redundant_preds bdd;
+   Hashtbl.add bdd.tbl bdd.root (Leaf []);
    bdd
 
-
-(* Return a predicate in `conj` that's an ancestor of `pred`, if any. *)
-let rec get_ancestor pred conj = match conj with
-   | And(a, b) -> (match get_ancestor pred a with
-         | None -> get_ancestor pred b
-         | (Some _) as x -> x)
-   | Var p when (cmp_preds p pred) < 0 -> Some (p, true)
-   | Not (Var p) when (cmp_preds p pred) < 0 -> Some (p, false)
-   | _ -> None
-
-let rec get_first_pred conj = match conj with
-   | And(a, b) -> get_first_pred a
-   | Var p -> (p, true)
-   | (Not (Var p)) -> (p, false)
-   | _ -> raise (Failure "Bad format for conj")
 
 let get_next_node_id bdd =
    bdd.last_node_id <- bdd.last_node_id + 1;
    bdd.last_node_id
 
+let bdd_mk_node bdd node =
+      (*
+   try
+      let u = Hashtbl.find bdd.tbl_inv node in
+      print_endline (Printf.sprintf "// Found node %d" u);
+      u
+   with Not_found ->
+      *)
+      let u = get_next_node_id bdd in
+      Hashtbl.add bdd.tbl u node;
+      (*
+      Hashtbl.add bdd.tbl_inv node u;
+      *)
+      (*
+      Hashtbl.add bdd.tbl_inv node u;
+      *)
+      u
 
-let mk_var_list t =
-   List.sort_uniq cmp_preds
-      (fold_vars (fun acc a -> a::acc) [] t)
 
-let rec bdd_insert bdd disj actions =
-   let rec add_conj u resid_conj = match (Hashtbl.find bdd.tbl u, resid_conj) with
-      | (_, False) -> () (* the conjunction is false down this path. stop. *)
-      | (Leaf _, Residual _) -> () (* the conj is not fully evaluated on this path *)
-      | (Node(v, l, h), _) ->
-            add_conj l (partial_eval_conj resid_conj (Var v) False);
-            add_conj h (partial_eval_conj resid_conj (Var v) True);
+let rec clone_tree bdd clone_map u =
+   if u=bdd.empty_leaf then u
+   else (
+      try
+         let u2 = Hashtbl.find clone_map u in
+         u2
+      with
+      Not_found ->
+         let node = (match Hashtbl.find bdd.tbl u with
+            | Node(p, l, h) ->
+                  Node(p, clone_tree bdd clone_map l, clone_tree bdd clone_map h)
+            | (Leaf _) as x -> x
+         )
+         in
+         let u2 = get_next_node_id bdd in
+         Hashtbl.add bdd.tbl u2 node;
+         Hashtbl.add clone_map u u2;
+         u2
+   )
+
+(* Clone the child to create p's new high branch *)
+let rec clone_high_branch bdd clone_map p u =
+   if u=bdd.empty_leaf then u
+   else (
+      try
+         Hashtbl.find clone_map u
+      with
+      Not_found -> (
+         match Hashtbl.find bdd.tbl u with
+         | Node(p2, l, _) when is_exp_disjoint p p2 ->
+               clone_high_branch bdd clone_map p l
+         | Node(p2, _, h) when is_exp_subset p p2 ->
+               clone_high_branch bdd clone_map p h
+         | Node(p2, l, h) ->
+               let l2, h2 = clone_high_branch bdd clone_map p l,
+                                   clone_high_branch bdd clone_map p h in
+               if l2=h2 then
+                  l2
+               else (
+                  let u2 = get_next_node_id bdd in
+                  let node = Node(p2, l2, h2) in
+                  Hashtbl.add bdd.tbl u2 node;
+                  Hashtbl.add clone_map u u2;
+                  u2
+               )
+         | (Leaf _) as node ->
+               let u2 = get_next_node_id bdd in
+               Hashtbl.add bdd.tbl u2 node;
+               Hashtbl.add clone_map u u2;
+               u2
+      )
+   )
+
+let bdd_prune_unreachable bdd =
+   let reachable = Hashtbl.create (Hashtbl.length bdd.tbl) in
+   let getn u = Hashtbl.find bdd.tbl u in
+   let rec find_reachable u =
+      Hashtbl.add reachable u 0;
+      match getn u with
+      | Node(_, l, h) -> find_reachable l; find_reachable h
+      | Leaf _ -> ()
+   in
+   find_reachable bdd.root;
+   Hashtbl.iter (fun u node ->
+      if not (Hashtbl.mem reachable u) then (
+         Hashtbl.remove bdd.tbl u;
+         try Hashtbl.remove bdd.tbl_inv node
+         with Not_found -> ()
+      )
+   ) bdd.tbl
+
+let rec rm_tree bdd del_map u =
+   if u <> bdd.empty_leaf then
+   try Hashtbl.find del_map u
+   with
+   Not_found -> (
+      (match Hashtbl.find bdd.tbl u with
+      | Node(_, l, h) ->
+            rm_tree bdd del_map l;
+            rm_tree bdd del_map h
+      | Leaf _ -> ()
+      );
+      Hashtbl.add del_map u ();
+      ()
+   )
+
+let rec prune_low_branch bdd prune_map p u =
+   try
+      Hashtbl.find prune_map u
+   with
+   Not_found -> (
+      match Hashtbl.find bdd.tbl u with
+      | Node(p2, l, h) when is_exp_subset p2 p ->
+            (* TODO: will this leave dangling edges if we delete this node *)
+            let u2 = prune_low_branch bdd prune_map p l in
+            Hashtbl.add prune_map u u2;
+            u2
+      | Node(p2, l, h) ->
+            let node = Node(p2, prune_low_branch bdd prune_map p l,
+                                prune_low_branch bdd prune_map p h) in
+            Hashtbl.replace bdd.tbl u node;
+            Hashtbl.add prune_map u u;
+            u
+      | Leaf _ -> u
+   )
+
+
+let rec reduce_tree bdd red_map u =
+   try
+      let u2 = Hashtbl.find red_map u in
+      u2
+   with Not_found -> (
+      let old_node = Hashtbl.find bdd.tbl u in
+      let new_node = match old_node with
+         | Node(p, l, h) ->
+               let l2, h2 = reduce_tree bdd red_map l,
+                            reduce_tree bdd red_map h in
+               if l2 = h2 then
+                  Hashtbl.find bdd.tbl l2
+               else
+                  Node(p, l2, h2)
+
+         | (Leaf _) as leaf -> leaf
+      in
+      try
+         let u2 = Hashtbl.find bdd.tbl_inv new_node in
+         Hashtbl.add red_map u u2;
+         u2
+      with Not_found ->
+         Hashtbl.replace bdd.tbl u new_node;
+         Hashtbl.add bdd.tbl_inv new_node u;
+         Hashtbl.add red_map u u;
+         u
+   )
+
+let bdd_add_node bdd parent child p visitor =
+   let getn u = Hashtbl.find bdd.tbl u in
+   let update_parent u =
+      if parent=0 then (
+         bdd.root <- u
+      )
+      else (
+         let old_parent_node = getn parent in
+         let new_parent_node = match old_parent_node with
+            | Node(pp, pl, ph) when pl=child -> Node(pp, u, ph)
+            | Node(pp, pl, ph) when ph=child -> Node(pp, pl, u)
+            | _ -> raise (Failure "Parent should be a node")
+         in
+         Hashtbl.replace bdd.tbl parent new_parent_node;
+         ()
+      )
+   in
+   match getn child with
+   | Leaf [] when child=bdd.empty_leaf ->
+         let h = get_next_node_id bdd in
+         let leaf2 = Leaf [] in
+         let u = bdd_mk_node bdd (Node(p, bdd.empty_leaf, h)) in
+         Hashtbl.add bdd.tbl h leaf2;
+         update_parent u;
+         visitor parent u
+   | Leaf [] -> (* this is a path we're working on pushing down *)
+         let u = bdd_mk_node bdd (Node(p, bdd.empty_leaf, child)) in
+         update_parent u;
+         visitor parent u
+   | (Leaf _) as leaf -> (* this is a terminal leaf of other formulas *)
+         let u = bdd_mk_node bdd (Node(p, child, bdd_mk_node bdd leaf)) in
+         update_parent u;
+         visitor parent u
+   | Node _ ->
+         let child_clone = clone_high_branch bdd (Hashtbl.create 100) p child in
+         let pruned_child = prune_low_branch bdd (Hashtbl.create 100) p child in
+         let u = bdd_mk_node bdd (Node(p, pruned_child, child_clone)) in
+         update_parent u;
+         visitor parent u;
+         ()
+
+let bdd_add_query bdd disj actions =
+   let getn u = Hashtbl.find bdd.tbl u in
+   let rec visitor resid parent u =
+      match (getn u, resid) with
+      | (_, False) -> () (* formula is false down this path. stop. *)
+      | (Leaf _, Residual conj) ->
+            let p2,_ = get_first_pred conj in
+            bdd_add_node bdd parent u p2 (visitor resid)
+      | (Leaf [], True) when u=bdd.empty_leaf ->
+            let l2 = bdd_mk_node bdd (Leaf actions) in
+            (* Update parent to point to this leaf instead *)
+            (match getn parent with
+               | Node(pp, pl, ph) when pl=bdd.empty_leaf ->
+                     let new_node = Node(pp, l2, ph) in
+                     Hashtbl.replace bdd.tbl parent new_node
+               | Node(pp, pl, ph) when ph=bdd.empty_leaf ->
+                     let new_node = Node(pp, pl, l2) in
+                     Hashtbl.replace bdd.tbl parent new_node
+               | _ -> raise (Failure "Parent should be a node")
+            )
+
+      | (Leaf [], True) ->
+            let new_leaf = Leaf actions in
+            Hashtbl.replace bdd.tbl u new_leaf;
       | (Leaf a, True) ->
-            Hashtbl.replace bdd.tbl u (Leaf(list_concat_uniq a actions))
+            assert (u <> bdd.empty_leaf);
+            let new_leaf = Leaf(list_concat_uniq a actions) in
+            Hashtbl.replace bdd.tbl u new_leaf;
+      | (Node(p, l, h), Residual conj) -> (match get_preceding_pred p conj with
+         | None ->
+               visitor (partial_eval_conj resid (Var p) False) u l;
+               visitor (partial_eval_conj resid (Var p) True) u h
+         | Some (p2, _) ->
+               bdd_add_node bdd parent u p2 (visitor resid)
+         )
+      | (Node(p, l, h), True) ->
+               visitor True u l;
+               visitor True u h
    in
    bdd.rules <- ([(disj, actions)] @ bdd.rules);
+   bdd.vars <- merge_pred_list bdd.vars (mk_pred_list disj);
+   bdd.n <- List.length bdd.vars;
+   print_string (Printf.sprintf "// Adding disj %d: " (List.length bdd.rules)); print_form disj;
    List.iter
-      (fun c -> add_conj bdd.root (Residual (list_to_conj c)))
-      (disj_to_list disj)
+      (fun c -> visitor (Residual (list_to_conj c)) 0 bdd.root)
+      (disj_to_list disj);
+   Hashtbl.clear bdd.tbl_inv;
+   bdd_prune_unreachable bdd;
+   let red_map = Hashtbl.create (Hashtbl.length bdd.tbl) in
+   bdd.root <- reduce_tree bdd red_map bdd.root;
+   ()
 
-let bdd_remove_dupes bdd =
-   let rep = bdd_replace_node bdd in
-   let find_dupes u node dup_set = IntSet.union dup_set (
-      if IntSet.mem u dup_set then
-         IntSet.empty
-      else
-         (Hashtbl.fold (fun u2 node2 d -> 
-            if node2=node && u2<>u then (rep u2 u; IntSet.add u2 d) else d)
-         bdd.tbl
-         IntSet.empty))
-   in
-   let dupes =
-      Hashtbl.fold find_dupes bdd.tbl IntSet.empty
-   in
-   Hashtbl.filter_map_inplace
-      (fun u node -> if (IntSet.mem u dupes) then None else Some node)
-      bdd.tbl
-
-let bdd_reduce bdd =
-   let getn u = Hashtbl.find bdd.tbl u in
-   let rm_redundant u node = match node with
-      | Node(_, l, h) when l=h ->
-            bdd_replace_node bdd u l; None
-      | _ -> Some node
-   in
-   (* remove nodes whose high child is `Leaf []` (i.e. drop) *)
-   let rm_high_drop u node = match node with
-      | Node(_, l, h) -> (match getn h with
-               | Leaf [] -> bdd_replace_node bdd u l; None
-               | _ -> Some node)
-      | _ -> Some node
-   in
-   (* remove when high child is equal to low child's low *)
-   let rm_high_low_low u node = match node with
-      | Node(_, l, h) -> (match getn l with
-               | Node(_, ll, _) when h=ll-> bdd_replace_node bdd u l; None
-               | _ -> Some node)
-      | _ -> Some node
-   in
-   let rec repeat_reduce prev_len =
-      bdd_remove_dupes bdd;
-      Hashtbl.filter_map_inplace rm_high_drop bdd.tbl;
-      Hashtbl.filter_map_inplace rm_high_low_low bdd.tbl;
-      Hashtbl.filter_map_inplace rm_redundant bdd.tbl;
-      if prev_len = Hashtbl.length bdd.tbl then
-         ()
-      else repeat_reduce (Hashtbl.length bdd.tbl)
-   in
-   let find_root () = 
-      Hashtbl.fold (fun u _ v -> min u v) bdd.tbl max_int
-   in
-   repeat_reduce (Hashtbl.length bdd.tbl);
-   bdd.root <- find_root ()

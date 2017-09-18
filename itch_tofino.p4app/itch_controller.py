@@ -22,12 +22,12 @@ class CustomAppController(AppController):
         self.ipc_thread.start()
 
 
-        self.stocks = {} # {stock: {mcgid: X, subscriptions: {host: mcnodeid}}}
+        self.stocks = {} # {stock: {mcgid: X, subscriptions: {host: mcnoderid}}}
 
         self.host_ports = self.findHostPorts()
 
         self.last_mcgid = 0
-        self.last_mcnodeid = -1
+        self.last_mcnoderid = -1
 
     def findHostPorts(self):
         mapping = {}
@@ -41,6 +41,8 @@ class CustomAppController(AppController):
         AppController.start(self)
 
         print "host_ports", self.host_ports
+        #self.subscribe("10.0.2.101", parseStocks("AAPL"))
+        #self.subscribe("10.0.2.101", parseStocks("ABC"))
 
     def stop(self):
         AppController.stop(self)
@@ -91,6 +93,8 @@ class CustomAppController(AppController):
     def subscribe(self, host, stocks):
         entries = []
 
+        mcast_groups = [] # [(mgid, ports)]
+
         for stock in stocks:
             if stock not in self.stocks:
                 self.last_mcgid += 1
@@ -99,15 +103,10 @@ class CustomAppController(AppController):
                 stock_binary = ''.join(format(ord(x), '02x') for x in stock)
                 entries += ['table_add add_order set_mgid 0x%s => %d' % (stock_binary, self.stocks[stock]['mcgid']) ]
 
-            self.last_mcnodeid += 1
-            self.stocks[stock]['subscriptions'][host] = self.last_mcnodeid
-
-            entries += ['mc_node_create %d %d' %
-                    (self.stocks[stock]['subscriptions'][host], self.host_ports[host])]
-            entries += ['mc_node_associate %d %d' %
-                    (self.stocks[stock]['mcgid'], self.stocks[stock]['subscriptions'][host])]
+            mcast_groups.append((self.stocks[stock]['mcgid'], [self.host_ports[host]]))
 
         self.sendCommands(entries)
+        for g in mcast_groups: self.addMcastPorts(*g)
 
     def unsubscribe(self, host, stocks):
         for stock in stocks:
@@ -120,4 +119,24 @@ class CustomAppController(AppController):
             self.subscriptions[stock].remove(host)
             # TODO: remove these MC groups and nodes from switch
 
+
+    def createMcastGroup(self, ports, mgid=None):
+        if mgid is None:
+            self.last_mgid += 1
+            mgid = self.last_mgid
+
+        commands = ['mc_mgrp_create %d' % mgid]
+        self.sendCommands(commands)
+
+        return mgid
+
+    def addMcastPorts(self, mgid, ports):
+        self.last_mcnoderid += 1
+        commands = ['mc_node_create %d %s' % (self.last_mcnoderid, ' '.join(map(str, ports)))]
+        results = self.sendCommands(commands)
+
+        handle = results[-1]['handle']
+        commands = ['mc_associate_node %d %d 1' % (mgid, results[-1]['handle'])]
+        #commands = ['mc_node_associate %d %d' % (mgid, results[-1]['handle'])]  # XXX BMV2
+        self.sendCommands(commands)
 

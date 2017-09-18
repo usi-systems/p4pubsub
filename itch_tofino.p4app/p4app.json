@@ -1,13 +1,13 @@
 {
-  "program": "router.p4",
+  "program": "p4src/router.p4",
   "language": "p4-14",
   "targets": {
     "multiswitch": {
-      "bmv2_log": true,
-      "pcap_dump": true,
+      "model": "tofino",
+      "_bmv2_log": true,
+      "_pcap_dump": true,
       "auto-control-plane": true,
       "cli": false,
-      "_cli": true,
       "controller_module": "itch_controller",
       "links": [["h1", "s1"], ["h2", "s1"], ["h3", "s1"], ["h4", "s1"], ["h9", "s1"]],
       "hosts": {
@@ -17,18 +17,18 @@
             "wait": false
         },
         "h2": {
-            "cmd": "./receiver ABC h1 1212 h2 1234",
+            "cmd": "./receiver -l h2 -p 1234 h1 1212 ABC",
             "startup_sleep": 0.2,
             "wait": false
         },
         "h3": {
-            "cmd": "./receiver XYZ h1 1212 h3 1234",
+            "cmd": "./receiver -l h3 -p 1234 h1 1212 XYZ",
             "startup_sleep": 0.2,
             "wait": false
         },
         "h4": {
-            "cmd": "./receiver ABC,XYZ h1 1212 h4 1234",
-            "startup_sleep": 0.2,
+            "cmd": "./receiver -l h4 -p 1234 h1 1212 ABC,XYZ",
+            "startup_sleep": 0.8,
             "wait": false
         },
         "h9": {

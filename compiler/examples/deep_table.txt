@@ -1,6 +1,6 @@
-a = bar and x > 5: 1;
-a = foo and x > 7: 2;
-a = foo and x = 8: 3;
-a = bar and x < 20: 4;
-a = zoo and x < 12: 5;
+a = "bar" and x > 5: 1;
+a = "foo" and x > 7: 2;
+a = "foo" and x = 8: 3;
+a = "bar" and x < 20: 4;
+a = "zoo" and x < 12: 5;
 z = 2: 6;

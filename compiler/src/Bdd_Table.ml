@@ -25,6 +25,7 @@ type abstract_table_collection = {
 let abstract_table_to_string ?graph_name:(g="G") atc =
    let rep a b = Str.global_replace (Str.regexp_string a) b in
    let escape s = rep "<" "&lt;" (rep ">" "&gt;" s) in
+   let escape_quote s = rep "\"" "\\\"" s in
    let next_table_name tn =
       let rec _next = function
          | a::(b::l) -> if a=tn then b else _next (b::l)
@@ -42,7 +43,7 @@ let abstract_table_to_string ?graph_name:(g="G") atc =
    "legend [shape=note style=filled label=\"" ^
    (List.fold_left (fun s r -> s ^ (match r with (t, lv) ->
       Printf.sprintf "%s: %s\\l"
-                                    (formula_to_string t)
+                                    (escape_quote (formula_to_string t))
                                     (leaf_value_to_string lv))) "" atc.bdd.rules) ^
 
    "\"];\n" ^
@@ -67,8 +68,58 @@ let abstract_table_to_string ?graph_name:(g="G") atc =
 
 let print_bdd_tables atc = print_endline (abstract_table_to_string atc)
 
-let log_with_time s =
-    print_endline (Printf.sprintf "// %fs  %s" (Sys.time()) s)
+let get_min_max range_preds =
+   let nums = List.sort compare
+      (List.map (fun p -> match p with
+         | Lt(_, NumberLit i) | Gt(_, NumberLit i) | Eq(_, NumberLit i) -> i
+         | _ -> raise (Failure ("Unexpected pred format: " ^ (var_to_string p)))
+      )
+      range_preds)
+   in
+   (List.hd nums, List.nth nums ((List.length nums) - 1))
+
+
+let contains_eq matches =
+   List.exists (fun p -> match p with
+   | Eq(_,_) -> true | _ -> false) matches
+
+let containts_lt matches =
+   List.exists (fun p -> match p with
+   | Lt(_,_) -> true | _ -> false) matches
+
+let containts_gt matches =
+   List.exists (fun p -> match p with
+   | Gt(_,_) -> true | _ -> false) matches
+
+let is_unbounded_range matches =
+   let lt, gt = containts_lt matches, containts_gt matches in
+   (lt && (not gt)) || (gt && (not lt))
+
+let is_bounded_range matches =
+   let lt, gt = containts_lt matches, containts_gt matches in
+   lt && gt
+
+let cmp_unbounded_range m1 m2 =
+   let min1, max1 = get_min_max m1 in
+   let min2, max2 = get_min_max m2 in
+   match (containts_lt m1, containts_gt m1, containts_lt m2, containts_gt m2) with
+   | (true, _, true, _) -> if (min min1 min2)=min1 then -1 else 1
+   | (_, true, _, true) -> if (max max1 max2)=max1 then -1 else 1
+   | _ -> 0 (* they are disjoint; order doesn't matter *)
+
+let cmp_match_group ga gb = match (ga, gb) with
+   | (MatchGroup([], _), MatchGroup([], _)) -> 0
+   | (MatchGroup([], _), _) -> 1
+   | (_, MatchGroup([], _)) -> -1
+   | (MatchGroup(a, _), MatchGroup(b, _)) when contains_eq a && contains_eq b -> 0
+   | (MatchGroup(a, _), MatchGroup(b, _)) when contains_eq a -> -1
+   | (MatchGroup(a, _), MatchGroup(b, _)) when contains_eq b -> 1
+   | (MatchGroup(a, _), MatchGroup(b, _)) when is_bounded_range a && is_bounded_range b -> 0
+   | (MatchGroup(a, _), MatchGroup(b, _)) when is_unbounded_range a && is_unbounded_range b ->
+         cmp_unbounded_range a b
+   | (MatchGroup(a, _), MatchGroup(b, _)) when is_bounded_range a && is_unbounded_range b -> -1
+   | (MatchGroup(a, _), MatchGroup(b, _)) when is_unbounded_range a && is_bounded_range b -> 1
+   | _ -> raise (Failure "Unexpected types of matches")
 
 let bdd_tables_create rules =
    let dnf_rules = List.map
@@ -76,18 +127,13 @@ let bdd_tables_create rules =
       (List.rev rules)
    in
    let preds =
-      mk_var_list (List.fold_left
+      mk_pred_list (List.fold_left
                      (fun conj x -> let t,_ = x in Formula.And(t, conj))
                      Empty dnf_rules)
    in
-   let table_names = List.sort_uniq compare (List.map field_name_for_pred preds) in
-   log_with_time "Initializing BDD...";
-   let bdd = bdd_init preds in
-   log_with_time "Adding formulas to BDD...";
-   List.iter (fun x -> match x with (t, a) -> bdd_insert bdd t a) dnf_rules;
-   log_with_time "Reducing BDD...";
-   bdd_reduce bdd;
-   log_with_time "Generating abstract tables...";
+   let table_names = List.sort_uniq compare (List.map table_name_for_pred preds) in
+   let bdd = bdd_init 1000 in
+   List.iter (fun x -> match x with (t, a) -> bdd_add_query bdd t a) dnf_rules;
    let atc = {
       table_names = table_names;
       bdd = bdd;
@@ -99,30 +145,32 @@ let bdd_tables_create rules =
    let last_u = ref 0 in
    last_u := bdd.last_node_id;
    let getn u = Hashtbl.find bdd.tbl u in
-   let entry_nodes =
-      let rec _visit u parent_table = match getn u with
-         | Node(p, l, h) ->
-               let t = field_name_for_pred p in
-               (if t <> parent_table then [(t, u)] else []) @
-                  (_visit l t) @ (_visit h t)
-         | Leaf _ -> []
-      in
-      List.sort_uniq compare (_visit bdd.root "")
+   let entry_nodes = Hashtbl.create 100 in
+   let rec _visit u parent_table = match getn u with
+      | Node(p, l, h) ->
+            let t = table_name_for_pred p in
+            if t <> parent_table then (
+               if not (Hashtbl.mem entry_nodes u) then Hashtbl.add entry_nodes u t
+            );
+            _visit l t; _visit h t
+      | Leaf _ -> ()
    in
+   _visit bdd.root "";
    let rec follow_path current_tbl u matches = match getn u with
-      | Node(p, l, h) when (field_name_for_pred p)=current_tbl ->
+      | Node(p, l, h) when (table_name_for_pred p)=current_tbl ->
             (follow_path current_tbl l matches) @ (follow_path current_tbl h (p::matches))
       | Node _
       | Leaf _ ->
             [MatchGroup(matches, u)]
    in
-   let find_matchgroups = function (current_tbl, u) -> 
+   let find_matchgroups u current_tbl =
             let tbl = Hashtbl.find atc.tables current_tbl in
-            if not (Hashtbl.mem tbl u) then
-               List.iter (Hashtbl.add tbl u)
-                     (follow_path current_tbl u [])
+            assert (not (Hashtbl.mem tbl u));
+            List.iter (Hashtbl.add tbl u)
+               (List.sort cmp_match_group
+                  (follow_path current_tbl u []))
    in
-   List.iter find_matchgroups entry_nodes;
+   Hashtbl.iter find_matchgroups entry_nodes;
    let add_leaf_nodes () = Hashtbl.iter (fun u n -> match n with
       | Leaf actions ->
             Hashtbl.add fwd_table u (ActionGroup actions)
@@ -130,56 +178,5 @@ let bdd_tables_create rules =
       bdd.tbl
    in
    add_leaf_nodes ();
-   (*
-    XXX this is commented out because we don't actually need "pass through".
-    The the state will match when we get to the table that has an entry for it.
-
-   let get_new_u () = last_u := !last_u + 1; !last_u in
-   let next_table_name tn =
-      let rec _next = function
-         | a::(b::l) -> if a=tn then b else _next (b::l)
-         | a::[] -> "__fwd__"
-         | _ -> raise (Failure ("Couldn't find the successor table for " ^ tn))
-      in
-      _next table_names
-   in
-   let is_in_next_table u t =
-      let tbl = Hashtbl.find atc.tables (next_table_name t) in
-      Hashtbl.mem tbl u
-   in
-   let rec get_skip_node tbl t dst_u =
-      Hashtbl.fold (fun u n found -> match found with
-         | Some _ -> found
-         | None -> (match n with
-            | Skip dst_u2 when dst_u2=dst_u -> Some u
-            | _ -> None
-         )
-      ) tbl None
-   in
-   let rec add_skip_node t dst_u =
-      let tbl = Hashtbl.find atc.tables t in
-      if Hashtbl.mem tbl dst_u then dst_u
-      else (
-         match get_skip_node tbl t dst_u with
-            | Some existing_u -> existing_u
-            | None -> 
-               let new_u = get_new_u () in
-               Hashtbl.add tbl new_u
-                  (Skip (add_skip_node (next_table_name t) dst_u));
-               new_u
-      )
-   in
-   let add_skip_nodes () = List.iter (fun t -> 
-         let tbl = Hashtbl.find atc.tables t in
-         Hashtbl.filter_map_inplace (fun u n -> Some (match n with
-            | MatchGroup(vl, dst_u) when not (is_in_next_table dst_u t) ->
-                     MatchGroup(vl, add_skip_node (next_table_name t) dst_u)
-            | _ -> n
-            )
-         ) tbl
-      ) table_names
-   in
-   add_skip_nodes ();
-   *)
    atc
 

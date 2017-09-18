@@ -3,8 +3,11 @@
   open Ast
 %}
 
+%token <Ast.info * string option * string> FIELD
+%token <Ast.info * string> STRING_LIT
 %token <Ast.info * string> IDENT
 %token< Ast.info * int> NUMBER
+%token< Ast.info * Int64.t> IPADDR
 %token <Ast.info>  AND
 %token <Ast.info>  OR
 %token <Ast.info> NOT
@@ -13,6 +16,7 @@
 %token <Ast.info> GT
 %token <Ast.info> EQ
 %token EOF
+%token DOT
 %token COLON
 %token COMMA
 %token SEMICOLON
@@ -49,7 +53,7 @@ logicOrExpr:
 
 logicAndExpr:
   | relExpr AND logicAndExpr { And($1,$3) }
-  | relExpr { $1 } 
+  | relExpr { $1 }
 
 relExpr:
   | primExpr LT relExpr { Lt($1,$3) }
@@ -58,6 +62,9 @@ relExpr:
   | primExpr { $1 }
 
 primExpr:
-  | IDENT { let _,id = $1 in Ident(id) }
-  | NUMBER { let _,id = $1 in Number(id) }	
+  | STRING_LIT { let _,id = $1 in StringLit(id) }
+  | IDENT DOT IDENT { let _,id1 = $1 and _,id2 = $3 in Field(Some id1, id2) }
+  | IDENT { let _,id = $1 in Field(None, id) }
+  | IPADDR { let _,id = $1 in IpAddr(Int64.to_int id) }
+  | NUMBER { let _,id = $1 in NumberLit(id) }
 

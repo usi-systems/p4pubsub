@@ -1,3 +1,3 @@
-shares > 100: 1;
-stock = MSFT and shares > 100: 2;
-stock = AAPL and shares < 60: 3;
+add_order.shares > 100: 1;
+add_order.stock = "MSFT" and add_order.shares > 100: 2;
+add_order.stock = "AAPL" and add_order.shares < 60: 3;

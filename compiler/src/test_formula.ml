@@ -3,7 +3,7 @@ open Formula
 open Dnf
 
 let test_to_nnf () =
-   let (a, b, c) = (Var(Ident("a")), Var(Ident("b")), Var(Ident("c"))) in
+   let (a, b, c) = (Var(StringLit("a")), Var(StringLit("b")), Var(StringLit("c"))) in
    let t1 = Not(Or(And(a, b), Or(a, b))) in
    let t2 = Or(And(a, b), Or(a, b)) in
    assert ((to_nnf a) = a);
@@ -13,7 +13,7 @@ let test_to_nnf () =
    assert ((to_nnf t2) = Or(And(a, b), Or(a, b)))
 
 let test_conj () =
-   let (a, b, c, d) = (Var(Ident("a")), Var(Ident("b")), Var(Ident("c")), Var(Ident("d"))) in
+   let (a, b, c, d) = (Var(StringLit("a")), Var(StringLit("b")), Var(StringLit("c")), Var(StringLit("d"))) in
    let t1 = And(a, And(b, c)) in
    let t2 = And(And(a, b), And(And(b, c), c)) in
    assert (conj_contains t1 a);
@@ -24,7 +24,7 @@ let test_conj () =
    assert (not (conj_contains t2 d))
 
 let test_canonicalization () =
-   let (a, b, c, d) = (Var(Ident("a")), Var(Ident("b")), Var(Ident("c")), Var(Ident("d"))) in
+   let (a, b, c, d) = (Var(StringLit("a")), Var(StringLit("b")), Var(StringLit("c")), Var(StringLit("d"))) in
    let d1 = Or(And(And(c, a), b), Empty) in
    let d2 = And(And(c, a), b) in
    let d3 = Or(And(And(c, a), b), And(a, b)) in
@@ -35,7 +35,7 @@ let test_canonicalization () =
    assert (dnf_canonicalize d4 = Or(a, And(a, And(b, And(c, d)))))
 
 let test_to_dnf () =
-   let (x, y, z) = (Var(Ident("x")), Var(Ident("y")), Var(Ident("z"))) in
+   let (x, y, z) = (Var(StringLit("x")), Var(StringLit("y")), Var(StringLit("z"))) in
    let t =
       And(Or(x, Or(y, z)), And(Or(x, Or(Not(y), Not(z))), And(Or(y, Or(Not(x), Not(z))), Or(z, Or(Not(x), Not(y))))))
    in
@@ -45,7 +45,7 @@ let test_to_dnf () =
    assert (to_dnf t = t_dnf)
 
 let test_partial_eval1 () =
-   let (x, y, z) = (Var(Ident("x")), Var(Ident("y")), Var(Ident("z"))) in
+   let (x, y, z) = (Var(StringLit("x")), Var(StringLit("y")), Var(StringLit("z"))) in
    let t1 = And(x, And(y, z)) in
    let r1 = partial_eval_conj (Residual t1) x True in
    let r2 = partial_eval_conj r1 y True in
@@ -55,8 +55,8 @@ let test_partial_eval1 () =
    assert (r3 = True)
 
 let test_partial_eval2 () =
-   let (x, y, z) = (Var(Ident("x")), Var(Ident("y")), Var(Ident("z"))) in
-   let q = Var(Ident("q is not in formula")) in
+   let (x, y, z) = (Var(StringLit("x")), Var(StringLit("y")), Var(StringLit("z"))) in
+   let q = Var(StringLit("q is not in formula")) in
    let t1 = And(x, And(y, z)) in
    let r1 = partial_eval_conj (Residual t1) x False in
    let r2 = partial_eval_conj (Residual t1) y False in
@@ -68,7 +68,7 @@ let test_partial_eval2 () =
    assert (r4 = (Residual t1))
 
 let test_partial_eval3 () =
-   let (x, y, z) = (Var(Ident("x")), Var(Ident("y")), Var(Ident("z"))) in
+   let (x, y, z) = (Var(StringLit("x")), Var(StringLit("y")), Var(StringLit("z"))) in
    let t1 = And(x, And(y, z)) in
    let r1 = partial_eval_conj (Residual t1) z True in
    let r2 = partial_eval_conj r1 x True in
@@ -83,21 +83,21 @@ let test_all_partial_eval () =
    test_partial_eval3 ()
 
 let test_is_exp_disjoint () =
-   let (x, y) = (Ident "x", Ident "y") in
-   assert (is_exp_disjoint (Gt(x, Number 1)) (Lt(x, Number 1)));
-   assert (is_exp_disjoint (Gt(x, Number 6)) (Lt(x, Number 3)));
-   assert (is_exp_disjoint (Gt(x, Number 6)) (Eq(x, Number 3)));
-   assert (is_exp_disjoint (Gt(x, Number 6)) (Eq(x, Number 3)));
-   assert (is_exp_disjoint (Lt(x, Number 6)) (Eq(x, Number 8)));
-   assert (not (is_exp_disjoint (Gt(x, Number 1)) (Lt(y, Number 1))));
-   assert (not (is_exp_disjoint (Gt(x, Number 1)) (Gt(x, Number 2))));
-   assert (not (is_exp_disjoint (Gt(x, Number 1)) (Lt(x, Number 2))));
-   assert (not (is_exp_disjoint (Lt(x, Number 6)) (Eq(x, Number 3))));
-   assert (not (is_exp_disjoint (Gt(x, Number 3)) (Eq(x, Number 6))));
+   let (x, y) = (StringLit "x", StringLit "y") in
+   assert (is_exp_disjoint (Gt(x, NumberLit 1)) (Lt(x, NumberLit 1)));
+   assert (is_exp_disjoint (Gt(x, NumberLit 6)) (Lt(x, NumberLit 3)));
+   assert (is_exp_disjoint (Gt(x, NumberLit 6)) (Eq(x, NumberLit 3)));
+   assert (is_exp_disjoint (Gt(x, NumberLit 6)) (Eq(x, NumberLit 3)));
+   assert (is_exp_disjoint (Lt(x, NumberLit 6)) (Eq(x, NumberLit 8)));
+   assert (not (is_exp_disjoint (Gt(x, NumberLit 1)) (Lt(y, NumberLit 1))));
+   assert (not (is_exp_disjoint (Gt(x, NumberLit 1)) (Gt(x, NumberLit 2))));
+   assert (not (is_exp_disjoint (Gt(x, NumberLit 1)) (Lt(x, NumberLit 2))));
+   assert (not (is_exp_disjoint (Lt(x, NumberLit 6)) (Eq(x, NumberLit 3))));
+   assert (not (is_exp_disjoint (Gt(x, NumberLit 3)) (Eq(x, NumberLit 6))));
    ()
 
 let test_get_preceding_pred () =
-   let (w, x, y, z) = (Ident("w"), Ident("x"), Ident("y"), Ident("z")) in
+   let (w, x, y, z) = (StringLit("w"), StringLit("x"), StringLit("y"), StringLit("z")) in
    let (vw, vx, vy, vz) = (Var w, Var x, Var y, Var z) in
    let t1 = dnf_canonicalize (And(vy, And(vw, And(vz, vx)))) in
    let t2 = dnf_canonicalize (And(vy, And(Not(vw), And(vx, vz)))) in
@@ -110,7 +110,7 @@ let test_get_preceding_pred () =
    ()
 
 let test_get_first_pred () =
-   let (w, x, y, z) = (Ident("w"), Ident("x"), Ident("y"), Ident("z")) in
+   let (w, x, y, z) = (StringLit("w"), StringLit("x"), StringLit("y"), StringLit("z")) in
    let (vw, vx, vy, vz) = (Var w, Var x, Var y, Var z) in
    let t1 = dnf_canonicalize (And(vy, And(vw, And(vz, vx)))) in
    let t2 = dnf_canonicalize (And(vy, And(Not(vw), And(vx, vz)))) in

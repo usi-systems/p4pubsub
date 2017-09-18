@@ -1,3 +1,6 @@
 [submodule "itch.p4app/third-party/libtrading"]
 	path = itch.p4app/third-party/libtrading
 	url = https://github.com/libtrading/libtrading
+[submodule "itch_tofino.p4app/third-party/libtrading"]
+	path = itch_tofino.p4app/third-party/libtrading
+	url = https://github.com/libtrading/libtrading
