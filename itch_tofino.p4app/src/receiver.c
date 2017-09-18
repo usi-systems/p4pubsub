@@ -7,10 +7,14 @@
 #include <netdb.h>
 #include <string.h>
 #include <libgen.h>
+#include <signal.h>
+#include <fcntl.h>
 
 #include "libtrading/proto/nasdaq_itch50_message.h"
 #include "libtrading/proto/omx_moldudp_message.h"
 #include "../third-party/libtrading/lib/proto/nasdaq_itch50_message.c"
+
+#include "common.c"
 
 #define BUFSIZE 2048
 
@@ -18,8 +22,19 @@ char *my_hostname;
 
 char *progname;
 
+int fd_log = -1;
+int recv_cnt = 0;
+
 void error(char *msg) {
     perror(msg);
+    exit(0);
+}
+
+void catch_int(int signo) {
+    if (fd_log) {
+        close(fd_log);
+    }
+    fprintf(stderr, "Received %d messages\n", recv_cnt);
     exit(0);
 }
 
@@ -59,7 +74,7 @@ void subscribe_to_stocks(char *controller_hostname, int port, char *stocks) {
 }
 
 void usage(int rc) {
-    printf("Usage: %s [-l LISTEN_HOST -p LISTEN_PORT] CONTROLLER_HOST CONTROLLER_PORT STOCKS\n", progname);
+    printf("Usage: %s [-b SO_RCVBUF] [-t LOG_FILENAME] [-l LISTEN_HOST -p LISTEN_PORT] CONTROLLER_HOST CONTROLLER_PORT STOCKS\n", progname);
     exit(rc);
 }
 
@@ -68,17 +83,26 @@ int main(int argc, char *argv[]) {
     int opt;
     char *stocks_with_commas = 0;
     char *controller_hostname = 0;
+    char *log_filename = 0;
     int controller_port = 0;
     my_hostname = "127.0.0.1";
     int port = 1234;
     int dont_listen = 0;
+    int rcvbuf = 0;
+    unsigned long long timestamp;
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "hxl:p:")) != -1) {
+    while ((opt = getopt(argc, argv, "hxb:t:l:p:")) != -1) {
         switch (opt) {
             case 'x':
                 dont_listen = 1;
+                break;
+            case 'b':
+                rcvbuf = atoi(optarg);
+                break;
+            case 't':
+                log_filename = optarg;
                 break;
             case 'p':
                 port = atoi(optarg);
@@ -109,6 +133,13 @@ int main(int argc, char *argv[]) {
     if (!stocks_with_commas)
         usage(-1);
 
+    if (log_filename) {
+        fd_log = open(log_filename, O_WRONLY | O_CREAT | O_TRUNC, 0664);
+        if (fd_log < 0)
+            error("open() log_filename");
+    }
+
+    signal(SIGINT, catch_int);
 
 
 
@@ -138,6 +169,11 @@ int main(int argc, char *argv[]) {
     if (bind(sockfd, (struct sockaddr *)&localaddr, sizeof(localaddr)) < 0)
         error("bind()");
 
+    if (rcvbuf > 0) {
+        if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
+            error("setsockopt()");
+    }
+
     int remoteaddr_len = sizeof(remoteaddr);
 
     while (1) {
@@ -145,6 +181,7 @@ int main(int argc, char *argv[]) {
                 (struct sockaddr *)&remoteaddr, &remoteaddr_len);
         if (n < 0)
             error("recvfrom()");
+        recv_cnt++;
 
         struct omx_moldudp_header *h = (struct omx_moldudp_header *)buf;
         struct omx_moldudp_message *mm = (struct omx_moldudp_message *) (buf + sizeof(struct omx_moldudp_header));
@@ -157,14 +194,19 @@ int main(int argc, char *argv[]) {
 
         if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
             struct itch50_msg_add_order *ao = (struct itch50_msg_add_order *)m;
-            printf("Stock: '%s'\n", ao->Stock);
+            if (fd_log) {
+                timestamp = us_since_midnight();
+                write(fd_log, ao->Timestamp, 6);
+                write(fd_log, &timestamp, 6);
+                write(fd_log, ao->Stock, 8);
+            }
+            //printf("Stock: '%s'\n", ao->Stock);
         }
 
-        printf("Session: %d\nType: %c\n", h->Session[7], m->MessageType);
-        fflush(stdout);
+        //printf("Session: %d\nType: %c\n", h->Session[7], m->MessageType);
+        //fflush(stdout);
 
     }
-
 
     return 0;
 }

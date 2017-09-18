@@ -13,11 +13,13 @@
 #include <netdb.h>
 #include <libgen.h>
 #include <time.h>
-
+#include <sys/time.h>
 
 #include "libtrading/proto/nasdaq_itch50_message.h"
 #include "libtrading/proto/omx_moldudp_message.h"
 #include "../third-party/libtrading/lib/proto/nasdaq_itch50_message.c"
+
+#include "common.c"
 
 char *progname;
 
@@ -31,7 +33,7 @@ void error(char *msg) {
 char buf[BUFSIZE];
 
 void usage(int rc) {
-    printf("Usage: %s [-s] [-r MSGS_PER_S] [-m MAX_MESSAGES] [-h HOST -p PORT] [-o OUT_FILENAME] FILENAME\n", progname);
+    printf("Usage: %s [-s] [-t MSG_TYPES] [-r MSGS_PER_S] [-m MAX_MESSAGES] [-h HOST -p PORT] [-o OUT_FILENAME] FILENAME\n", progname);
     exit(rc);
 }
 
@@ -129,6 +131,7 @@ int main(int argc, char *argv[]) {
     bzero(&stats, sizeof(struct session_stats));
     struct rate_limit_state rate_state;
     bzero(&rate_state, sizeof(rate_state));
+    unsigned long long timestamp;
 
     progname = basename(argv[0]);
 
@@ -271,8 +274,10 @@ int main(int argc, char *argv[]) {
                 mm->MessageLength = len;
                 memcpy(buf + sizeof(struct omx_moldudp_header) + sizeof(struct omx_moldudp_message), payload, len);
                 if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
+                    timestamp = us_since_midnight();
                     struct itch50_msg_add_order *ao = (struct itch50_msg_add_order *)(buf + sizeof(struct omx_moldudp_header) + sizeof(struct omx_moldudp_message));
                     memcpy(ao->Stock, fake_stocks[x], 8);
+                    memcpy(ao->Timestamp, &timestamp, 6);
                     x = (x+1) % NUM_FAKE_STOCKS;
                 }
 

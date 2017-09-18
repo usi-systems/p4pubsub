@@ -1,0 +1,36 @@
+{
+  "program": "p4src/simple_switch.p4",
+  "language": "p4-14",
+  "targets": {
+    "multiswitch": {
+      "model": "tofino",
+      "_bmv2_log": true,
+      "_pcap_dump": true,
+      "auto-control-plane": true,
+      "_cli": true,
+      "controller_module": "itch_controller",
+      "links": [["h1", "s1"], ["h2", "s1"], ["h9", "s1"]],
+      "hosts": {
+        "h1": {
+            "cmd": "./controller_proxy.py 1212",
+            "startup_sleep": 0.2,
+            "wait": false
+        },
+        "h2": {
+            "cmd": "./receiver -b 134217728 -t /tmp/p4app_logs/ts.bin -l h2 -p 1234 h1 1212 ABC",
+            "startup_sleep": 1.5,
+            "wait": false
+        },
+        "h9": {
+            "cmd": "./replay -r 1000 -t A -m 180000 -s -h h2 -p 1234 /theo/Downloads/08302017.NASDAQ_ITCH50; sleep 2",
+            "wait": true
+        }
+      },
+      "switches": {
+          "s1": {
+              "commands": "commands.txt"
+          }
+      }
+    }
+  }
+}

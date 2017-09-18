@@ -41,6 +41,8 @@ class CustomAppController(AppController):
         AppController.start(self)
 
         print "host_ports", self.host_ports
+        #self.subscribe("10.0.2.101", parseStocks("AAPL"))
+        #self.subscribe("10.0.2.101", parseStocks("ABC"))
 
     def stop(self):
         AppController.stop(self)
