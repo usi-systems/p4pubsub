@@ -204,7 +204,6 @@ let rec prune_low_branch bdd prune_map p u =
    Not_found -> (
       match Hashtbl.find bdd.tbl u with
       | Node(p2, l, h) when is_exp_subset p2 p ->
-            (* TODO: will this leave dangling edges if we delete this node *)
             let u2 = prune_low_branch bdd prune_map p l in
             Hashtbl.add prune_map u u2;
             u2
@@ -334,8 +333,8 @@ let bdd_add_query bdd disj actions =
       (fun c -> visitor (Residual (list_to_conj c)) 0 bdd.root)
       (disj_to_list disj);
    Hashtbl.clear bdd.tbl_inv;
-   bdd_prune_unreachable bdd;
    let red_map = Hashtbl.create (Hashtbl.length bdd.tbl) in
    bdd.root <- reduce_tree bdd red_map bdd.root;
+   bdd_prune_unreachable bdd;
    ()
 

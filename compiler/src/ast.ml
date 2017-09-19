@@ -5,6 +5,7 @@ type expr =
   | And of expr * expr
   | Or of expr * expr
   | Not of expr
+  | Call of string * expr list
   | Lt of expr * expr
   | Gt of expr * expr
   | Eq of expr * expr

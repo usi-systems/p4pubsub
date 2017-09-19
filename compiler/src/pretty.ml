@@ -8,7 +8,6 @@ let string_of_ipaddr i =
    ((i lsr 8)  land 255)
    (i land 255)
 
-
 let rec format_expr fmt = function
   | And(e1,e2) -> Format.fprintf fmt "(%a and %a)" format_expr e1 format_expr e2
   | Or(e1,e2) -> Format.fprintf fmt "(%a or %a)" format_expr e1 format_expr e2
@@ -21,6 +20,13 @@ let rec format_expr fmt = function
   | NumberLit(n) -> Format.fprintf fmt "%d" n
   | StringLit(s) -> Format.fprintf fmt "\"%s\"" s
   | IpAddr(i) -> Format.fprintf fmt "%s" (string_of_ipaddr i)
+  | Call(func, al) ->
+        let rec format_arg_list fmt = function
+         | (first, e::t) when first -> Format.fprintf fmt "%a%a" format_expr e format_arg_list (false, t)
+         | (_, e::t) -> Format.fprintf fmt ", %a%a" format_expr e format_arg_list (false, t)
+         | (_, []) -> Format.fprintf fmt ""
+        in
+        Format.fprintf fmt "%s(%a)" func format_arg_list (true, al)
 
 let rec format_action_list fmt = function
   | al -> Format.fprintf fmt "%s" (String.concat ", " (List.map string_of_int al))

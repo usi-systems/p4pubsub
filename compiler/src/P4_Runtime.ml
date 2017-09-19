@@ -35,6 +35,10 @@ let mk_single_match pred = match pred with
    | Eq(f, StringLit s) -> ExactStrMatch(f, s)
    | Lt(f, NumberLit i) -> RangeMatch(f, 0, i-1)
    | Gt(f, NumberLit i) -> RangeMatch(f, i+1, max_int)
+   (* TODO: generate rules for function calls *)
+   | Eq(f, Call _) -> ExactIntMatch(f, 0)
+   | Lt(f, Call _) -> RangeMatch(f, 0, 0)
+   | Gt(f, Call _) -> RangeMatch(f, 0, 0)
    | _ -> raise (Failure ("Unexpected pred format: " ^ (var_to_string pred)))
 
 let mk_range_match preds =

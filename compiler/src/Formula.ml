@@ -84,9 +84,9 @@ let rec formula_of_query q = match q with
    | Ast.And(a, b) -> And(formula_of_query a, formula_of_query b)
    | Ast.Not(a) -> Not(formula_of_query a)
    | Ast.Or(a, b) -> Or(formula_of_query a, formula_of_query b)
-   | Eq(Field _, (NumberLit _ | StringLit _ | IpAddr _)) as p -> Var(p)
-   | Lt(Field _, NumberLit _) as p -> Var(p)
-   | Gt(Field _, NumberLit _) as p -> Var(p)
+   | Eq(Field _, (NumberLit _ | StringLit _ | IpAddr _ | Call _)) as p -> Var(p)
+   | Lt(Field _, (NumberLit _ | Call _)) as p -> Var(p)
+   | Gt(Field _, (NumberLit _ | Call _)) as p -> Var(p)
    | _ -> raise (Failure "Query not supported")
 
 let rec conj_fold f acc conj = match conj with

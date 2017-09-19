@@ -84,6 +84,8 @@ rule main =
   | "."                { DOT }
   | ","                { COMMA }
   | ";"                { SEMICOLON }
+  | "("                { LPAREN }
+  | ")"                { RPAREN }
   | "\""               {
                          let s = string_lit "" lexbuf in
                          STRING_LIT(info lexbuf,s)
