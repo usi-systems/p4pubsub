@@ -14,6 +14,11 @@ from plot_lines import load_conf
 
 #matplotlib.rcParams.update({'font.size': 22})
 
+def formatLabel(l):
+    if matplotlib.rcParams['text.usetex']:
+        return l.replace('_', '\\_').replace('%', '\\%')
+    return l
+
 def _tolist(comma_separated_list):
     return map(str.strip, comma_separated_list.split(','))
 
@@ -21,7 +26,10 @@ def _get_data(fh, lbl_field, data_field):
     reader = csv.DictReader(fh, delimiter='\t')
     data = {}
     for row in reader:
-        data[row[lbl_field]] = map(float, row[data_field].split(','))
+        #data[row[lbl_field]] = map(float, row[data_field].split(','))
+        lbl = row[lbl_field]
+        if lbl not in data: data[lbl] = []
+        data[lbl].append(float(row[data_field]))
     return data
 
 get_lim = lambda s: map(float, s.split(','))
@@ -46,6 +54,8 @@ parser.add_argument('--xlim', help='x-axis limits',
 parser.add_argument('--xlabel', '-x', help='x axis label', type=str, default=None, required=False)
 parser.add_argument('--ylabel', '-y', help='y axis label', type=str, default=None, required=False)
 parser.add_argument('--title', '-t', help='plot title', type=str, default=None, required=False)
+parser.add_argument('--show', help='Open the plot in a new window',
+        action='store_true', default=False)
 args = parser.parse_args()
 
 
@@ -82,6 +92,10 @@ if not ordered_labels:
 
 ordered_labels += [l for l in data.keys() if l not in ordered_labels]
 
+if args.format == 'pdf':
+    matplotlib.rcParams['text.usetex'] = True
+
+plt.close('all')
 #plt.style.use('ggplot')
 fig = plt.figure(1)
 ax = fig.add_subplot(111)
@@ -108,8 +122,8 @@ else:         ax.set_xlim((0, max(all_vals)))
 
 ax.yaxis.set_ticks(np.arange(0, 110, 10))
 if args.title: ax.set_title(args.title)
-ax.set_xlabel(xlabel if xlabel else args.values)
-ax.set_ylabel(args.ylabel if args.ylabel is not None else 'CDF (%)')
+ax.set_xlabel(formatLabel(xlabel if xlabel else args.values))
+ax.set_ylabel(formatLabel(args.ylabel if args.ylabel is not None else 'CDF (%)'))
 ax.grid()
 ax.margins(x=0.1)
 handles, labels = ax.get_legend_handles_labels()
@@ -118,4 +132,5 @@ ax.legend(loc='best', fancybox=True, framealpha=0.5, handles=handles, labels=lab
 outfilename = os.path.join(args.out_dir, args.values + '_cdf.' + args.format)
 plt.tight_layout()
 fig.savefig(outfilename)
+if args.show: plt.show()
 

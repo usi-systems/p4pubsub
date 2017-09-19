@@ -19,17 +19,24 @@ Run with and without filtering:
 
 Get the timestamp vs. latency for each packet:
 
-    ./parse_log out/ts.bin | q -t -T "SELECT c1,c2 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > filtering.tsv
+    ./parse_log out/ts.bin | q -t -T "SELECT c1,c2 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > filtering_timeseries.tsv
 
 Just get the latency for each packet:
 
-    ./parse_log out/ts.bin | q -t -T "SELECT c1 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > filtering.tsv
+    cat filtering_timeseries.tsv | q -t -T "SELECT c1 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > filtering_lats.tsv
+
+Find the packet inter-arrival times:
+
+    ./scripts/calc_deltas.py filtering_timeseries.tsv | q -t -T "SELECT * FROM - WHERE c1 < 100000" > filtering_deltas.tsv
+
+Find the latency of the BMV2 pipeline:
+
+    ./scripts/bmv_pipeline_latency.py out/p4s.s1.log
 
 
 ### Plotting
 
 Plot the CDF for both baseline and filtering on the same graph:
-
 
     ./parse_log out/ts.bin | q -t -T "SELECT c2 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > filtering_lats.tsv
     ./parse_log out/ts.bin | q -t -T "SELECT c2 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > baseline_lats.tsv

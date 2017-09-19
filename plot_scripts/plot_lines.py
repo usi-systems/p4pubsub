@@ -121,7 +121,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
 
-    showlegend = conf['showlegend'] if 'showlegend' in conf else True
+    showlegend = conf['showlegend'] if conf and 'showlegend' in conf else True
     if showlegend:
         ax.legend([r[0] for r in plot_handles], label_names,
                 loc='upper center',
@@ -198,7 +198,7 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
                 linestyle=label_style_hist[label]['line'], marker=label_style_hist[label]['marker'])
 
         for cap in caps:
-            cap.set_markeredgewidth(4)
+            cap.set_markeredgewidth(2)
 
     if not title is None: ax.set_title(title)
     if not xlabel is None: ax.set_xlabel(formatLabel(xlabel))
@@ -213,14 +213,21 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
         loc = plticker.MultipleLocator(base=xtick) # this locator puts ticks at regular intervals
         ax.xaxis.set_major_locator(loc)
 
-    ax.grid()
+    showgrid = True
+    if conf and 'style' in conf and 'showgrid' in conf['style']:
+        showgrid = conf['style']['showgrid'] == 'True'
+
+    if showgrid:
+        ax.grid()
     #if _should_use_log(all_x):
     #    ax.set_xscale('symlog', linthreshx=1)
     if yscale: ax.set_yscale(yscale)
     ax.margins(x=0.1)
 
-    showlegend = conf['style']['showlegend'] if 'showlegend' in conf['style'] else True
     showlegend = False
+    if conf and 'style' in conf and 'showlegend' in conf['style']:
+        showlegend = conf['style']['showlegend'] == 'True'
+
     if showlegend:
         handles, labels = ax.get_legend_handles_labels()
         # remove the errorbars
