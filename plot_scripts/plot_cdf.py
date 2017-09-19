@@ -38,7 +38,7 @@ parser = argparse.ArgumentParser(description='Plot multiple CDFs from a TSV')
 parser.add_argument('filename', help='Path to TSV file, or "-" to use STDIN',
         nargs='?', type=str)
 parser.add_argument('--out-dir', '-o', help='Directory to save graphs in',
-        type=str, action="store", default="plots", required=False)
+        type=str, action="store", default=None, required=False)
 parser.add_argument('--format', '-f', help='output format',
         type=str, action="store", choices=['pdf', 'png'], default='png', required=False)
 parser.add_argument('--values', '-v', help='Name of field containing values for CDF',
@@ -129,7 +129,11 @@ ax.margins(x=0.1)
 handles, labels = ax.get_legend_handles_labels()
 ax.legend(loc='best', fancybox=True, framealpha=0.5, handles=handles, labels=labels)
 
-outfilename = os.path.join(args.out_dir, args.values + '_cdf.' + args.format)
+if args.out_dir:
+    outfilename = os.path.join(args.out_dir, args.values + '_cdf.' + args.format)
+else:
+    outfilename = args.values + '_cdf.' + args.format
+
 plt.tight_layout()
 fig.savefig(outfilename)
 if args.show: plt.show()
