@@ -30,4 +30,7 @@ Just get the latency for each packet:
 
 Plot the CDF for both baseline and filtering on the same graph:
 
-    ../plot_scripts/cdf2.py baseline.tsv filtering.tsv baseline filtering
+
+    ./parse_log out/ts.bin | q -t -T "SELECT c2 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > filtering_lats.tsv
+    ./parse_log out/ts.bin | q -t -T "SELECT c2 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > baseline_lats.tsv
+    ../plot_scripts/cdf2.py baseline_lats.tsv filtering_lats.tsv baseline filtering
