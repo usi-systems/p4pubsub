@@ -1,0 +1,64 @@
+Date: 20th September 2017
+Attendees: Theo, Antonio, Nate, Robert
+
+SUMMARY:
+
+Robert told us about the positive feedback from meetings he's had. The next
+step is to split ITCH messages, so that we can start doing latency experiments
+for a realistic workload. Once we have that, maybe we will be provided with
+some sample queries.
+
+
+NEXT STEPS:
+
+- Theo will continue generating sample workloads and check whether they fit in
+  hardware. Theo will also describe how the tables are generated.
+
+- Masoud and Theo will work together to get a P4 pipeline that splits ITCH
+  messages, and filters on a single field (stock locate). Then we will create
+  some PTF tests to run this on hardware.
+
+
+Some reactions:
+
+- We discussed how to do aggregates on the switch (like EWMA), but didn't
+  define any next steps yet.
+
+- Robert wonders whether the Camus language is like an optimizer for P4
+  programs. The consensus is: not exactly. Since the queries are at a
+  higher-level, they know how to allocate resources.
+
+- How do we merge duplicate range entries in the TCAM? We could do a single
+  range, set some metadata, and in a second table check both the current state
+  and which range matched. Milad confirmed that this would not be possible in a
+  single stage, but that the results of these lookups would have to be passed
+  to the next stage.
+
+- Goldman meeting (Robert):
+    - they only expected to do exact matches, so ranges would be great
+    - this smells good, but they want evidence it's good for their strategy
+        - we need to show that we reduce the tail latency
+
+- Latency graph: it would have been better to subtract the bmv2 time from both
+  curves. Another thing we could have done was to measure the difference in
+  compute time at the receiver.
+
+- IP: we should have a shared IP agreement between USI and BFT.
+
+- Robert summarized exec meeting:
+    - nick would like to see this working on hardware, which means we have to
+      support real ITCH feeds, which means we have to split ITCH messages.
+
+- Antonio: maybe splitting the ITCH packets in the network will save the end
+  hosts some processing
+
+- Masoud will join our weekly meetings and work on fitting this in hardware
+
+- Nate will meet with Jane Street on Oct 16th
+    - Robert: by then we will have latency numbers from hardware
+
+- Nate: in addition to supporting queries, we could also have a cache.
+    - we match popular messages and forward them, skipping the query pipeline.
+    - this would be useful if the queries do not all fit in the hardware
+
+- Theo should describe the process of generating BDD and then tables.
