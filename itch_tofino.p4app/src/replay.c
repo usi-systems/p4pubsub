@@ -33,7 +33,11 @@ void error(char *msg) {
 char buf[BUFSIZE];
 
 void usage(int rc) {
-    printf("Usage: %s [-s] [-t MSG_TYPES] [-r MSGS_PER_S] [-m MAX_MESSAGES] [-h HOST -p PORT] [-o OUT_FILENAME] FILENAME\n", progname);
+    printf("Usage: %s [-a ACTION_NAME] [-t MSG_TYPES] [-r MSGS_PER_S] [-m MAX_MESSAGES] [-h HOST -p PORT] [-o OUT_FILENAME] FILENAME\n\n\
+ACTION_NAME can be one of:\n\
+    stats            print stats on number of messages by type\n\
+    print_symbols    print the symbol of each Add Order message\n\
+", progname);
     exit(rc);
 }
 
@@ -126,19 +130,24 @@ int main(int argc, char *argv[]) {
     char *hostname = 0;
     int port = 0;
     int do_stats = 0;
+    int do_print_symbols = 0;
     struct session_stats stats;
     float msgs_per_s = 0;
     bzero(&stats, sizeof(struct session_stats));
     struct rate_limit_state rate_state;
     bzero(&rate_state, sizeof(rate_state));
     unsigned long long timestamp;
+    char *action_name = 0;
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "sm:t:o:h:p:r:")) != -1) {
+    while ((opt = getopt(argc, argv, "a:m:t:o:h:p:r:")) != -1) {
         switch (opt) {
             case 'm':
                 max_messages = atoi(optarg);
+                break;
+            case 'a':
+                action_name = optarg;
                 break;
             case 'o':
                 out_filename = optarg;
@@ -151,9 +160,6 @@ int main(int argc, char *argv[]) {
                 break;
             case 'h':
                 hostname = optarg;
-                break;
-            case 's':
-                do_stats = 1;
                 break;
             case 'r':
                 msgs_per_s = atof(optarg);
@@ -168,6 +174,19 @@ int main(int argc, char *argv[]) {
 
     if (argc - optind != 1)
         usage(-1);
+
+    if (action_name != 0) {
+        if (strcmp(action_name, "stats") == 0) {
+            do_stats = 1;
+        }
+        else if (strcmp(action_name, "print_symbols") == 0) {
+            do_print_symbols = 1;
+        }
+        else {
+            fprintf(stderr, "Unrecognized action: '%s'\n", action_name);
+            usage(-1);
+        }
+    }
 
     char *filename = argv[optind];
 
@@ -249,7 +268,8 @@ int main(int argc, char *argv[]) {
         if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
             struct itch50_msg_add_order *ao = (struct itch50_msg_add_order *)(payload);
             memcpy(symbol_buf, ao->Stock, 8);
-            //printf("%s\n", symbol_buf);
+            if (do_print_symbols)
+                printf("%s\n", symbol_buf);
             //printf("MessageType: %c, StockLocate: %u, TrackingNumber: %u, Timestamp: %u, OrderReferenceNumber: %u, BuySellIndicator: %c, Shares: %u, Stock: %s, Price: %u\n",
             //        ao->MessageType, ao->StockLocate, ao->TrackingNumber, ao->Timestamp[0], ao->OrderReferenceNumber,
             //        ao->BuySellIndicator, ao->Shares, symbol_buf, ao->Price);
