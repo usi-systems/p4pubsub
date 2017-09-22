@@ -1,5 +1,43 @@
 # ITCH Add Order Pub/Sub
 
+## Overview of ITCH formats
+
+# ITCH dump files
+
+Nasdaq provides dumps of ITCH feeds here:
+ftp://emi.nasdaq.com/ITCH/
+
+These files are a sequence of messages in a binary format. Before each message,
+there is a 2 byte *network endian* field with the size of the message. The
+message data is the actual ITCH message (i.e. the first byte of the message
+data payload is the ITCH `MessageType` field)
+
+    
+    offset in file
+                    +----------------+
+           0        |  Message Size  |
+                    +----------------+
+           2        |                |
+                    |  Message Data  |
+                    |                |
+                    +----------------+
+                    |  Message Size  |
+                    +----------------+
+                    |                |
+                    |  Message Data  |
+                    |                |
+                    |      ...       |
+
+
+## Generating ITCH messages
+
+The script `scripts/itch_gen.py` generates an ITCH message dump file compatible
+with those provided by Nasdaq. For now, it only generates Add Order messages.
+For example, generate an ITCH dump file with two Add Order messages:
+
+    ./scripts/itch_gen.py -f StockLocate=1,Stock=AAPL,Shares=3,BuySellIndicator=B,Price=123 > out.itch
+    ./scripts/itch_gen.py -f StockLocate=2,Stock=MSFT,Shares=3,BuySellIndicator=S,Price=321 >> out.itch
+
 ## Setup
 
 Build the clients, along with tools:
