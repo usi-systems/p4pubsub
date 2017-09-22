@@ -36,6 +36,7 @@ void usage(int rc) {
     printf("Usage: %s [-a ACTION_NAME] [-t MSG_TYPES] [-r MSGS_PER_S] [-m MAX_MESSAGES] [-h HOST -p PORT] [-o OUT_FILENAME] FILENAME\n\n\
 ACTION_NAME can be one of:\n\
     stats            print stats on number of messages by type\n\
+    print_ao         print Add Order messages as TSV\n\
     print_symbols    print the symbol of each Add Order message\n\
 ", progname);
     exit(rc);
@@ -131,6 +132,7 @@ int main(int argc, char *argv[]) {
     int port = 0;
     int do_stats = 0;
     int do_print_symbols = 0;
+    int do_print_ao = 0;
     struct session_stats stats;
     float msgs_per_s = 0;
     bzero(&stats, sizeof(struct session_stats));
@@ -181,6 +183,9 @@ int main(int argc, char *argv[]) {
         }
         else if (strcmp(action_name, "print_symbols") == 0) {
             do_print_symbols = 1;
+        }
+        else if (strcmp(action_name, "print_ao") == 0) {
+            do_print_ao = 1;
         }
         else {
             fprintf(stderr, "Unrecognized action: '%s'\n", action_name);
@@ -246,6 +251,8 @@ int main(int argc, char *argv[]) {
 
     char symbol_buf[9];
     symbol_buf[8] = 0;
+    if (do_print_ao)
+        printf("MessageType\tStockLocate\tTrackingNumber\tTimestamp\tOrderReferenceNumber\tBuySellIndicator\tShares\tStock\tPrice\n");
 
     int skip = 0;
     int pos = 0;
@@ -270,9 +277,13 @@ int main(int argc, char *argv[]) {
             memcpy(symbol_buf, ao->Stock, 8);
             if (do_print_symbols)
                 printf("%s\n", symbol_buf);
-            //printf("MessageType: %c, StockLocate: %u, TrackingNumber: %u, Timestamp: %u, OrderReferenceNumber: %u, BuySellIndicator: %c, Shares: %u, Stock: %s, Price: %u\n",
-            //        ao->MessageType, ao->StockLocate, ao->TrackingNumber, ao->Timestamp[0], ao->OrderReferenceNumber,
-            //        ao->BuySellIndicator, ao->Shares, symbol_buf, ao->Price);
+            if (do_print_ao) {
+                printf("%c\t%u\t%u\t%lu\t%lu\t%c\t%u\t%s\t%u\n",
+                        ao->MessageType, ntohs(ao->StockLocate), ntohs(ao->TrackingNumber),
+                        ntoh48(*((uint64_t *)ao->Timestamp)),
+                        ntohll(ao->OrderReferenceNumber),
+                        ao->BuySellIndicator, ntohl(ao->Shares), symbol_buf, ntohl(ao->Price));
+            }
 
         }
 
