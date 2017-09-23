@@ -12,3 +12,15 @@ unsigned long long us_since_midnight() {
 #define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
 
 #define ntoh48(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl(*((uint32_t *)(&x))) << 16) | ntohs(*((uint16_t *)(((void *)(&x))+4)) ))
+
+void print_add_order_header() {
+    printf("MessageType\tStockLocate\tTrackingNumber\tTimestamp\tOrderReferenceNumber\tBuySellIndicator\tShares\tStock\tPrice\n");
+}
+
+void print_add_order(struct itch50_msg_add_order *ao) {
+    printf("%c\t%u\t%u\t%lu\t%lu\t%c\t%u\t%.*s\t%u\n",
+            ao->MessageType, ntohs(ao->StockLocate), ntohs(ao->TrackingNumber),
+            ntoh48(*((uint64_t *)ao->Timestamp)),
+            ntohll(ao->OrderReferenceNumber),
+            ao->BuySellIndicator, ntohl(ao->Shares), 8, ao->Stock, ntohl(ao->Price));
+}

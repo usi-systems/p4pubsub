@@ -15,4 +15,4 @@ parse_log: src/parse_log.c
 	gcc -o $@ $<
 
 clean:
-	rm -f sender receiver replay
+	rm -f sender receiver replay parse_log

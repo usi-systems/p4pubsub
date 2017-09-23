@@ -33,11 +33,13 @@ void error(char *msg) {
 char buf[BUFSIZE];
 
 void usage(int rc) {
-    printf("Usage: %s [-a ACTION_NAME] [-t MSG_TYPES] [-r MSGS_PER_S] [-m MAX_MESSAGES] [-h HOST -p PORT] [-o OUT_FILENAME] FILENAME\n\n\
-ACTION_NAME can be one of:\n\
-    stats            print stats on number of messages by type\n\
-    print_ao         print Add Order messages as TSV\n\
-    print_symbols    print the symbol of each Add Order message\n\
+    printf("Usage: %s [-a OPTIONS] [-t MSG_TYPES] [-r MSGS_PER_S] [-m MAX_MESSAGES] [-h HOST -p PORT] [-o OUT_FILENAME] FILENAME\n\
+\n\
+OPTIONS is a string of chars, which can include:\n\
+    t - print stats on number of messages by type\n\
+    a - print Add Order messages as TSV\n\
+    s - print the symbol of each Add Order message\n\
+\n\
 ", progname);
     exit(rc);
 }
@@ -139,7 +141,7 @@ int main(int argc, char *argv[]) {
     struct rate_limit_state rate_state;
     bzero(&rate_state, sizeof(rate_state));
     unsigned long long timestamp;
-    char *action_name = 0;
+    char *extra_options = 0;
 
     progname = basename(argv[0]);
 
@@ -149,7 +151,7 @@ int main(int argc, char *argv[]) {
                 max_messages = atoi(optarg);
                 break;
             case 'a':
-                action_name = optarg;
+                extra_options = optarg;
                 break;
             case 'o':
                 out_filename = optarg;
@@ -177,20 +179,13 @@ int main(int argc, char *argv[]) {
     if (argc - optind != 1)
         usage(-1);
 
-    if (action_name != 0) {
-        if (strcmp(action_name, "stats") == 0) {
+    if (extra_options) {
+        if (strchr(extra_options, 't'))
             do_stats = 1;
-        }
-        else if (strcmp(action_name, "print_symbols") == 0) {
+        if (strchr(extra_options, 's'))
             do_print_symbols = 1;
-        }
-        else if (strcmp(action_name, "print_ao") == 0) {
+        if (strchr(extra_options, 'a'))
             do_print_ao = 1;
-        }
-        else {
-            fprintf(stderr, "Unrecognized action: '%s'\n", action_name);
-            usage(-1);
-        }
     }
 
     char *filename = argv[optind];
@@ -245,14 +240,8 @@ int main(int argc, char *argv[]) {
         remoteaddr.sin_port = htons(port);
     }
 
-#define NUM_FAKE_STOCKS 3
-    const char *fake_stocks[] = {"ABC     ", "XYZ     ", "IJK     "};
-    int x = 0;
-
-    char symbol_buf[9];
-    symbol_buf[8] = 0;
     if (do_print_ao)
-        printf("MessageType\tStockLocate\tTrackingNumber\tTimestamp\tOrderReferenceNumber\tBuySellIndicator\tShares\tStock\tPrice\n");
+        print_add_order_header();
 
     int skip = 0;
     int pos = 0;
@@ -274,15 +263,10 @@ int main(int argc, char *argv[]) {
 
         if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
             struct itch50_msg_add_order *ao = (struct itch50_msg_add_order *)(payload);
-            memcpy(symbol_buf, ao->Stock, 8);
             if (do_print_symbols)
-                printf("%s\n", symbol_buf);
+                printf("%.*s\n", 8, ao->Stock);
             if (do_print_ao) {
-                printf("%c\t%u\t%u\t%lu\t%lu\t%c\t%u\t%s\t%u\n",
-                        ao->MessageType, ntohs(ao->StockLocate), ntohs(ao->TrackingNumber),
-                        ntoh48(*((uint64_t *)ao->Timestamp)),
-                        ntohll(ao->OrderReferenceNumber),
-                        ao->BuySellIndicator, ntohl(ao->Shares), symbol_buf, ntohl(ao->Price));
+                print_add_order(ao);
             }
 
         }
@@ -305,11 +289,9 @@ int main(int argc, char *argv[]) {
                 mm->MessageLength = len;
                 memcpy(buf + sizeof(struct omx_moldudp_header) + sizeof(struct omx_moldudp_message), payload, len);
                 if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
-                    timestamp = us_since_midnight();
                     struct itch50_msg_add_order *ao = (struct itch50_msg_add_order *)(buf + sizeof(struct omx_moldudp_header) + sizeof(struct omx_moldudp_message));
-                    memcpy(ao->Stock, fake_stocks[x], 8);
+                    timestamp = us_since_midnight();
                     memcpy(ao->Timestamp, &timestamp, 6);
-                    x = (x+1) % NUM_FAKE_STOCKS;
                 }
 
 

@@ -30,6 +30,20 @@ void error(char *msg) {
     exit(0);
 }
 
+void usage(int rc) {
+    fprintf(rc == 0 ? stdout : stderr,
+            "Usage: %s [-a OPTIONS] [-b SO_RCVBUF] [-t LOG_FILENAME] [-l LISTEN_HOST -p LISTEN_PORT] CONTROLLER_HOST CONTROLLER_PORT STOCKS\n\
+\n\
+OPTIONS is a string of chars, which can include:\n\
+\n\
+    q - exit after subcribing to controller\n\
+    a - print Add Order messages as TSV\n\
+    s - don't send subscription request to controller\n\
+\n\
+", progname);
+    exit(rc);
+}
+
 void catch_int(int signo) {
     if (fd_log) {
         close(fd_log);
@@ -69,13 +83,12 @@ void send_to_controller(char *hostname, int port, char *msg, size_t len) {
 
 void subscribe_to_stocks(char *controller_hostname, int port, char *stocks) {
     char msg[2048];
+    if (!my_hostname) {
+        fprintf(stderr, "Cannot send subcription request without my hostname (-h)\n");
+        usage(-1);
+    }
     int len = sprintf(msg, "sub\t%s\t%s\n", my_hostname, stocks);
     send_to_controller(controller_hostname, port, msg, len);
-}
-
-void usage(int rc) {
-    printf("Usage: %s [-b SO_RCVBUF] [-t LOG_FILENAME] [-l LISTEN_HOST -p LISTEN_PORT] CONTROLLER_HOST CONTROLLER_PORT STOCKS\n", progname);
-    exit(rc);
 }
 
 
@@ -84,19 +97,22 @@ int main(int argc, char *argv[]) {
     char *stocks_with_commas = 0;
     char *controller_hostname = 0;
     char *log_filename = 0;
+    char *extra_options = 0;
     int controller_port = 0;
     my_hostname = "127.0.0.1";
     int port = 1234;
     int dont_listen = 0;
+    int dont_subscribe = 0;
+    int do_print_ao = 0;
     int rcvbuf = 0;
     unsigned long long timestamp;
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "hxb:t:l:p:")) != -1) {
+    while ((opt = getopt(argc, argv, "ha:b:t:l:p:")) != -1) {
         switch (opt) {
-            case 'x':
-                dont_listen = 1;
+            case 'a':
+                extra_options = optarg;
                 break;
             case 'b':
                 rcvbuf = atoi(optarg);
@@ -124,14 +140,24 @@ int main(int argc, char *argv[]) {
     controller_port = atoi(argv[optind+1]);
     stocks_with_commas = argv[optind+2];
 
-    if ((my_hostname && !port) || (port && !my_hostname))
-        usage(-1);
+    if (extra_options) {
+        if (strchr(extra_options, 'q'))
+            dont_listen = 1;
+        if (strchr(extra_options, 's'))
+            dont_subscribe = 1;
+        if (strchr(extra_options, 'a'))
+            do_print_ao = 1;
+    }
 
-    if (!controller_hostname || !controller_port)
+    if (!controller_hostname || !controller_port) {
+        fprintf(stderr, "Invalid controller hostname or port\n");
         usage(-1);
+    }
 
-    if (!stocks_with_commas)
+    if (!stocks_with_commas) {
+        fprintf(stderr, "Invalid stocks\n");
         usage(-1);
+    }
 
     if (log_filename) {
         fd_log = open(log_filename, O_WRONLY | O_CREAT | O_TRUNC, 0664);
@@ -148,7 +174,8 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in remoteaddr;
     char buf[BUFSIZE];
 
-    subscribe_to_stocks(controller_hostname, controller_port, stocks_with_commas);
+    if (!dont_subscribe)
+        subscribe_to_stocks(controller_hostname, controller_port, stocks_with_commas);
 
     if (dont_listen)
         exit(0);
@@ -194,13 +221,14 @@ int main(int argc, char *argv[]) {
 
         if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
             struct itch50_msg_add_order *ao = (struct itch50_msg_add_order *)m;
+            if (do_print_ao)
+                print_add_order(ao);
             if (fd_log) {
                 timestamp = us_since_midnight();
                 write(fd_log, ao->Timestamp, 6);
                 write(fd_log, &timestamp, 6);
                 write(fd_log, ao->Stock, 8);
             }
-            //printf("Stock: '%s'\n", ao->Stock);
         }
 
         //printf("Session: %d\nType: %c\n", h->Session[7], m->MessageType);
