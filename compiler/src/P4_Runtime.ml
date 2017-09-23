@@ -80,17 +80,18 @@ let fwd_action_to_rule last_mgid meta_in eg_ports =
 
 
 let binary_of_str s =
+   let n = String.length s in
    let rec add i =
-      if i < 0 then 0
+      if i = n then 0
       else
-      ((Char.code (s.[i])) lsl (i*8)) lor (add (i-1))
+      ((Char.code (s.[i])) lsl ((n-i-1)*8)) lor (add (i+1))
    in
-   add ((String.length s) - 1)
+   add 0
 
 let matches_to_str ml =
    String.concat " " (List.map (fun m -> match m with
    | ExactIntMatch(_, i) -> string_of_int i
-   | ExactStrMatch(_, s) -> Printf.sprintf "%d" (binary_of_str s)
+   | ExactStrMatch(_, s) -> Printf.sprintf "0x%x" (binary_of_str s)
    | RangeMatch(_, a, b) -> Printf.sprintf "%d->%d" a b
    | LtMatch(_, i) -> Printf.sprintf "0->%d" i
    (* TODO: find the max value for this field *)
