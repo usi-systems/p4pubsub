@@ -35,8 +35,8 @@ The script `scripts/itch_gen.py` generates an ITCH message dump file compatible
 with those provided by Nasdaq. For now, it only generates Add Order messages.
 For example, generate an ITCH dump file with two Add Order messages:
 
-    ./scripts/itch_gen.py -f StockLocate=1,Stock=AAPL,Shares=3,BuySellIndicator=B,Price=123 > out.itch
-    ./scripts/itch_gen.py -f StockLocate=2,Stock=MSFT,Shares=3,BuySellIndicator=S,Price=321 >> out.itch
+    ../itch_tools/itch_gen.py -f StockLocate=1,Stock=AAPL,Shares=3,BuySellIndicator=B,Price=123 > out.itch
+    ../itch_tools/itch_gen.py -f StockLocate=2,Stock=MSFT,Shares=3,BuySellIndicator=S,Price=321 >> out.itch
 
 ## Setup
 
@@ -57,7 +57,7 @@ Run with and without filtering:
 
 Get the timestamp vs. latency for each packet:
 
-    ./parse_log out/ts.bin | q -t -T "SELECT c1,c2 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > filtering_timeseries.tsv
+    ../itch_tools/parse_log out/ts.bin | q -t -T "SELECT c1,c2 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > filtering_timeseries.tsv
 
 Just get the latency for each packet:
 
@@ -76,16 +76,16 @@ Find the latency of the BMV2 pipeline:
 
 Plot the CDF for both baseline and filtering on the same graph:
 
-    ./parse_log out/ts.bin | q -t -T "SELECT c2 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > filtering_lats.tsv
-    ./parse_log out/ts.bin | q -t -T "SELECT c2 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > baseline_lats.tsv
+    ./itch_tools/parse_log out/ts.bin | q -t -T "SELECT c2 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > filtering_lats.tsv
+    ./itch_tools/parse_log out/ts.bin | q -t -T "SELECT c2 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > baseline_lats.tsv
     ../plot_scripts/cdf2.py baseline_lats.tsv filtering_lats.tsv baseline filtering
 
 ## Parsing ITCH dumps
 
 Print the number of messages by type:
 
-    ./replay -a stats ~/Downloads/08302017.NASDAQ_ITCH50
+    ./replay -a t ~/Downloads/08302017.NASDAQ_ITCH50
 
 Find the most popular symbols:
 
-    ./replay -a print_symbols ~/Downloads/08302017.NASDAQ_ITCH50 | awk ' { tot[$0]++ } END { for (i in tot) print tot[i],i } ' | sort -rh | awk '{print $2"\t"$1 }' > symbols.tsv
+    ./replay -a s ~/Downloads/08302017.NASDAQ_ITCH50 | awk ' { tot[$0]++ } END { for (i in tot) print tot[i],i } ' | sort -rh | awk '{print $2"\t"$1 }' > symbols.tsv
