@@ -9,6 +9,7 @@ open Dnf
 open Bdd
 open Bdd_Table
 open P4_Runtime
+open P4_Program
 
 let create_and_print_bdd rules =
    let formulas =
@@ -20,6 +21,8 @@ let create_and_print_bdd rules =
    List.iter formulas (fun x -> match x with (t, a) -> bdd_add_query bdd t a);
    print_bdd bdd;
    ()
+
+let save_to_file file s = Out_channel.write_all file ~data:s
 
 let print_position outx lexbuf =
   let pos = lexbuf.lex_curr_p in
@@ -45,7 +48,12 @@ let parse_and_print lexbuf =
   print_bdd_tables tables;
   let runtime_conf = create_p4_runtime_conf tables in
   print_endline ("/*\n" ^ (string_of_rules rules) ^ "*/\n");
+  (*
   print_endline ("/*\n" ^ (dump_p4_runtime_conf runtime_conf) ^ "\n*/\n");
+  *)
+  save_to_file "generated_commands.txt" (dump_p4_runtime_commands runtime_conf);
+  save_to_file "generated_mcast_groups.txt" (dump_p4_runtime_mcast_groups runtime_conf);
+  save_to_file "p4src/generated_router.p4" (generate_p4_program (make_p4_fields tables.fields));
   ()
 
 

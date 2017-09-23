@@ -57,25 +57,25 @@ let preds_to_rule t preds meta_in meta_out =
    let meta_in = ExactIntMatch(Field(Some "meta", "state"), meta_in) in
    match preds with
       | p::[] when is_exact_match p ->
-            MatchAction(t ^ "_exact", [meta_in; mk_single_match p], "set_meta", [meta_out])
+            MatchAction(t ^ "_exact", [meta_in; mk_single_match p], "set_next_state", [meta_out])
       | p::[] ->
-            MatchAction(t ^ "_range", [meta_in; mk_single_match p], "set_meta", [meta_out])
+            MatchAction(t ^ "_range", [meta_in; mk_single_match p], "set_next_state", [meta_out])
       | _::_ ->
-            MatchAction(t ^ "_range", [meta_in; mk_range_match preds], "set_meta", [meta_out])
+            MatchAction(t ^ "_range", [meta_in; mk_range_match preds], "set_next_state", [meta_out])
       | [] ->
-            MatchAction(t ^ "_miss", [meta_in], "set_meta", [meta_out])
+            MatchAction(t ^ "_miss", [meta_in], "set_next_state", [meta_out])
 
-let fwd_action_to_rule last_mgid meta_in out_ports =
+let fwd_action_to_rule last_mgid meta_in eg_ports =
    let meta_in = ExactIntMatch(Field(Some "meta", "state"), meta_in) in
-   match out_ports with
+   match eg_ports with
       | p::[] ->
-            (MatchAction("__fwd__", [meta_in], "set_out_port", [p]), None)
+            (MatchAction("tbl_actions", [meta_in], "set_egress_port", [p]), None)
       | _::_ ->
             let mgid = last_mgid + 1 in
-            let grp = McastGroup(mgid, out_ports) in
-            (MatchAction("__fwd__", [meta_in], "set_mgid", [mgid]), Some grp)
+            let grp = McastGroup(mgid, eg_ports) in
+            (MatchAction("tbl_actions", [meta_in], "set_mgid", [mgid]), Some grp)
       | [] ->
-            (MatchAction("__fwd__", [meta_in], "drop_pkt", []), None)
+            (MatchAction("tbl_actions", [meta_in], "_drop", []), None)
 
 let matches_to_str ml =
    String.concat " " (List.map (fun m -> match m with
@@ -94,19 +94,25 @@ let has_range_match ml =
    (fun m -> match m with RangeMatch _ | LtMatch _ | GtMatch _ -> true | _ -> false)
    ml
 
-let dump_p4_runtime_conf rtc =
-   (String.concat "\n" (List.map (fun e -> match e with
+let dump_p4_runtime_commands rtc =
+   String.concat "\n" (List.map (fun e -> match e with
       | MatchAction(t, ml, action, args) ->
          Printf.sprintf "table_add %s %s %s => %s%s"
             t action (matches_to_str ml) (args_to_str args)
             (if (has_range_match ml) then " 1" else "")
       | DefaultAction(t, action, args) ->
          Printf.sprintf "table_set_default %s %s => %s" t action (args_to_str args)
-   ) rtc.table_entries)) ^
+   ) rtc.table_entries)
+
+let dump_p4_runtime_mcast_groups rtc =
+   String.concat "\n" (List.map (fun g -> match g with McastGroup(mgid, ports) ->
+      Printf.sprintf "%d: %s" mgid (args_to_str ports)
+   ) rtc.mcast_groups)
+
+let dump_p4_runtime_conf rtc =
+   (dump_p4_runtime_commands rtc) ^
    "\n\n------------------\n  Mcast Groups\n------------------\n" ^
-   (String.concat "\n" (List.map (fun g -> match g with McastGroup(mgid, ports) ->
-      Printf.sprintf "%d -> [%s]" mgid (args_to_str ports)
-   ) rtc.mcast_groups)) ^
+   (dump_p4_runtime_mcast_groups rtc) ^
    "\n\n------------------\n      Stats\n------------------\n" ^
    (Printf.sprintf "table_entries: %d\nmcast_groups: %d\n"
          (List.length rtc.table_entries) (List.length rtc.mcast_groups))
@@ -134,12 +140,15 @@ let create_p4_runtime_conf atc =
          ) tbl (el, grps)
       ) atc.tables ([], [])
    in
+   (* XXX Do we need any default entries? *)
+   (*
    let default_table_entries = List.map (fun table_name ->
-      DefaultAction(table_name, "default_set_meta", [])
+      DefaultAction(table_name, "default_set_next_state", [])
 
       ) atc.table_names
    in
+   *)
    {
-      table_entries = default_table_entries @ fwd_table_entries @ field_table_entries;
+      table_entries = fwd_table_entries @ field_table_entries;
       mcast_groups = mcast_grps;
    }

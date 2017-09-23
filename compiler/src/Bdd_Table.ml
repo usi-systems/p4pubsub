@@ -18,6 +18,7 @@ type table_name = string
 
 type abstract_table_collection = {
    table_names: table_name list;
+   fields: expr list;
    bdd: bdd_struct;
    tables: (table_name, abstract_table) Hashtbl.t;
 }
@@ -29,7 +30,7 @@ let abstract_table_to_string ?graph_name:(g="G") atc =
    let next_table_name tn =
       let rec _next = function
          | a::(b::l) -> if a=tn then b else _next (b::l)
-         | a::[] -> "__fwd__"
+         | a::[] -> "tbl_actions"
          | _ -> raise (Failure ("Couldn't find the successor table for " ^ tn))
       in
       _next atc.table_names
@@ -136,15 +137,18 @@ let bdd_tables_create rules =
    List.iter (fun x -> match x with (t, a) -> bdd_add_query bdd t a) dnf_rules;
    let atc = {
       table_names = table_names;
+      fields = List.sort_uniq cmp_fields (List.map field_for_pred bdd.vars);
       bdd = bdd;
       tables = Hashtbl.create ((List.length table_names) + 1);
    } in
    List.iter (fun t -> Hashtbl.add atc.tables t (Hashtbl.create 10)) table_names;
-   let fwd_table = Hashtbl.create 10 in
-   Hashtbl.add atc.tables "__fwd__" fwd_table;
-   let last_u = ref 0 in
-   last_u := bdd.last_node_id;
+   let actions_table = Hashtbl.create 10 in
+   Hashtbl.add atc.tables "tbl_actions" actions_table;
    let getn u = Hashtbl.find bdd.tbl u in
+   (* XXX we re-number the root to state 0 here *)
+   Hashtbl.add bdd.tbl 0 (getn bdd.root);
+   Hashtbl.remove bdd.tbl bdd.root;
+   bdd.root <- 0;
    let entry_nodes = Hashtbl.create 100 in
    let rec _visit u parent_table = match getn u with
       | Node(p, l, h) ->
@@ -173,7 +177,7 @@ let bdd_tables_create rules =
    Hashtbl.iter find_matchgroups entry_nodes;
    let add_leaf_nodes () = Hashtbl.iter (fun u n -> match n with
       | Leaf actions ->
-            Hashtbl.add fwd_table u (ActionGroup actions)
+            Hashtbl.add actions_table u (ActionGroup actions)
       | _ -> ())
       bdd.tbl
    in
