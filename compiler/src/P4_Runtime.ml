@@ -32,37 +32,38 @@ let get_field_from_preds preds = match preds with
    | ((Eq(f, _)) | (Lt(f, _)) | (Gt(f, _)))::_ -> f
          | _ -> raise (Failure "Unexpected pred format")
 
-let is_exact_match pred = match pred with
-   | Eq _ -> true
-   | Lt _ | Gt _ -> false
-   | _ -> raise (Failure "Unexpected predicate format")
+let rec get_eq pl = match pl with
+   | ((Eq _) as p)::pl2 -> Some p
+   | _::pl2 -> get_eq pl2
+   | [] -> None
 
-let mk_single_match pred = match pred with
-   | Eq(f, (NumberLit i | IpAddr i)) -> ExactIntMatch(f, i)
-   | Eq(f, StringLit s) -> ExactStrMatch(f, s)
-   | Lt(f, NumberLit i) -> LtMatch(f, i)
-   | Gt(f, NumberLit i) -> GtMatch(f, i)
-   (* TODO: generate rules for function calls *)
-   | Eq(f, Call _) -> ExactIntMatch(f, 0)
-   | Lt(f, Call _) -> LtMatch(f, 0)
-   | Gt(f, Call _) -> GtMatch(f, 0)
-   | _ -> raise (Failure ("Unexpected pred format: " ^ (var_to_string pred)))
+let make_range_match preds = match preds with
+   | (Lt(f, (NumberLit i | IpAddr i)))::[] -> LtMatch(f, i)
+   | (Gt(f, (NumberLit i | IpAddr i)))::[] -> GtMatch(f, i)
+   | _ ->
+         let field = get_field_from_preds preds in
+         let low, high = get_min_max preds in
+         print_endline (Printf.sprintf "high: %d, low: %d" high low);
+         RangeMatch(field, low+1, high-1)
 
-let mk_range_match preds =
-   let field = get_field_from_preds preds in
-   let high, low = get_min_max preds in
-   RangeMatch(field, low+1, high-1)
+let make_match preds = match get_eq preds with
+   | Some (Eq(f, StringLit s)) -> Some (ExactStrMatch(f, s))
+   | Some (Eq(f, (NumberLit i | IpAddr i))) -> Some (ExactIntMatch(f, i))
+   | Some _ -> raise (Failure "Unsupported equality type")
+   | None when preds = [] -> None
+   | None -> Some (make_range_match preds)
 
 let preds_to_rule t preds meta_in meta_out =
    let meta_in = ExactIntMatch(Field(Some "meta", "state"), meta_in) in
-   match preds with
-      | p::[] when is_exact_match p ->
-            MatchAction(t ^ "_exact", [meta_in; mk_single_match p], "set_next_state", [meta_out])
-      | p::[] ->
-            MatchAction(t ^ "_range", [meta_in; mk_single_match p], "set_next_state", [meta_out])
-      | _::_ ->
-            MatchAction(t ^ "_range", [meta_in; mk_range_match preds], "set_next_state", [meta_out])
-      | [] ->
+   match make_match preds with
+      | Some ((ExactIntMatch _) as m)
+      | Some ((ExactStrMatch _) as m) ->
+            MatchAction(t ^ "_exact", [meta_in; m], "set_next_state", [meta_out])
+      | Some ((RangeMatch _) as m)
+      | Some ((LtMatch _) as m)
+      | Some ((GtMatch _) as m) ->
+            MatchAction(t ^ "_range", [meta_in; m], "set_next_state", [meta_out])
+      | None ->
             MatchAction(t ^ "_miss", [meta_in], "set_next_state", [meta_out])
 
 let fwd_action_to_rule last_mgid meta_in eg_ports =
@@ -77,13 +78,23 @@ let fwd_action_to_rule last_mgid meta_in eg_ports =
       | [] ->
             (MatchAction("tbl_actions", [meta_in], "_drop", []), None)
 
+
+let binary_of_str s =
+   let rec add i =
+      if i < 0 then 0
+      else
+      ((Char.code (s.[i])) lsl (i*8)) lor (add (i-1))
+   in
+   add ((String.length s) - 1)
+
 let matches_to_str ml =
    String.concat " " (List.map (fun m -> match m with
    | ExactIntMatch(_, i) -> string_of_int i
-   | ExactStrMatch(_, s) -> s
+   | ExactStrMatch(_, s) -> Printf.sprintf "%d" (binary_of_str s)
    | RangeMatch(_, a, b) -> Printf.sprintf "%d->%d" a b
-   | LtMatch(_, i) -> Printf.sprintf "<%d" i
-   | GtMatch(_, i) -> Printf.sprintf ">%d" i
+   | LtMatch(_, i) -> Printf.sprintf "0->%d" i
+   (* TODO: find the max value for this field *)
+   | GtMatch(_, i) -> Printf.sprintf "%d->0xffff" i
    ) ml)
 
 let args_to_str args =
