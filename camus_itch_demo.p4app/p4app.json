@@ -1,0 +1,44 @@
+{
+  "program": "p4src/generated_router.p4",
+  "language": "p4-14",
+  "targets": {
+    "multiswitch": {
+      "model": "tofino",
+      "bmv2_log": false,
+      "pcap_dump": false,
+      "auto-control-plane": true,
+      "cli": false,
+      "links": [["h1", "s1"], ["h2", "s1"], ["h3", "s1"], ["h9", "s1"]],
+      "hosts": {
+        "h1": {
+            "cmd": "./receiver -a as -p 1234 x 1 x",
+            "startup_sleep": 0.2,
+            "wait": false
+        },
+        "h2": {
+            "cmd": "./receiver -a as -p 1234 x 1 x",
+            "startup_sleep": 0.2,
+            "wait": false
+        },
+        "h3": {
+            "cmd": "./receiver -a as -p 1234 x 1 x",
+            "startup_sleep": 0.2,
+            "wait": false
+        },
+        "h9": {
+            "cmd": "./replay -a ta -r 5 -h 255.255.255.255 -p 1234 ./add_order.itch",
+            "wait": true
+        }
+      },
+      "switches": {
+        "s1": {
+          "commands": [
+            "commands.txt",
+            "generated_commands.txt"
+          ],
+          "mcast_groups": "generated_mcast_groups.txt"
+        }
+      }
+    }
+  }
+}
