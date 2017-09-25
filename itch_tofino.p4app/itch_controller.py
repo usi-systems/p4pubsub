@@ -136,7 +136,7 @@ class CustomAppController(AppController):
         results = self.sendCommands(commands)
 
         handle = results[-1]['handle']
-        commands = ['mc_associate_node %d %d 1' % (mgid, results[-1]['handle'])]
+        commands = ['mc_associate_node %d %d 0 0' % (mgid, results[-1]['handle'])]
         #commands = ['mc_node_associate %d %d' % (mgid, results[-1]['handle'])]  # XXX BMV2
         self.sendCommands(commands)
 
