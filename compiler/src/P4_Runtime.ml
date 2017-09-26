@@ -43,7 +43,6 @@ let make_range_match preds = match preds with
    | _ ->
          let field = get_field_from_preds preds in
          let low, high = get_min_max preds in
-         print_endline (Printf.sprintf "high: %d, low: %d" high low);
          RangeMatch(field, low+1, high-1)
 
 let make_match preds = match get_eq preds with
