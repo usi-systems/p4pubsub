@@ -174,11 +174,11 @@ def generate_queries(count=1):
     str_val_dist = Zipf(values=stock_symbols)
 
     price_op_dist = Distribution({
-        'x': 1, # x means don't use this field at all
-        '=': 1,
-        '<': 1,
-        '>': 1,
-        '<>': 1
+        'x': 10, # x means don't use this field at all
+        '=': 2,
+        '<': 5,
+        '>': 10,
+        '<>': 5
         })
     shares_op_dist = price_op_dist
     str_op_dist = Distribution({
