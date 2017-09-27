@@ -1,0 +1,46 @@
+Date: 27th September 2017
+Attendees: Theo, Antonio, Nate, Robert
+
+SUMMARY:
+
+We brainstormed: how to specify a schema to the compiler (either separately or
+in the form of P4 annotations); and how to match aggregate operators in the
+pipeline. Nate will meet with Jane Street, so we discussed what we would like
+to show them, as well as what we'd like to learn from them.
+
+NEXT STEPS:
+
+- Nate will work on separating the generic P4 code from the P4V codebase, and
+  on Friday will work with Theo to integrate this into our compiler.
+
+- Prepare slides for Nate's Jane Street meeting. We can re-use some existing
+  slides, and add a slide with questions we have for them.
+
+Some reactions:
+
+- We could add annotations to the P4 header, which would serve as a schema.
+  This way, we wouldn't have to invent a schema language, and have the user
+  provide yet another file to the compiler. By annotating the headers in P4, it
+  would be easier to maintain the code, because the header definitions and
+  schema would be in the same place.
+
+- Nate will work on separating the P4V code from the generic P4 code, so that
+  we can use it in our compiler for parsing annotations (and generating code).
+
+- Antonio thinks that the schema should be separate from the P4 code with the
+  header and parser. This would mean that the user wouldn't have to see the P4
+  code when writing the schema. However, the user has to write the header and
+  parser in P4 anyway.
+
+- As a first step, we will not support comparing two expressions, e.g.
+  add_order.price > AVG(add_order.price) has expressions on both sides.
+  We will start off with a constant on one side, e.g. AVG(add_order.price) > 10
+
+- Nate has a meeting with Jane Street, so we should help prepare slides for it.
+    - the last slide should have a bunch of questions to open discussion
+        - What could we add to the language to make it useful?
+        - What are the typical queries?
+        - What % of ITCH messages are batched?
+
+- Robert learned from Rolf that messages are batched because it lowers load for
+  end-hosts. However, in practice, most messages are not batched.
