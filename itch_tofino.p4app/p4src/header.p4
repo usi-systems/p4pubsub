@@ -39,7 +39,7 @@ header_type udp_t {
 header_type moldudp_hdr_t {
     fields {
         session: 80;
-        seq: 32;
+        seq: 64;
         msg_cnt: 16;
     }
 }

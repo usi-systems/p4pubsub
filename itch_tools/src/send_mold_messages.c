@@ -3,17 +3,12 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
 #include <arpa/inet.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <libgen.h>
 #include <time.h>
-#include <sys/time.h>
 
 #include "libtrading/proto/nasdaq_itch50_message.h"
 #include "libtrading/proto/omx_moldudp_message.h"
@@ -108,8 +103,8 @@ int main(int argc, char *argv[]) {
     uint64_t timestamp;
     char *extra_options = 0;
     int do_print_ao = 0;
-    struct omx_moldudp_header *h;
-    struct omx_moldudp_message *mm;
+    struct omx_moldudp64_header *h;
+    struct omx_moldudp64_message *mm;
     struct itch50_message *m;
     struct itch50_msg_add_order *ao;
 
@@ -189,7 +184,7 @@ int main(int argc, char *argv[]) {
     remoteaddr.sin_port = htons(port);
 
     while (1) {
-        pkt_offset = sizeof(struct omx_moldudp_header);
+        pkt_offset = sizeof(struct omx_moldudp64_header);
 
         if (!fread(buf, pkt_offset, 1, fh)) {
             if (feof(fh))
@@ -198,14 +193,14 @@ int main(int argc, char *argv[]) {
                 error("fread()");
         }
 
-        h = (struct omx_moldudp_header *)buf;
+        h = (struct omx_moldudp64_header *)buf;
         msg_count = ntohs(h->MessageCount);
 
         for (msg_num = 0; msg_num < msg_count; msg_num++) {
             if (!fread(buf+pkt_offset, 2, 1, fh))
                 error("fread()");
 
-            mm = (struct omx_moldudp_message *) (buf + pkt_offset);
+            mm = (struct omx_moldudp64_message *) (buf + pkt_offset);
             msg_len = ntohs(mm->MessageLength);
 
             if (!fread(buf+pkt_offset+2, msg_len, 1, fh))

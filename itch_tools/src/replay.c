@@ -245,7 +245,7 @@ int main(int argc, char *argv[]) {
 
     int skip = 0;
     int pos = 0;
-    int seq = 0;
+    uint64_t seq = 0;
     while (pos < size) {
         const short len = ntohs(*(const short *)(data + pos));
         const char *payload = data + pos + 2;
@@ -281,21 +281,21 @@ int main(int argc, char *argv[]) {
 
             if (sockfd > -1) {
 
-                struct omx_moldudp_header *h = (struct omx_moldudp_header *)buf;
-                struct omx_moldudp_message *mm = (struct omx_moldudp_message *) (buf + sizeof(struct omx_moldudp_header));
+                struct omx_moldudp64_header *h = (struct omx_moldudp64_header *)buf;
+                struct omx_moldudp64_message *mm = (struct omx_moldudp64_message *) (buf + sizeof(struct omx_moldudp64_header));
                 h->Session[7] = 0;
-                h->SequenceNumber = seq;
-                h->MessageCount = 1;
-                mm->MessageLength = len;
-                memcpy(buf + sizeof(struct omx_moldudp_header) + sizeof(struct omx_moldudp_message), payload, len);
+                h->SequenceNumber = htonll(seq);
+                h->MessageCount = htons(1);
+                mm->MessageLength = htons(len);
+                memcpy(buf + sizeof(struct omx_moldudp64_header) + sizeof(struct omx_moldudp64_message), payload, len);
                 if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
-                    struct itch50_msg_add_order *ao = (struct itch50_msg_add_order *)(buf + sizeof(struct omx_moldudp_header) + sizeof(struct omx_moldudp_message));
+                    struct itch50_msg_add_order *ao = (struct itch50_msg_add_order *)(buf + sizeof(struct omx_moldudp64_header) + sizeof(struct omx_moldudp64_message));
                     timestamp = htonll(ns_since_midnight());
                     memcpy(ao->Timestamp, (void*)&timestamp + 2, 6);
                 }
 
 
-                size_t pkt_size = sizeof(struct omx_moldudp_header) + sizeof(struct omx_moldudp_message) + len;
+                size_t pkt_size = sizeof(struct omx_moldudp64_header) + sizeof(struct omx_moldudp64_message) + len;
                 if (sendto(sockfd, buf, pkt_size, 0,
                             (struct sockaddr *)&remoteaddr, sizeof(remoteaddr)) < 0)
                     error("sendto()");

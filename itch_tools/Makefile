@@ -1,9 +1,6 @@
 
 
-all: sender receiver replay parse_log generate_mold_messages send_mold_messages
-
-sender: src/sender.c
-	gcc -Ithird-party/libtrading/include -o $@ $<
+all: receiver replay parse_log generate_mold_messages send_mold_messages
 
 replay: src/replay.c
 	gcc -O2 -Ithird-party/libtrading/include -o $@ $<
@@ -21,4 +18,4 @@ parse_log: src/parse_log.c
 	gcc -o $@ $<
 
 clean:
-	rm -f sender receiver replay parse_log
+	rm -f sender receiver replay parse_log generate_mold_messages send_mold_messages

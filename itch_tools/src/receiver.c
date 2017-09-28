@@ -110,8 +110,8 @@ int main(int argc, char *argv[]) {
     int msg_len;
     int pkt_offset;
     unsigned long long timestamp;
-    struct omx_moldudp_header *h;
-    struct omx_moldudp_message *mm;
+    struct omx_moldudp64_header *h;
+    struct omx_moldudp64_message *mm;
     struct itch50_message *m;
     struct itch50_msg_add_order *ao;
 
@@ -218,13 +218,13 @@ int main(int argc, char *argv[]) {
             error("recvfrom()");
         recv_cnt++;
 
-        h = (struct omx_moldudp_header *)buf;
-        pkt_offset = sizeof(struct omx_moldudp_header);
+        h = (struct omx_moldudp64_header *)buf;
+        pkt_offset = sizeof(struct omx_moldudp64_header);
 
         msg_count = ntohs(h->MessageCount);
 
         for (msg_num = 0; msg_num < msg_count; msg_num++) {
-            mm = (struct omx_moldudp_message *) (buf + pkt_offset);
+            mm = (struct omx_moldudp64_message *) (buf + pkt_offset);
             msg_len = ntohs(mm->MessageLength);
             m = (struct itch50_message *) (buf + pkt_offset + 2);
 
@@ -237,7 +237,7 @@ int main(int argc, char *argv[]) {
                 if (do_print_ao)
                     print_add_order(ao);
                 if (fd_log) {
-                    timestamp = us_since_midnight();
+                    timestamp = ns_since_midnight();
                     write(fd_log, ao->Timestamp, 6);
                     write(fd_log, &timestamp, 6);
                     write(fd_log, ao->Stock, 8);

@@ -3,17 +3,9 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <arpa/inet.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <netdb.h>
 #include <libgen.h>
-#include <time.h>
-#include <sys/time.h>
 
 #include "libtrading/proto/nasdaq_itch50_message.h"
 #include "libtrading/proto/omx_moldudp_message.h"
@@ -48,11 +40,11 @@ int random_int(int min, int max) {
 char *stocks[] = {"ABC     ", "XYZ     ", "1234    "};
 
 int make_ao_msg(void *out_buf, int shares, int price) {
-    struct omx_moldudp_message *mm;
+    struct omx_moldudp64_message *mm;
     struct itch50_msg_add_order *ao;
     uint16_t msg_len = sizeof(struct itch50_msg_add_order);
 
-    mm = (struct omx_moldudp_message *) out_buf;
+    mm = (struct omx_moldudp64_message *) out_buf;
     mm->MessageLength = htons(msg_len);
 
     ao = (struct itch50_msg_add_order *) ((void *)mm + 2);
@@ -93,7 +85,7 @@ int main(int argc, char *argv[]) {
     int pkt_count = 10;
     char *extra_options = 0;
     uint64_t tmp_seq_num;
-    struct omx_moldudp_header *h;
+    struct omx_moldudp64_header *h;
     struct itch50_message *m;
     int pkt_offset;
     int msg_count;
@@ -164,20 +156,17 @@ int main(int argc, char *argv[]) {
     }
 
 
-    int seq_num = 1;
+    uint64_t seq_num = 1;
 
     short stop = 0;
 
     while (!stop) {
         msg_count = random_int(min_msgs, max_msgs);
-        h = (struct omx_moldudp_header *)buf;
+        h = (struct omx_moldudp64_header *)buf;
         bzero(h->Session, 8);
-        // TODO: use this when we use MoldUDP*64*
-        //tmp_seq_num = htonll(seq_num);
-        //memcpy(h->SequenceNumber, &tmp_seq_num, 8);
-        h->SequenceNumber = htonl(seq_num);
+        h->SequenceNumber = htonll(seq_num);
 
-        pkt_offset = sizeof(struct omx_moldudp_header);
+        pkt_offset = sizeof(struct omx_moldudp64_header);
 
 
         for (msg_num = 0; msg_num < msg_count; msg_num++) {

@@ -4,6 +4,8 @@ import sys
 import struct
 import argparse
 
+mold_hdr_struct = struct.Struct("!10s Q H")
+
 add_order_struct = struct.Struct("!c H H 6s Q c L 8s L")
 uint64_struct = struct.Struct("!Q")
 uint16_struct = struct.Struct("!H")
@@ -15,7 +17,6 @@ def fmtStock(stock):
 # I assume that this host is little-endian
 def hton48(i):
     return uint64_struct.pack(i)[:6]
-
 
 def AddOrderMessage(
 	MessageType='A',
@@ -38,8 +39,27 @@ def AddOrderMessage(
 
     assert len(data) == 36
 
-    size_header = uint16_struct.pack(len(data))
-    return size_header + data
+    return data
+
+def MoldMessage(payload):
+    size_header = uint16_struct.pack(len(payload))
+    return size_header + payload
+
+def MoldPacket(
+        Session=0,
+        SequenceNumber=0,
+        MessageCount=None,
+        MessagePayloads=[]
+        ):
+
+    packed_session = uint64_struct.pack(Session) + "\0\0"
+    if MessageCount is None: MessageCount = len(MessagePayloads)
+    data = mold_hdr_struct.pack(packed_session, SequenceNumber, MessageCount)
+    for payload in MessagePayloads:
+        data += MoldMessage(payload)
+
+    return data
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate a dump of ITCH messages')
@@ -50,4 +70,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     with (sys.stdout if args.filename == '-' else open(args.filename, 'wb')) as fd:
-        fd.write(AddOrderMessage(**args.fields))
+        fd.write(MoldMessage(AddOrderMessage(**args.fields)))
