@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     int opt, n;
     int fd_out = 0;
     FILE *fh_in = 0;
-    unsigned min_msgs = 0;
+    unsigned min_msgs = 1;
     unsigned max_msgs = 0;
     char *out_filename = 0;
     char *in_filename = 0;

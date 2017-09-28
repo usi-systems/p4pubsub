@@ -38,6 +38,7 @@ OPTIONS is a string of chars, which can include:\n\
 \n\
     q - exit after subcribing to controller\n\
     a - print Add Order messages as TSV\n\
+    o - print other message types\n\
     s - don't send subscription request to controller\n\
 \n\
 ", progname);
@@ -104,6 +105,7 @@ int main(int argc, char *argv[]) {
     int dont_listen = 0;
     int dont_subscribe = 0;
     int do_print_ao = 0;
+    int do_print_msgs = 0;
     int rcvbuf = 0;
     int msg_num;
     short msg_count;
@@ -155,6 +157,8 @@ int main(int argc, char *argv[]) {
             dont_subscribe = 1;
         if (strchr(extra_options, 'a'))
             do_print_ao = 1;
+        if (strchr(extra_options, 'o'))
+            do_print_msgs = 1;
     }
 
     if (!controller_hostname || !controller_port) {
@@ -242,6 +246,10 @@ int main(int argc, char *argv[]) {
                     write(fd_log, &timestamp, 6);
                     write(fd_log, ao->Stock, 8);
                 }
+            }
+            else {
+                if (do_print_msgs)
+                    printf("MessageType: %c\n", m->MessageType);
             }
 
             pkt_offset += msg_len + 2;

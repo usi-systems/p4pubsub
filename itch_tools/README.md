@@ -71,7 +71,7 @@ Just get the latency for each packet:
 
     cat filtering_timeseries.tsv | q -t -T "SELECT c1 FROM - WHERE c2 < 100000 AND c3 LIKE 'ABC%'" > filtering_lats.tsv
 
-## Parsing ITCH dumps
+## Parsing ITCH BinaryFILE dumps
 Print the number of messages by type:
 
     ./replay -a t ~/Downloads/08302017.NASDAQ_ITCH50
@@ -79,3 +79,8 @@ Print the number of messages by type:
 Find the most popular symbols:
 
     ./replay -a s ~/Downloads/08302017.NASDAQ_ITCH50 | awk ' { tot[$0]++ } END { for (i in tot) print tot[i],i } ' | sort -rh | awk '{print $2"\t"$1 }' > symbols.tsv
+
+# Extract a single message type
+Save the first message with MessageType `D`:
+
+    ./replay -t D -m 1 -o D.bin ~/Downloads/08302017.NASDAQ_ITCH50
