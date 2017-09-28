@@ -105,7 +105,15 @@ int main(int argc, char *argv[]) {
     int dont_subscribe = 0;
     int do_print_ao = 0;
     int rcvbuf = 0;
+    int msg_num;
+    short msg_count;
+    int msg_len;
+    int pkt_offset;
     unsigned long long timestamp;
+    struct omx_moldudp_header *h;
+    struct omx_moldudp_message *mm;
+    struct itch50_message *m;
+    struct itch50_msg_add_order *ao;
 
     progname = basename(argv[0]);
 
@@ -210,29 +218,35 @@ int main(int argc, char *argv[]) {
             error("recvfrom()");
         recv_cnt++;
 
-        struct omx_moldudp_header *h = (struct omx_moldudp_header *)buf;
-        struct omx_moldudp_message *mm = (struct omx_moldudp_message *) (buf + sizeof(struct omx_moldudp_header));
+        h = (struct omx_moldudp_header *)buf;
+        pkt_offset = sizeof(struct omx_moldudp_header);
 
-        struct itch50_message *m = (struct itch50_message *)(buf + sizeof(struct omx_moldudp_header) + sizeof(struct omx_moldudp_message));
+        msg_count = ntohs(h->MessageCount);
 
-        int expected_size = itch50_message_size(m->MessageType);
-        if (expected_size != mm->MessageLength)
-            fprintf(stderr, "MessageType %c should have size %d, found %d\n", m->MessageType, expected_size, mm->MessageLength);
+        for (msg_num = 0; msg_num < msg_count; msg_num++) {
+            mm = (struct omx_moldudp_message *) (buf + pkt_offset);
+            msg_len = ntohs(mm->MessageLength);
+            m = (struct itch50_message *) (buf + pkt_offset + 2);
 
-        if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
-            struct itch50_msg_add_order *ao = (struct itch50_msg_add_order *)m;
-            if (do_print_ao)
-                print_add_order(ao);
-            if (fd_log) {
-                timestamp = us_since_midnight();
-                write(fd_log, ao->Timestamp, 6);
-                write(fd_log, &timestamp, 6);
-                write(fd_log, ao->Stock, 8);
+            int expected_size = itch50_message_size(m->MessageType);
+            if (expected_size != msg_len)
+                fprintf(stderr, "MessageType %c should have size %d, found %d\n", m->MessageType, expected_size, msg_len);
+
+            if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
+                ao = (struct itch50_msg_add_order *)m;
+                if (do_print_ao)
+                    print_add_order(ao);
+                if (fd_log) {
+                    timestamp = us_since_midnight();
+                    write(fd_log, ao->Timestamp, 6);
+                    write(fd_log, &timestamp, 6);
+                    write(fd_log, ao->Stock, 8);
+                }
             }
+
+            pkt_offset += msg_len + 2;
         }
 
-        //printf("Session: %d\nType: %c\n", h->Session[7], m->MessageType);
-        //fflush(stdout);
 
     }
 

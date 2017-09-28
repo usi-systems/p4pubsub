@@ -290,8 +290,8 @@ int main(int argc, char *argv[]) {
                 memcpy(buf + sizeof(struct omx_moldudp_header) + sizeof(struct omx_moldudp_message), payload, len);
                 if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
                     struct itch50_msg_add_order *ao = (struct itch50_msg_add_order *)(buf + sizeof(struct omx_moldudp_header) + sizeof(struct omx_moldudp_message));
-                    timestamp = us_since_midnight();
-                    memcpy(ao->Timestamp, &timestamp, 6);
+                    timestamp = htonll(ns_since_midnight());
+                    memcpy(ao->Timestamp, (void*)&timestamp + 2, 6);
                 }
 
 
