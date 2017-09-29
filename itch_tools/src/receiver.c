@@ -24,6 +24,7 @@ char *progname;
 
 int verbosity = 0;
 
+int sockfd;
 int fd_log = -1;
 int recv_cnt = 0;
 
@@ -34,7 +35,7 @@ void error(char *msg) {
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-v VERBOSITY] [-a OPTIONS] [-b SO_RCVBUF] [-t LOG_FILENAME] [-c CONTROLLER_HOST:PORT] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
+            "Usage: %s [-v VERBOSITY] [-a OPTIONS] [-b SO_RCVBUF] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST:PORT] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
 \n\
@@ -49,8 +50,9 @@ OPTIONS is a string of chars, which can include:\n\
 void catch_int(int signo) {
     if (fd_log) {
         close(fd_log);
+        close(sockfd);
     }
-    fprintf(stderr, "Received %d messages\n", recv_cnt);
+    fprintf(stderr, "\nReceived %d messages\n", recv_cnt);
     exit(0);
 }
 
@@ -100,6 +102,9 @@ int main(int argc, char *argv[]) {
     char *controller_host_port = 0;
     char *listen_host_port = 0;
     char controller_hostname[256];
+    char forward_hostname[256];
+    int forward_port;
+    char *forward_host_port = 0;
     int controller_port = 0;
     strcpy(listen_hostname, "127.0.0.1");
     int port;
@@ -119,13 +124,17 @@ int main(int argc, char *argv[]) {
     struct omx_moldudp64_message *mm;
     struct itch50_message *m;
     struct itch50_msg_add_order *ao;
+    struct sockaddr_in forward_addr;
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "hv:a:b:t:s:c:")) != -1) {
+    while ((opt = getopt(argc, argv, "hv:a:b:t:f:s:c:")) != -1) {
         switch (opt) {
             case 'a':
                 extra_options = optarg;
+                break;
+            case 'f':
+                forward_host_port = optarg;
                 break;
             case 'v':
                 verbosity = atoi(optarg);
@@ -188,11 +197,37 @@ int main(int argc, char *argv[]) {
             error("open() log_filename");
     }
 
+
+    if (forward_host_port) {
+        parse_host_port(forward_host_port, 0, forward_hostname, &host_ok, &forward_port, &port_ok);
+        if (!host_ok)
+            strcpy(forward_hostname, "127.0.0.1");
+        if (!port_ok)
+            forward_port = 1234;
+
+        struct hostent *server = gethostbyname(forward_hostname);
+        if (server == NULL) {
+            fprintf(stderr, "bad forward hostname: %s\n", forward_hostname);
+            exit(0);
+        }
+
+        bzero((char *) &forward_addr, sizeof(forward_addr));
+        forward_addr.sin_family = AF_INET;
+        bcopy((char *)server->h_addr,
+                (char *)&forward_addr.sin_addr.s_addr, server->h_length);
+        forward_addr.sin_port = htons(forward_port);
+
+        if (verbosity > 0)
+            fprintf(stderr, "Forwarding to %s:%d\n", forward_hostname, forward_port);
+    }
+
+
+
     signal(SIGINT, catch_int);
 
 
 
-    int sockfd, i, n;
+    int i, bytes_received;
     struct sockaddr_in localaddr;
     struct sockaddr_in remoteaddr;
     char buf[BUFSIZE];
@@ -236,9 +271,9 @@ int main(int argc, char *argv[]) {
     int remoteaddr_len = sizeof(remoteaddr);
 
     while (1) {
-        n = recvfrom(sockfd, buf, BUFSIZE, 0,
+        bytes_received = recvfrom(sockfd, buf, BUFSIZE, 0,
                 (struct sockaddr *)&remoteaddr, &remoteaddr_len);
-        if (n < 0)
+        if (bytes_received < 0)
             error("recvfrom()");
         recv_cnt++;
 
@@ -273,6 +308,12 @@ int main(int argc, char *argv[]) {
             }
 
             pkt_offset += msg_len + 2;
+        }
+
+        if (forward_host_port) {
+            if (sendto(sockfd, buf, bytes_received, 0,
+                        (struct sockaddr *)&forward_addr, sizeof(forward_addr)) < 0)
+                error("sendto()");
         }
 
 
