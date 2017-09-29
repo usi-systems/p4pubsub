@@ -18,9 +18,11 @@
 
 #define BUFSIZE 2048
 
-char *my_hostname;
+char listen_hostname[256];
 
 char *progname;
+
+int verbosity = 0;
 
 int fd_log = -1;
 int recv_cnt = 0;
@@ -32,14 +34,13 @@ void error(char *msg) {
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-a OPTIONS] [-b SO_RCVBUF] [-t LOG_FILENAME] [-l LISTEN_HOST -p LISTEN_PORT] CONTROLLER_HOST CONTROLLER_PORT STOCKS\n\
+            "Usage: %s [-v VERBOSITY] [-a OPTIONS] [-b SO_RCVBUF] [-t LOG_FILENAME] [-c CONTROLLER_HOST:PORT] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
 \n\
     q - exit after subcribing to controller\n\
     a - print Add Order messages as TSV\n\
     o - print other message types\n\
-    s - don't send subscription request to controller\n\
 \n\
 ", progname);
     exit(rc);
@@ -84,11 +85,11 @@ void send_to_controller(char *hostname, int port, char *msg, size_t len) {
 
 void subscribe_to_stocks(char *controller_hostname, int port, char *stocks) {
     char msg[2048];
-    if (!my_hostname) {
+    if (!listen_hostname) {
         fprintf(stderr, "Cannot send subcription request without my hostname (-h)\n");
         usage(-1);
     }
-    int len = sprintf(msg, "sub\t%s\t%s\n", my_hostname, stocks);
+    int len = sprintf(msg, "sub\t%s\t%s\n", listen_hostname, stocks);
     send_to_controller(controller_hostname, port, msg, len);
 }
 
@@ -96,14 +97,16 @@ void subscribe_to_stocks(char *controller_hostname, int port, char *stocks) {
 int main(int argc, char *argv[]) {
     int opt;
     char *stocks_with_commas = 0;
-    char *controller_hostname = 0;
+    char *controller_host_port = 0;
+    char *listen_host_port = 0;
+    char controller_hostname[256];
+    int controller_port = 0;
+    strcpy(listen_hostname, "127.0.0.1");
+    int port;
+    short host_ok, port_ok;
     char *log_filename = 0;
     char *extra_options = 0;
-    int controller_port = 0;
-    my_hostname = "127.0.0.1";
-    int port = 1234;
     int dont_listen = 0;
-    int dont_subscribe = 0;
     int do_print_ao = 0;
     int do_print_msgs = 0;
     int rcvbuf = 0;
@@ -119,10 +122,13 @@ int main(int argc, char *argv[]) {
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "ha:b:t:l:p:")) != -1) {
+    while ((opt = getopt(argc, argv, "hv:a:b:t:s:c:")) != -1) {
         switch (opt) {
             case 'a':
                 extra_options = optarg;
+                break;
+            case 'v':
+                verbosity = atoi(optarg);
                 break;
             case 'b':
                 rcvbuf = atoi(optarg);
@@ -130,11 +136,14 @@ int main(int argc, char *argv[]) {
             case 't':
                 log_filename = optarg;
                 break;
-            case 'p':
-                port = atoi(optarg);
+            case 'c':
+                controller_host_port = optarg;
+                break;
+            case 's':
+                stocks_with_commas = optarg;
                 break;
             case 'l':
-                my_hostname = optarg;
+                listen_host_port = optarg;
                 break;
             case 'h':
                 usage(0);
@@ -143,32 +152,34 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (argc - optind != 3)
+    if (argc - optind > 1)
         usage(-1);
+    else if (argc - optind == 1)
+        listen_host_port = argv[optind];
 
-    controller_hostname = argv[optind];
-    controller_port = atoi(argv[optind+1]);
-    stocks_with_commas = argv[optind+2];
+    if (listen_host_port) {
+        int parsed_port;
+        parse_host_port(listen_host_port, 1, listen_hostname, &host_ok, &port, &port_ok);
+        if (!port_ok)
+            port = 1234;
+    }
+
 
     if (extra_options) {
         if (strchr(extra_options, 'q'))
             dont_listen = 1;
-        if (strchr(extra_options, 's'))
-            dont_subscribe = 1;
         if (strchr(extra_options, 'a'))
             do_print_ao = 1;
         if (strchr(extra_options, 'o'))
             do_print_msgs = 1;
     }
 
-    if (!controller_hostname || !controller_port) {
-        fprintf(stderr, "Invalid controller hostname or port\n");
-        usage(-1);
-    }
-
-    if (!stocks_with_commas) {
-        fprintf(stderr, "Invalid stocks\n");
-        usage(-1);
+    if (controller_host_port) {
+        parse_host_port(listen_host_port, 0, controller_hostname, &host_ok, &controller_port, &port_ok);
+        if (!host_ok)
+            strcpy(controller_hostname, "127.0.0.1");
+        if (!port_ok)
+            controller_port = 9090;
     }
 
     if (log_filename) {
@@ -186,8 +197,14 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in remoteaddr;
     char buf[BUFSIZE];
 
-    if (!dont_subscribe)
+    if (controller_host_port) {
+        if (!stocks_with_commas) {
+            fprintf(stderr, "Invalid stocks\n");
+            usage(-1);
+        }
+
         subscribe_to_stocks(controller_hostname, controller_port, stocks_with_commas);
+    }
 
     if (dont_listen)
         exit(0);
@@ -207,6 +224,9 @@ int main(int argc, char *argv[]) {
 
     if (bind(sockfd, (struct sockaddr *)&localaddr, sizeof(localaddr)) < 0)
         error("bind()");
+
+    if (verbosity > 0)
+        fprintf(stderr, "Listenning on port %d\n", port);
 
     if (rcvbuf > 0) {
         if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
