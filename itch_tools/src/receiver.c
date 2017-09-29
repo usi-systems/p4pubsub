@@ -24,8 +24,8 @@ char *progname;
 
 int verbosity = 0;
 
-int sockfd;
-int fd_log = -1;
+int sockfd = 0;
+FILE *fh_log = 0;
 int recv_cnt = 0;
 
 void error(char *msg) {
@@ -48,11 +48,14 @@ OPTIONS is a string of chars, which can include:\n\
 }
 
 void catch_int(int signo) {
-    if (fd_log) {
-        close(fd_log);
+    if (fh_log)
+        fclose(fh_log);
+
+    if (sockfd)
         close(sockfd);
-    }
+
     fprintf(stderr, "\nReceived %d messages\n", recv_cnt);
+
     exit(0);
 }
 
@@ -192,8 +195,8 @@ int main(int argc, char *argv[]) {
     }
 
     if (log_filename) {
-        fd_log = open(log_filename, O_WRONLY | O_CREAT | O_TRUNC, 0664);
-        if (fd_log < 0)
+        fh_log = fopen(log_filename, "wb");
+        if (!fh_log)
             error("open() log_filename");
     }
 
@@ -295,11 +298,11 @@ int main(int argc, char *argv[]) {
                 ao = (struct itch50_msg_add_order *)m;
                 if (do_print_ao)
                     print_add_order(ao);
-                if (fd_log) {
+                if (fh_log) {
                     timestamp = ns_since_midnight();
-                    write(fd_log, ao->Timestamp, 6);
-                    write(fd_log, &timestamp, 6);
-                    write(fd_log, ao->Stock, 8);
+                    fwrite(ao->Timestamp, 6, 1, fh_log);
+                    fwrite(&timestamp, 6, 1, fh_log);
+                    fwrite(ao->Stock, 8, 1, fh_log);
                 }
             }
             else {

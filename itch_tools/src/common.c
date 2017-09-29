@@ -1,4 +1,8 @@
 #include <sys/time.h>
+#include <inttypes.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include "libtrading/proto/nasdaq_itch50_message.h"
 
 unsigned long long ns_since_midnight() {
     struct timeval tv;
@@ -48,3 +52,9 @@ void parse_host_port(char *s, int is_port_default, char *parsed_host, short *hos
         *port_ok = 0; *host_ok = 0;
 }
 
+
+struct __attribute__((__packed__)) log_record {
+    char sent_ns_since_midnight[6];         // Big-endian (network)
+    char received_ns_since_midnight[6];     // Big-endian (network)
+    char stock[8];
+};

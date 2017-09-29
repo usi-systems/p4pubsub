@@ -5,6 +5,7 @@
 #include <libgen.h>
 #include <assert.h>
 
+#include "common.c"
 
 char *my_hostname;
 
@@ -46,23 +47,21 @@ int main(int argc, char *argv[]) {
     if (fd_log < 0)
         error("open() log_filename");
 
-    unsigned long long sent;
-    unsigned long long received;
-    char stock[9];
-    stock[8] = '\0';
+    unsigned long long sent = 0;
+    unsigned long long received = 0;
 
     unsigned long long delta;
 
+    struct log_record rec;
+
     while (1) {
-        n = read(fd_log, &sent, 6);
+        n = read(fd_log, &rec, sizeof(rec));
         if (n == 0) break;
-        n = read(fd_log, &received, 6);
-        assert(n > 0);
-        n = read(fd_log, stock, 8);
-        assert(n > 0);
+        sent = ntoh48(*rec.sent_ns_since_midnight);
+        memcpy(&received, rec.received_ns_since_midnight, 6);
 
         delta = received - sent;
-        printf("%lld\t%lld\t%s\n", sent, delta, stock);
+        printf("%lld\t%lld\t%s\n", sent, delta, rec.stock);
     }
 
     close(fd_log);
