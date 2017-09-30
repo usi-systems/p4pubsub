@@ -12,6 +12,16 @@ class DummyDist:
     def pick_element(self):
         return self.val
 
+class OrderedDist:
+    """ Deterministic distribution: elements are returned in order """
+    def __init__(self, vals):
+        self.vals = vals
+        self.idx = -1
+
+    def pick_element(self):
+        self.idx = (self.idx + 1) % len(self.vals)
+        return self.vals[self.idx]
+
 def generate_message(fields=dict(), stock_dist=None):
     fields = dict(fields) # don't overwrite original fields dict
     if stock_dist is not None:
@@ -37,11 +47,11 @@ if __name__ == '__main__':
     parser.add_argument('--max-msgs', '-M', help='Maximum number of ITCH messages per packet',
             type=int, default=None)
     parser.add_argument('--msg-dist', '-D', help='Distribution of messages per packet',
-            type=str, choices=['uniform', 'zipf'], default='uniform')
+            type=str, choices=['uniform', 'zipf', 'ordered'], default='ordered')
     parser.add_argument('--stocks', '-s', help='Stock symbols to put in messages',
             type=lambda s: map(fmtStock, s.split(',')), default=None)
     parser.add_argument('--stock-dist', '-S', help='Distribution of stock symbols',
-            type=str, choices=['uniform', 'zipf'], default='uniform')
+            type=str, choices=['uniform', 'zipf', 'ordered'], default='ordered')
     args = parser.parse_args()
 
 
@@ -52,6 +62,8 @@ if __name__ == '__main__':
         msg_cnt_dst = DummyDist(args.min_msgs)
     elif args.msg_dist == 'zipf':
         msg_cnt_dst = Zipf(values=range(args.min_msgs, args.max_msgs+1))
+    elif args.msg_dist == 'ordered':
+        msg_cnt_dst = OrderedDist(range(args.min_msgs, args.max_msgs+1))
     else:
         msg_cnt_dst = Uniform(args.min_msgs, args.max_msgs)
 
@@ -60,6 +72,8 @@ if __name__ == '__main__':
     if args.stocks:
         if args.stock_dist == 'zipf':
             stock_dist = Zipf(values=args.stocks)
+        elif args.stock_dist == 'ordered':
+            stock_dist = OrderedDist(args.stocks)
         else:
             stock_dist = Distribution(dict((s, 1) for s in args.stocks))
 
