@@ -107,6 +107,7 @@ int main(int argc, char *argv[]) {
     struct omx_moldudp64_message *mm;
     struct itch50_message *m;
     struct itch50_msg_add_order *ao;
+    int pkt_cnt = 0;
 
     progname = basename(argv[0]);
 
@@ -239,7 +240,11 @@ int main(int argc, char *argv[]) {
         if (verbosity > 1)
             printf("Sent %d bytes\n", pkt_offset);
 
+        pkt_cnt++;
     }
+
+    if (verbosity > 0)
+        fprintf(stderr, "Sent %d packets\n", pkt_cnt);
 
 
     close(sockfd);
