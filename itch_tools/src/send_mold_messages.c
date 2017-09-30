@@ -30,7 +30,7 @@ char buf[BUFSIZE];
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-    "Usage: %s [-a OPTIONS] [-v VERBOSITY] [-R MSG/S] [-r FILENAME] HOST PORT\n\
+    "Usage: %s [-a OPTIONS] [-v VERBOSITY] [-R MSG/S] [-r FILENAME]  HOST[:PORT]\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
     a - print Add Order messages as TSV\n\
@@ -132,16 +132,26 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (argc - optind != 2)
+    if (argc - optind != 1)
         usage(-1);
+
+    char *send_host_port = argv[optind];
 
     if (extra_options) {
         if (strchr(extra_options, 'a'))
             do_print_ao = 1;
     }
 
-    char *hostname = argv[optind];
-    int port = atoi(argv[optind+1]);
+    char hostname[256];
+    int port;
+    short host_ok, port_ok;
+    parse_host_port(send_host_port, 0, hostname, &host_ok, &port, &port_ok);
+    if (!host_ok) {
+        fprintf(stderr, "Failed to parse hostname: '%s'\n", send_host_port);
+        usage(-1);
+    }
+    if (!port_ok)
+        port = 1234;
 
     long double min_interval_secs =msgs_per_s > 0 ? 1 / msgs_per_s : 0;
     secs2ts(min_interval_secs, &rate_state.interval);
