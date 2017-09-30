@@ -4,6 +4,8 @@
 #include <arpa/inet.h>
 #include "libtrading/proto/nasdaq_itch50_message.h"
 
+#define STOCK_SIZE 8
+
 unsigned long long ns_since_midnight() {
     struct timeval tv;
     if (gettimeofday(&tv, NULL) != 0)
@@ -48,8 +50,9 @@ void parse_host_port(char *s, int is_port_default, char *parsed_host, short *hos
     else if (sscanf(s, "%[^:]:%d", parsed_host, parsed_port) == 2) {
         *port_ok = 1; *host_ok = 1;
     }
-    else
+    else {
         *port_ok = 0; *host_ok = 0;
+    }
 }
 
 

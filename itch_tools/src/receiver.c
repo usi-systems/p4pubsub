@@ -9,6 +9,7 @@
 #include <libgen.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <assert.h>
 
 #include "libtrading/proto/nasdaq_itch50_message.h"
 #include "libtrading/proto/omx_moldudp_message.h"
@@ -88,13 +89,67 @@ void send_to_controller(char *hostname, int port, char *msg, size_t len) {
     close(sockfd);
 }
 
-void subscribe_to_stocks(char *controller_hostname, int port, char *stocks) {
+int count_chars(char *s, char c) {
+    int i, count;
+    for (i=0, count=0; s[i]; i++) count += (s[i] == c);
+    return count;
+}
+
+
+struct {
+    int count;
+    char **stocks;
+} filtered_stocks;
+
+void parse_stocks_str(char *stocks_with_commas) {
+    int i, stock_len;
+
+    filtered_stocks.count = count_chars(stocks_with_commas, ',') + 1;
+
+    int ptrs_size = sizeof(char*) * filtered_stocks.count;
+    int strs_size = (STOCK_SIZE * filtered_stocks.count);
+
+    filtered_stocks.stocks = (char **) malloc(ptrs_size + strs_size);
+    char *strs = (char*)filtered_stocks.stocks + ptrs_size;
+    memset(strs, ' ', strs_size);
+
+    char *s = stocks_with_commas;
+    char *comma;
+    for (i = 0; i < filtered_stocks.count; i++) {
+        filtered_stocks.stocks[i] = strs + (i * STOCK_SIZE);
+
+        comma = strchr(s, ',');
+        stock_len = comma ? comma - s : strlen(s);
+        assert(stock_len <= 8);
+        memcpy(filtered_stocks.stocks[i], s, stock_len);
+
+        s = comma+1;
+    }
+}
+
+int matches_filter(struct itch50_msg_add_order *ao) {
+    if (filtered_stocks.count == 0) return 1;
+    for (int i = 0; i < filtered_stocks.count; i++)
+        if (memcmp(filtered_stocks.stocks[i], ao->Stock, STOCK_SIZE) == 0)
+            return 1;
+    return 0;
+}
+
+void print_filtered_stocks() {
+    int i;
+    printf("Filtering for stocks:\n");
+    for (i = 0; i < filtered_stocks.count; i++) {
+        printf("\t%.*s\n", 8, filtered_stocks.stocks[i]);
+    }
+}
+
+void subscribe_to_stocks(char *controller_hostname, int port, char *stocks_with_commas) {
     char msg[2048];
     if (!listen_hostname) {
         fprintf(stderr, "Cannot send subcription request without my hostname (-h)\n");
         usage(-1);
     }
-    int len = sprintf(msg, "sub\t%s\t%s\n", listen_hostname, stocks);
+    int len = sprintf(msg, "sub\t%s\t%s\n", listen_hostname, stocks_with_commas);
     send_to_controller(controller_hostname, port, msg, len);
 }
 
@@ -128,6 +183,8 @@ int main(int argc, char *argv[]) {
     struct itch50_message *m;
     struct itch50_msg_add_order *ao;
     struct sockaddr_in forward_addr;
+
+    filtered_stocks.count = 0;
 
     progname = basename(argv[0]);
 
@@ -230,7 +287,7 @@ int main(int argc, char *argv[]) {
 
 
 
-    int i, bytes_received;
+    int i, size;
     struct sockaddr_in localaddr;
     struct sockaddr_in remoteaddr;
     char buf[BUFSIZE];
@@ -243,6 +300,13 @@ int main(int argc, char *argv[]) {
 
         subscribe_to_stocks(controller_hostname, controller_port, stocks_with_commas);
     }
+
+    if (stocks_with_commas)
+        parse_stocks_str(stocks_with_commas);
+
+    if (verbosity > 0)
+        print_filtered_stocks();
+
 
     if (dont_listen)
         exit(0);
@@ -273,11 +337,16 @@ int main(int argc, char *argv[]) {
 
     int remoteaddr_len = sizeof(remoteaddr);
 
+    int matched_filter;
+
     while (1) {
-        bytes_received = recvfrom(sockfd, buf, BUFSIZE, 0,
+        matched_filter = 0;
+
+        size = recvfrom(sockfd, buf, BUFSIZE, 0,
                 (struct sockaddr *)&remoteaddr, &remoteaddr_len);
-        if (bytes_received < 0)
+        if (size < 0)
             error("recvfrom()");
+
         recv_cnt++;
 
         h = (struct omx_moldudp64_header *)buf;
@@ -296,13 +365,16 @@ int main(int argc, char *argv[]) {
 
             if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
                 ao = (struct itch50_msg_add_order *)m;
-                if (do_print_ao)
-                    print_add_order(ao);
-                if (fh_log) {
-                    timestamp = ns_since_midnight();
-                    fwrite(ao->Timestamp, 6, 1, fh_log);
-                    fwrite(&timestamp, 6, 1, fh_log);
-                    fwrite(ao->Stock, 8, 1, fh_log);
+                if (matches_filter(ao)) {
+                    matched_filter = 1;
+                    if (do_print_ao)
+                        print_add_order(ao);
+                    if (fh_log) {
+                        timestamp = ns_since_midnight();
+                        fwrite(ao->Timestamp, 6, 1, fh_log);
+                        fwrite(&timestamp, 6, 1, fh_log);
+                        fwrite(ao->Stock, 8, 1, fh_log);
+                    }
                 }
             }
             else {
@@ -313,8 +385,8 @@ int main(int argc, char *argv[]) {
             pkt_offset += msg_len + 2;
         }
 
-        if (forward_host_port) {
-            if (sendto(sockfd, buf, bytes_received, 0,
+        if (matched_filter && forward_host_port) {
+            if (sendto(sockfd, buf, size, 0,
                         (struct sockaddr *)&forward_addr, sizeof(forward_addr)) < 0)
                 error("sendto()");
         }
