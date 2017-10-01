@@ -1,4 +1,4 @@
-#include <sys/time.h>
+#include <time.h>
 #include <inttypes.h>
 #include <string.h>
 #include <arpa/inet.h>
@@ -6,11 +6,16 @@
 
 #define STOCK_SIZE 8
 
+void error(char *msg) {
+    perror(msg);
+    exit(0);
+}
+
 unsigned long long ns_since_midnight() {
-    struct timeval tv;
-    if (gettimeofday(&tv, NULL) != 0)
-        return 0;
-    return ((tv.tv_sec % 86400) * 1e9) + (tv.tv_usec * 1e3);
+    struct timespec ts;
+    if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
+        error("clock_gettime()");
+    return ((ts.tv_sec % 86400) * 1e9) + ts.tv_nsec;
 }
 
 // Source: https://stackoverflow.com/questions/3022552/is-there-any-standard-htonl-like-function-for-64-bits-integers-in-c

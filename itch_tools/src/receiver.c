@@ -27,37 +27,37 @@ int verbosity = 0;
 
 int sockfd = 0;
 FILE *fh_log = 0;
-int recv_cnt = 0;
-
-void error(char *msg) {
-    perror(msg);
-    exit(0);
-}
+int pkt_cnt = 0;
+int matching_cnt = 0;
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-v VERBOSITY] [-a OPTIONS] [-b SO_RCVBUF] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST:PORT] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
+            "Usage: %s [-v VERBOSITY] [-a OPTIONS] [-b SO_RCVBUF] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST:PORT] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
 \n\
     q - exit after subcribing to controller\n\
     a - print Add Order messages as TSV\n\
     o - print other message types\n\
+    u - update timestamp when forwarding message\n\
 \n\
 ", progname);
     exit(rc);
 }
 
-void catch_int(int signo) {
+void cleanup_and_exit() {
     if (fh_log)
         fclose(fh_log);
 
     if (sockfd)
         close(sockfd);
 
-    fprintf(stderr, "\nReceived %d messages\n", recv_cnt);
-
+    fprintf(stderr, "\nReceived %d packets (%d matched filter)\n", pkt_cnt, matching_cnt);
     exit(0);
+}
+
+void catch_int(int signo) {
+    cleanup_and_exit();
 }
 
 void send_to_controller(char *hostname, int port, char *msg, size_t len) {
@@ -137,7 +137,7 @@ int matches_filter(struct itch50_msg_add_order *ao) {
 
 void print_filtered_stocks() {
     int i;
-    printf("Filtering for stocks:\n");
+    printf(filtered_stocks.count ? "Filtering for stocks:\n" : "Not filtering for stocks\n");
     for (i = 0; i < filtered_stocks.count; i++) {
         printf("\t%.*s\n", 8, filtered_stocks.stocks[i]);
     }
@@ -171,12 +171,14 @@ int main(int argc, char *argv[]) {
     char *extra_options = 0;
     int dont_listen = 0;
     int do_print_ao = 0;
+    int do_update_timestamp = 0;
     int do_print_msgs = 0;
     int rcvbuf = 0;
     int msg_num;
     short msg_count;
     int msg_len;
     int pkt_offset;
+    int max_packets = 0;
     unsigned long long timestamp;
     struct omx_moldudp64_header *h;
     struct omx_moldudp64_message *mm;
@@ -188,7 +190,7 @@ int main(int argc, char *argv[]) {
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "hv:a:b:t:f:s:c:")) != -1) {
+    while ((opt = getopt(argc, argv, "hv:a:b:t:f:s:c:m:")) != -1) {
         switch (opt) {
             case 'a':
                 extra_options = optarg;
@@ -213,6 +215,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 'l':
                 listen_host_port = optarg;
+                break;
+            case 'm':
+                max_packets = atoi(optarg);
                 break;
             case 'h':
                 usage(0);
@@ -241,6 +246,8 @@ int main(int argc, char *argv[]) {
             do_print_ao = 1;
         if (strchr(extra_options, 'o'))
             do_print_msgs = 1;
+        if (strchr(extra_options, 'u'))
+            do_update_timestamp = 1;
     }
 
     if (controller_host_port) {
@@ -333,6 +340,8 @@ int main(int argc, char *argv[]) {
     if (rcvbuf > 0) {
         if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
             error("setsockopt()");
+        if (verbosity > 0)
+            printf("Socket kernel receive buffer set to %d bytes\n", rcvbuf);
     }
 
     int remoteaddr_len = sizeof(remoteaddr);
@@ -347,7 +356,7 @@ int main(int argc, char *argv[]) {
         if (size < 0)
             error("recvfrom()");
 
-        recv_cnt++;
+        pkt_cnt++;
 
         h = (struct omx_moldudp64_header *)buf;
         pkt_offset = sizeof(struct omx_moldudp64_header);
@@ -375,6 +384,10 @@ int main(int argc, char *argv[]) {
                         fwrite(&timestamp, 6, 1, fh_log);
                         fwrite(ao->Stock, 8, 1, fh_log);
                     }
+                    if (do_update_timestamp) {
+                        timestamp = htonll(ns_since_midnight());
+                        memcpy(ao->Timestamp, (void*)&timestamp + 2, 6);
+                    }
                 }
             }
             else {
@@ -385,14 +398,21 @@ int main(int argc, char *argv[]) {
             pkt_offset += msg_len + 2;
         }
 
-        if (matched_filter && forward_host_port) {
-            if (sendto(sockfd, buf, size, 0,
-                        (struct sockaddr *)&forward_addr, sizeof(forward_addr)) < 0)
-                error("sendto()");
+        if (matched_filter) {
+            matching_cnt++;
+
+            if (forward_host_port) {
+                if (sendto(sockfd, buf, size, 0,
+                            (struct sockaddr *)&forward_addr, sizeof(forward_addr)) < 0)
+                    error("sendto()");
+            }
         }
 
-
+        if (max_packets && pkt_cnt == max_packets)
+            break;
     }
+
+    cleanup_and_exit();
 
     return 0;
 }

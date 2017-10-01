@@ -23,12 +23,6 @@
 
 char *progname;
 
-void error(char *msg) {
-    perror(msg);
-    exit(-1);
-}
-
-
 #define BUFSIZE 2048
 char buf[BUFSIZE];
 

@@ -79,7 +79,9 @@ if __name__ == '__main__':
 
 
     with (sys.stdout if args.filename == '-' else open(args.filename, 'wb')) as fd:
-        for seq in xrange(args.count):
+        seq = 0
+        while seq != args.count:
+            seq += 1
             pkt = generate_packet(seq, msg_cnt_dst, stock_dist, args.fields)
             fd.write(pkt)
 

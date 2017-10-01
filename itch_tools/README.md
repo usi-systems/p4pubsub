@@ -55,7 +55,11 @@ headers.
 ## Sending MoldUDP64 messages
 The `./send_mold_messages` tool sends MoldUDP64 messages to the network.
 
-    ./mold_feed.py -t 1 | ./send_mold_messages -v 2 127.0.0.1 1234
+    ./mold_feed.py -c 1 | ./send_mold_messages -v 2 127.0.0.1:10001
+
+You can control the rate using `pv`:
+
+    ./mold_feed.py -c 1000 -m 1 -s AAPL,MSFT | pv -L 1M | ./send_mold_messages -v2 127.0.0.1:10001
 
 ### Log Parsing
 The `receiver` program can output a log of timestamps. For each message

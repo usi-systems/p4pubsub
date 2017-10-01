@@ -19,18 +19,13 @@
 char *progname;
 int verbosity = 0;
 
-void error(char *msg) {
-    perror(msg);
-    exit(-1);
-}
-
 
 #define BUFSIZE 2048
 char buf[BUFSIZE];
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-    "Usage: %s [-a OPTIONS] [-v VERBOSITY] [-R MSG/S] [-r FILENAME]  HOST[:PORT]\n\
+    "Usage: %s [-a OPTIONS] [-v VERBOSITY] [-r FILENAME]  HOST[:PORT]\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
     a - print Add Order messages as TSV\n\
@@ -56,40 +51,6 @@ static void secs2ts(long double secs, struct timespec *ts) {
     ts->tv_nsec = (secs - ts->tv_sec) * 1.0e9;
 }
 
-#define MIN_SLEEP_NS 70000
-
-struct rate_limit_state {
-    struct timespec interval;
-    struct timespec last_call;
-    long outstanding_ns;
-};
-
-// XXX this does not work (it sleeps for too long)
-void rate_limiter(struct rate_limit_state *state) {
-    if (state->interval.tv_sec == 0 && state->interval.tv_nsec == 0) return;
-    struct timespec now;
-    struct timespec elapsed;
-    struct timespec wait;
-    if (state->last_call.tv_sec > 0) {
-        clock_gettime(CLOCK_REALTIME, &now);
-        timespec_diff(&state->last_call, &now, &elapsed);
-        timespec_diff(&elapsed, &state->interval, &wait);
-
-        if (wait.tv_sec > 0 || (wait.tv_sec >= 0 && wait.tv_nsec + state->outstanding_ns > MIN_SLEEP_NS)) {
-            wait.tv_nsec += state->outstanding_ns;
-            nanosleep(&wait, NULL);
-            state->outstanding_ns = 0;
-        }
-        else {
-            state->outstanding_ns += wait.tv_nsec;
-        }
-    }
-    else { // initialize state
-        state->outstanding_ns = 0;
-    }
-    clock_gettime(CLOCK_REALTIME, &state->last_call);
-}
-
 int main(int argc, char *argv[]) {
     int opt;
     int n, msg_num, msg_len, pkt_offset, pkt_size;
@@ -97,9 +58,6 @@ int main(int argc, char *argv[]) {
     struct stat s;
     struct sockaddr_in remoteaddr;
     char *filename = 0;
-    float msgs_per_s = 0;
-    struct rate_limit_state rate_state;
-    bzero(&rate_state, sizeof(rate_state));
     uint64_t timestamp;
     char *extra_options = 0;
     int do_print_ao = 0;
@@ -111,16 +69,13 @@ int main(int argc, char *argv[]) {
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "ha:m:v:r:R:")) != -1) {
+    while ((opt = getopt(argc, argv, "ha:m:v:r:")) != -1) {
         switch (opt) {
             case 'a':
                 extra_options = optarg;
                 break;
             case 'r':
                 filename = optarg;
-                break;
-            case 'R':
-                msgs_per_s = atof(optarg);
                 break;
             case 'v':
                 verbosity = atoi(optarg);
@@ -153,10 +108,6 @@ int main(int argc, char *argv[]) {
     }
     if (!port_ok)
         port = 1234;
-
-    long double min_interval_secs =msgs_per_s > 0 ? 1 / msgs_per_s : 0;
-    secs2ts(min_interval_secs, &rate_state.interval);
-    //printf("min_interval: %lds %ldns\n", rate_state.interval.tv_sec, rate_state.interval.tv_nsec);
 
     FILE *fh = stdin;
     if (filename) {
@@ -237,7 +188,7 @@ int main(int argc, char *argv[]) {
                     (struct sockaddr *)&remoteaddr, sizeof(remoteaddr)) < 0)
             error("sendto()");
 
-        if (verbosity > 1)
+        if (verbosity > 2)
             printf("Sent %d bytes\n", pkt_offset);
 
         pkt_cnt++;

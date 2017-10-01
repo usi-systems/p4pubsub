@@ -11,11 +11,6 @@ char *my_hostname;
 
 char *progname;
 
-void error(char *msg) {
-    perror(msg);
-    exit(0);
-}
-
 void usage(int rc) {
     printf("Usage: %s LOG_FILENAME\n", progname);
     exit(rc);
@@ -47,10 +42,10 @@ int main(int argc, char *argv[]) {
     if (fd_log < 0)
         error("open() log_filename");
 
-    unsigned long long sent = 0;
-    unsigned long long received = 0;
+    uint64_t sent = 0;
+    uint64_t received = 0;
 
-    unsigned long long delta;
+    uint64_t delta;
 
     struct log_record rec;
 
@@ -61,7 +56,7 @@ int main(int argc, char *argv[]) {
         memcpy(&received, rec.received_ns_since_midnight, 6);
 
         delta = received - sent;
-        printf("%lld\t%lld\t%s\n", sent, delta, rec.stock);
+        printf("%ld\t%ld\t%s\n", sent, delta, rec.stock);
     }
 
     close(fd_log);
