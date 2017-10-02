@@ -3,34 +3,21 @@
 import sys
 import struct
 import argparse
-from itch_message import AddOrderMessage, MoldPacket, fmtStock
-from probability_distributions import Distribution, Uniform, Zipf
+from itch_message import AddOrderMessage, MessageForType, MoldPacket, fmtStock
+from probability_distributions import Distribution, Uniform, Zipf, DegenerateDist, OrderedDist
 
-class DummyDist:
-    def __init__(self, val):
-        self.val = val
-    def pick_element(self):
-        return self.val
-
-class OrderedDist:
-    """ Deterministic distribution: elements are returned in order """
-    def __init__(self, vals):
-        self.vals = vals
-        self.idx = -1
-
-    def pick_element(self):
-        self.idx = (self.idx + 1) % len(self.vals)
-        return self.vals[self.idx]
-
-def generate_message(fields=dict(), stock_dist=None):
+def generate_message(fields=dict(), stock_dist=None, msg_type_dist=None):
     fields = dict(fields) # don't overwrite original fields dict
     if stock_dist is not None:
-        fields['Stock'] = stock_dist.pick_element()
-    return AddOrderMessage(**fields)
+        fields['Stock'] = next(stock_dist)
+    msg_constructor = AddOrderMessage
+    if msg_type_dist is not None:
+        msg_constructor = next(msg_type_dist)
+    return msg_constructor(**fields)
 
-def generate_packet(seq, msg_cnt_dst, stock_dist=None, fields=dict()):
-    msg_cnt = msg_cnt_dst.pick_element()
-    messages = [generate_message(stock_dist=stock_dist, fields=fields) for _ in xrange(msg_cnt)]
+def generate_packet(seq, msg_type_dist, msg_cnt_dst, stock_dist=None, fields=dict()):
+    msg_cnt = next(msg_cnt_dst)
+    messages = [generate_message(stock_dist=stock_dist, msg_type_dist=msg_type_dist, fields=fields) for _ in xrange(msg_cnt)]
     return MoldPacket(Session=1, SequenceNumber=seq, MessagePayloads=messages)
 
 
@@ -38,7 +25,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate a stream of MoldUDP-encapsulated ITCH messages')
     parser.add_argument('filename', nargs='?', help='Path to output file, or "-" for STDOUT',
             type=str, default='-')
-    parser.add_argument('--fields', '-f', help='Field values. E.g. StockLocate=1,Price=33',
+    parser.add_argument('--fields', '-f', help='Message field values. E.g. StockLocate=1,Price=33',
             type=lambda s: dict(f.split('=') for f in s.split(',')), default=dict())
     parser.add_argument('--count', '-c', help='Number of packets to generate',
             type=int, default=2)
@@ -52,6 +39,10 @@ if __name__ == '__main__':
             type=lambda s: map(fmtStock, s.split(',')), default=None)
     parser.add_argument('--stock-dist', '-S', help='Distribution of stock symbols',
             type=str, choices=['uniform', 'zipf', 'ordered'], default='ordered')
+    parser.add_argument('--msg-types', '-t', help='MessageTypes to generate. E.g. A,L,Y',
+            type=lambda s: s.split(','), default=['A'])
+    parser.add_argument('--msg-types-dist', '-T', help='Distribution of MessageTypes',
+            type=str, choices=['uniform', 'zipf', 'ordered'], default='ordered')
     args = parser.parse_args()
 
 
@@ -59,7 +50,7 @@ if __name__ == '__main__':
         args.max_msgs = args.min_msgs
 
     if args.min_msgs == args.max_msgs:
-        msg_cnt_dst = DummyDist(args.min_msgs)
+        msg_cnt_dst = DegenerateDist(args.min_msgs)
     elif args.msg_dist == 'zipf':
         msg_cnt_dst = Zipf(values=range(args.min_msgs, args.max_msgs+1))
     elif args.msg_dist == 'ordered':
@@ -77,11 +68,21 @@ if __name__ == '__main__':
         else:
             stock_dist = Distribution(dict((s, 1) for s in args.stocks))
 
+    msg_constructors = map(MessageForType, args.msg_types)
+    if len(msg_constructors) == 0:
+        msg_type_dist = DegenerateDist(msg_constructors[0])
+    elif args.msg_types_dist == 'zipf':
+        msg_type_dist = Zipf(values=msg_constructors)
+    elif args.msg_types_dist == 'ordered':
+        msg_type_dist = OrderedDist(msg_constructors)
+    else:
+        msg_type_dist = Distribution(dict((c, 1) for c in msg_constructors))
+
 
     with (sys.stdout if args.filename == '-' else open(args.filename, 'wb')) as fd:
         seq = 0
         while seq != args.count:
             seq += 1
-            pkt = generate_packet(seq, msg_cnt_dst, stock_dist, args.fields)
+            pkt = generate_packet(seq, msg_type_dist, msg_cnt_dst, stock_dist, args.fields)
             fd.write(pkt)
 

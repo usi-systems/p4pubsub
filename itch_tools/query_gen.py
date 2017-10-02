@@ -117,9 +117,9 @@ class Tables:
 
 
 def pickDifferent(dist, val):
-    val2 = dist.pick_element()
+    val2 = next(dist)
     while val2 == val:
-        val2 = dist.pick_element()
+        val2 = next(dist)
     return val2
 
 def predToStr(pred):
@@ -131,12 +131,12 @@ def queryToStr(predicate_list):
     return ' and '.join(map(predToStr, predicate_list))
 
 def generate_predicates(field, op_dist, value_dist):
-    ops = op_dist.pick_element()
+    ops = next(op_dist)
 
     if 'x' in ops: # do not generate any predicates for this field
         return []
 
-    val = value_dist.pick_element()
+    val = next(value_dist)
 
     if '=' in ops:
         assert len(ops) == 1, "Cannot have eq together with other operators"
@@ -181,10 +181,10 @@ def generate_queries(count=1):
 
     for _ in xrange(count):
 
-        stock = stock_dist.pick_element()
+        stock = next(stock_dist)
 
         if stock not in price_dist_for_stock:
-            avg = avg_price_dist.pick_element()
+            avg = next(avg_price_dist)
             std = int(avg*0.1)
             assert std > 0
             min_price, max_price = avg-std, avg+std

@@ -14,7 +14,7 @@ class BasicDistribution:
 	r = [];
 	if n < len(self.D):
             while n > 0:
-                elem = self.pick_element();
+                elem = next(self)
                 if elem not in r:
                     r.append(elem)
                     n = n - 1
@@ -28,7 +28,7 @@ class Poisson(BasicDistribution):
     def __init__(self, lmbda):
         self.L = math.exp(-lmbda)
 
-    def pick_element(self):
+    def next(self):
         k = 0
         p = 1
 	while True:
@@ -51,7 +51,7 @@ class Distribution(BasicDistribution):
             self.D.append((self.N, k))
             self.N = self.N + v
 
-    def pick_element(self):
+    def next(self):
 	r = random.uniform(0, self.N)
 	i = 0
 	m = 0
@@ -83,21 +83,8 @@ class Uniform(Distribution):
 	self.min = l
 	self.max = h
 
-    def pick_element(self):
+    def next(self):
 	return int(random.randrange(self.min, self.max))
-
-    def pick_n_elements(self, n):
-	r = [];
-	if n < self.max - self.min:
-            while n > 0:
-                elem = self.pick_element();
-                if elem not in r:
-                    r.append(elem)
-                    n = n - 1
-        else:
-            for v in range(self.min, self.max):
-		r.append(v)
-	return r
 
 class Zipf(Distribution):
     "A Zipf probability distribution with exponent 1 over a range of values or numbers"
@@ -111,10 +98,28 @@ class Zipf(Distribution):
             self.D.append((p, v))
             self.N += p
 
+class DegenerateDist:
+    def __init__(self, val):
+        self.val = val
+
+    def next(self):
+        return self.val
+
+class OrderedDist:
+    """ Deterministic distribution: elements are returned in order """
+    def __init__(self, vals):
+        self.vals = vals
+        self.idx = -1
+
+    def next(self):
+        self.idx = (self.idx + 1) % len(self.vals)
+        return self.vals[self.idx]
+
+
 if __name__ == '__main__':
 
     vals = ['a', 'b', 'c']
     dist = Zipf(values=vals)
-    l = [dist.pick_element() for _ in xrange(1000)]
+    l = [next(dist) for _ in xrange(1000)]
 
     for v in vals: assert v in l
