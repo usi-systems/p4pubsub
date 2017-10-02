@@ -78,13 +78,13 @@ Just get the latency for each packet:
 ## Parsing ITCH BinaryFILE dumps
 Print the number of messages by type:
 
-    ./replay -a t ~/Downloads/08302017.NASDAQ_ITCH50
+    ./replay -o t ~/Downloads/08302017.NASDAQ_ITCH50
 
 Find the most popular symbols:
 
-    ./replay -a s ~/Downloads/08302017.NASDAQ_ITCH50 | awk ' { tot[$0]++ } END { for (i in tot) print tot[i],i } ' | sort -rh | awk '{print $2"\t"$1 }' > symbols.tsv
+    ./replay -o s ~/Downloads/08302017.NASDAQ_ITCH50 | awk ' { tot[$0]++ } END { for (i in tot) print tot[i],i } ' | sort -rh | awk '{print $2"\t"$1 }' > symbols.tsv
 
 # Extract a single message type
 Save the first message with MessageType `D`:
 
-    ./replay -t D -m 1 -o D.bin ~/Downloads/08302017.NASDAQ_ITCH50
+    ./replay -t D -c 1 -O D.bin ~/Downloads/08302017.NASDAQ_ITCH50

@@ -27,7 +27,7 @@ char *progname;
 char buf[BUFSIZE];
 
 void usage(int rc) {
-    printf("Usage: %s [-a OPTIONS] [-t MSG_TYPES] [-r MSGS_PER_S] [-m MAX_MESSAGES] [-h HOST -p PORT] [-o OUT_FILENAME] FILENAME\n\
+    printf("Usage: %s [-o OPTIONS] [-t MSG_TYPES] [-R MSGS/S] [-c MAX_MESSAGES] [-O OUT_FILENAME] FILENAME [HOST[:PORT]]\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
     t - print stats on number of messages by type\n\
@@ -124,7 +124,8 @@ int main(int argc, char *argv[]) {
     unsigned max_messages = 0;
     char *filter_types = 0;
     char *out_filename = 0;
-    char *hostname = 0;
+    char *send_host_port = 0;
+    char hostname[256];
     int port = 0;
     int do_stats = 0;
     int do_print_symbols = 0;
@@ -139,39 +140,48 @@ int main(int argc, char *argv[]) {
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "a:m:t:o:h:p:r:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:o:O:R:t:")) != -1) {
         switch (opt) {
-            case 'm':
+            case 'c':
                 max_messages = atoi(optarg);
                 break;
-            case 'a':
+            case 'o':
                 extra_options = optarg;
                 break;
-            case 'o':
+            case 'O':
                 out_filename = optarg;
+                break;
+            case 'R':
+                msgs_per_s = atof(optarg);
                 break;
             case 't':
                 filter_types = optarg;
                 break;
-            case 'p':
-                port = atoi(optarg);
-                break;
             case 'h':
-                hostname = optarg;
-                break;
-            case 'r':
-                msgs_per_s = atof(optarg);
-                break;
+                usage(0);
             default: /* '?' */
                 usage(-1);
         }
     }
 
-    if (hostname && !port)
+    if (argc - optind > 2)
         usage(-1);
 
-    if (argc - optind != 1)
-        usage(-1);
+    char *filename = argv[optind];
+
+    if (optind > 1)
+        send_host_port = argv[optind+1];
+
+    if (send_host_port) {
+        short host_ok, port_ok;
+        parse_host_port(send_host_port, 0, hostname, &host_ok, &port, &port_ok);
+        if (!host_ok) {
+            fprintf(stderr, "Failed to parse hostname: '%s'\n", send_host_port);
+            usage(-1);
+        }
+        if (!port_ok)
+            port = 1234;
+    }
 
     if (extra_options) {
         if (strchr(extra_options, 't'))
@@ -181,8 +191,6 @@ int main(int argc, char *argv[]) {
         if (strchr(extra_options, 'a'))
             do_print_ao = 1;
     }
-
-    char *filename = argv[optind];
 
     long double min_interval_secs =msgs_per_s > 0 ? 1 / msgs_per_s : 0;
     secs2ts(min_interval_secs, &rate_state.interval);
@@ -209,7 +217,7 @@ int main(int argc, char *argv[]) {
     if (data == MAP_FAILED) error("mmap()");
 
     int sockfd = -1;
-    if (hostname) {
+    if (send_host_port) {
         sockfd = socket(AF_INET, SOCK_DGRAM, 0);
         if (sockfd < 0)
             error("socket()");

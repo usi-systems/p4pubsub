@@ -17,13 +17,13 @@
             "wait": false
         },
         "h2": {
-            "cmd": "./receiver -b 134217728 -t /tmp/p4app_logs/ts.bin -l h2 -p 1234 h1 1212 ABC",
+            "cmd": "./receiver -b 134217728 -t /tmp/p4app_logs/ts.bin -c h1:1212 -s ABC h2:1234",
             "_cmd": "/tmp/p4app_logs/tcpdump -i $(echo h_2 | tr -d _)-eth0 -w /theo/itch.pcap",
             "startup_sleep": 1.5,
             "wait": false
         },
         "h9": {
-            "cmd": "./replay -r 1000 -t A -m 180000 -s -h 255.255.255.255 -p 1234 /theo/Downloads/08302017.NASDAQ_ITCH50; sleep 2",
+            "cmd": "./replay -R 1000 -t A -c 180000 /theo/Downloads/08302017.NASDAQ_ITCH50 255.255.255.255:1234; sleep 2",
             "wait": true
         }
       },

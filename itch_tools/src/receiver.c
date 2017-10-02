@@ -32,7 +32,7 @@ int matching_cnt = 0;
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-v VERBOSITY] [-o OPTIONS] [-b SO_RCVBUF] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST:PORT] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
+            "Usage: %s [-v VERBOSITY] [-o OPTIONS] [-b SO_RCVBUF] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST[:PORT]] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
 \n\
@@ -259,7 +259,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (controller_host_port) {
-        parse_host_port(listen_host_port, 0, controller_hostname, &host_ok, &controller_port, &port_ok);
+        parse_host_port(controller_host_port, 0, controller_hostname, &host_ok, &controller_port, &port_ok);
         if (!host_ok)
             strcpy(controller_hostname, "127.0.0.1");
         if (!port_ok)

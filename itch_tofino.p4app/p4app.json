@@ -17,22 +17,22 @@
             "wait": false
         },
         "h2": {
-            "cmd": "./receiver -l h2 -p 1234 h1 1212 ABC",
+            "cmd": "./receiver -s ABC -c h1:1212 h2:1234",
             "startup_sleep": 0.2,
             "wait": false
         },
         "h3": {
-            "cmd": "./receiver -l h3 -p 1234 h1 1212 XYZ",
+            "cmd": "./receiver -s XYZ -c h1:1212 h3:1234",
             "startup_sleep": 0.2,
             "wait": false
         },
         "h4": {
-            "cmd": "./receiver -l h4 -p 1234 h1 1212 ABC,XYZ",
+            "cmd": "./receiver -s ABC,XYZ -c h1:1212 h4:1234",
             "startup_sleep": 0.8,
             "wait": false
         },
         "h9": {
-            "cmd": "./replay -a ta -m 6 -h 255.255.255.255 -p 1234 ./add_order.itch",
+            "cmd": "./replay -o ta -c 6 ./add_order.itch 255.255.255.255:1234",
             "wait": true
         }
       },
