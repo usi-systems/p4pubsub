@@ -12,7 +12,7 @@ send_mold_messages: src/send_mold_messages.c src/common.c
 	gcc -O2 -Ithird-party/libtrading/include -o $@ $<
 
 receiver: src/receiver.c src/common.c
-	gcc -Ithird-party/libtrading/include -o $@ $<
+	gcc -O2 -Ithird-party/libtrading/include -o $@ $<
 
 parse_log: src/parse_log.c src/common.c
 	gcc -Ithird-party/libtrading/include -o $@ $<

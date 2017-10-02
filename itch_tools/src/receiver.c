@@ -40,6 +40,7 @@ OPTIONS is a string of chars, which can include:\n\
     a - print Add Order messages as TSV\n\
     o - print other message types\n\
     u - update timestamp when forwarding message\n\
+    i - ignore filter\n\
 \n\
 ", progname);
     exit(rc);
@@ -173,6 +174,7 @@ int main(int argc, char *argv[]) {
     int do_print_ao = 0;
     int do_update_timestamp = 0;
     int do_print_msgs = 0;
+    int do_ignore_filter = 0;
     int rcvbuf = 0;
     int msg_num;
     short msg_count;
@@ -248,6 +250,8 @@ int main(int argc, char *argv[]) {
             do_print_msgs = 1;
         if (strchr(extra_options, 'u'))
             do_update_timestamp = 1;
+        if (strchr(extra_options, 'i'))
+            do_ignore_filter = 1;
     }
 
     if (controller_host_port) {
@@ -314,6 +318,9 @@ int main(int argc, char *argv[]) {
     if (verbosity > 0)
         print_filtered_stocks();
 
+    if (verbosity > 0 && do_ignore_filter)
+        printf("Filters will be computed on each packet, but the result will be ignored.\n");
+
 
     if (dont_listen)
         exit(0);
@@ -374,7 +381,7 @@ int main(int argc, char *argv[]) {
 
             if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
                 ao = (struct itch50_msg_add_order *)m;
-                if (matches_filter(ao)) {
+                if (matches_filter(ao) || do_ignore_filter) {
                     matched_filter = 1;
                     if (do_print_ao)
                         print_add_order(ao);

@@ -21,7 +21,7 @@ char buf[BUFSIZE];
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-    "Usage: %s [-m MIN_MSG_CNT] [-M MAX_MSG_CNT] [-p PKT_COUNT] [-r ITCH_FILE] [-o OUT_FILENAME]\n\
+    "Usage: %s [-m MIN_MSG_CNT] [-M MAX_MSG_CNT] [-c PKT_COUNT] [-r ITCH_FILE] [-o OUT_FILENAME]\n\
 \n\
 ", progname);
     exit(rc);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "ha:r:o:p:m:M:")) != -1) {
+    while ((opt = getopt(argc, argv, "ha:r:o:c:m:M:")) != -1) {
         switch (opt) {
             case 'a':
                 extra_options = optarg;
@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
             case 'M':
                 max_msgs = atoi(optarg);
                 break;
-            case 'p':
+            case 'c':
                 pkt_count = atoi(optarg);
                 break;
             case 'h':
