@@ -32,7 +32,7 @@ int matching_cnt = 0;
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-v VERBOSITY] [-a OPTIONS] [-b SO_RCVBUF] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST:PORT] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
+            "Usage: %s [-v VERBOSITY] [-o OPTIONS] [-b SO_RCVBUF] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST:PORT] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
 \n\
@@ -41,6 +41,7 @@ OPTIONS is a string of chars, which can include:\n\
     o - print other message types\n\
     u - update timestamp when forwarding message\n\
     i - ignore filter\n\
+    A - assert that all messages match the filter\n\
 \n\
 ", progname);
     exit(rc);
@@ -175,6 +176,7 @@ int main(int argc, char *argv[]) {
     int do_update_timestamp = 0;
     int do_print_msgs = 0;
     int do_ignore_filter = 0;
+    int do_assert_match_filter = 0;
     int rcvbuf = 0;
     int msg_num;
     short msg_count;
@@ -192,9 +194,9 @@ int main(int argc, char *argv[]) {
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "hv:a:b:t:f:s:c:m:")) != -1) {
+    while ((opt = getopt(argc, argv, "hv:o:b:t:f:s:c:m:")) != -1) {
         switch (opt) {
-            case 'a':
+            case 'o':
                 extra_options = optarg;
                 break;
             case 'f':
@@ -252,6 +254,8 @@ int main(int argc, char *argv[]) {
             do_update_timestamp = 1;
         if (strchr(extra_options, 'i'))
             do_ignore_filter = 1;
+        if (strchr(extra_options, 'A'))
+            do_assert_match_filter = 1;
     }
 
     if (controller_host_port) {
@@ -413,6 +417,9 @@ int main(int argc, char *argv[]) {
                             (struct sockaddr *)&forward_addr, sizeof(forward_addr)) < 0)
                     error("sendto()");
             }
+        }
+        else if (do_assert_match_filter) {
+            fprintf(stderr, "Warning: message did not match filter!\n");
         }
 
         if (max_packets && pkt_cnt == max_packets)
