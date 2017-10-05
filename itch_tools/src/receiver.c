@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <math.h>
 
 #include "libtrading/proto/nasdaq_itch50_message.h"
 #include "libtrading/proto/omx_moldudp_message.h"
@@ -32,7 +33,7 @@ int matching_cnt = 0;
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-v VERBOSITY] [-o OPTIONS] [-b SO_RCVBUF] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST[:PORT]] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
+            "Usage: %s [-v VERBOSITY] [-o OPTIONS] [-T US] [-b SO_RCVBUF] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST[:PORT]] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
 \n\
@@ -61,6 +62,29 @@ void cleanup_and_exit() {
 void catch_int(int signo) {
     cleanup_and_exit();
 }
+
+void busy_work(unsigned us) {
+    unsigned i;
+    long double x = 3.14159265359;
+    struct timespec ts1, ts2;
+    long long unsigned elapsed_us = 0;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &ts1) != 0)
+        error("clock_gettime()");
+
+    while (elapsed_us < us) {
+
+        for (i = 0; i < 10; i++)
+            x = sqrt(x*x) * sqrt(x*x);
+
+        if (clock_gettime(CLOCK_MONOTONIC, &ts2) != 0)
+            error("clock_gettime()");
+
+        elapsed_us = (ts2.tv_sec*1000000 + ts2.tv_nsec/1000) -
+                     (ts1.tv_sec*1000000 + ts1.tv_nsec/1000);
+    }
+}
+
 
 void send_to_controller(char *hostname, int port, char *msg, size_t len) {
     struct sockaddr_in remoteaddr;
@@ -171,6 +195,7 @@ int main(int argc, char *argv[]) {
     short host_ok, port_ok;
     char *log_filename = 0;
     char *extra_options = 0;
+    unsigned busy_work_us = 0;
     int dont_listen = 0;
     int do_print_ao = 0;
     int do_update_timestamp = 0;
@@ -194,7 +219,7 @@ int main(int argc, char *argv[]) {
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "hv:o:b:t:f:s:c:m:")) != -1) {
+    while ((opt = getopt(argc, argv, "hv:o:b:t:f:s:c:m:T:")) != -1) {
         switch (opt) {
             case 'o':
                 extra_options = optarg;
@@ -210,6 +235,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 't':
                 log_filename = optarg;
+                break;
+            case 'T':
+                busy_work_us = atoi(optarg);
                 break;
             case 'c':
                 controller_host_port = optarg;
@@ -325,6 +353,9 @@ int main(int argc, char *argv[]) {
     if (verbosity > 0 && do_ignore_filter)
         printf("Filters will be computed on each packet, but the result will be ignored.\n");
 
+    if (verbosity > 0 && busy_work_us)
+        printf("Doing %uus of busy work for each matching message received.\n", busy_work_us);
+
 
     if (dont_listen)
         exit(0);
@@ -395,6 +426,8 @@ int main(int argc, char *argv[]) {
                         fwrite(&timestamp, 6, 1, fh_log);
                         fwrite(ao->Stock, 8, 1, fh_log);
                     }
+                    if (busy_work_us)
+                        busy_work(busy_work_us);
                     if (do_update_timestamp) {
                         timestamp = htonll(ns_since_midnight());
                         memcpy(ao->Timestamp, (void*)&timestamp + 2, 6);
