@@ -29,7 +29,7 @@ let make_tables field =
    let name = p4name_for_field field in
    let f = string_of_field field in
    Printf.sprintf "
-table tbl_%s_exact {
+table query_%s_exact {
     reads {
         camus_meta.state: exact;
         %s: exact;
@@ -41,7 +41,7 @@ table tbl_%s_exact {
     size: 512;
 }
 
-table tbl_%s_range {
+table query_%s_range {
     reads {
         camus_meta.state: exact;
         %s: range;
@@ -53,7 +53,7 @@ table tbl_%s_range {
     size: 512;
 }
 
-table tbl_%s_miss {
+table query_%s_miss {
     reads {
         camus_meta.state: exact;
     }
@@ -70,7 +70,7 @@ let make_control fields =
    let headers = List.sort_uniq compare (List.map header_of_field fields) in
    let valid_headers = String.concat "&&\n" (List.map (fun h -> "valid("^h^")") headers) in
    let make_apply field =
-      let tbl = "tbl_" ^ (p4name_for_field field) in
+      let tbl = "query_" ^ (p4name_for_field field) in
       Printf.sprintf "
             apply(%s) {
                miss {

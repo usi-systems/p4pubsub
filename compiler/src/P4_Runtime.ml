@@ -69,13 +69,13 @@ let fwd_action_to_rule last_mgid meta_in eg_ports =
    let meta_in = ExactIntMatch(Field(Some "meta", "state"), meta_in) in
    match eg_ports with
       | p::[] ->
-            (MatchAction("tbl_actions", [meta_in], "set_egress_port", [p]), None)
+            (MatchAction("query_actions", [meta_in], "set_egress_port", [p]), None)
       | _::_ ->
             let mgid = last_mgid + 1 in
             let grp = McastGroup(mgid, eg_ports) in
-            (MatchAction("tbl_actions", [meta_in], "set_mgid", [mgid]), Some grp)
+            (MatchAction("query_actions", [meta_in], "set_mgid", [mgid]), Some grp)
       | [] ->
-            (MatchAction("tbl_actions", [meta_in], "_drop", []), None)
+            (MatchAction("query_actions", [meta_in], "_drop", []), None)
 
 
 let binary_of_str s =

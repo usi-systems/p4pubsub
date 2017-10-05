@@ -33,9 +33,9 @@ let field_name_for_pred p = match field_for_pred p with
 
 let table_name_for_pred p = match p with
    | Eq(Field(None, f), _) | Gt(Field(None, f), _) | Lt(Field(None, f), _) ->
-         "tbl_" ^ f
+         "query_" ^ f
    | Eq(Field(Some h, f), _) | Gt(Field(Some h, f), _) | Lt(Field(Some h, f), _) ->
-         "tbl_" ^ h ^ "_" ^ f
+         "query_" ^ h ^ "_" ^ f
    | _ -> raise (Failure "Predicate should be in the form: f=n, f<n, f>n")
 
 let cmp_fields a b = match (a, b) with

@@ -30,7 +30,7 @@ let abstract_table_to_string ?graph_name:(g="G") atc =
    let next_table_name tn =
       let rec _next = function
          | a::(b::l) -> if a=tn then b else _next (b::l)
-         | a::[] -> "tbl_actions"
+         | a::[] -> "query_actions"
          | _ -> raise (Failure ("Couldn't find the successor table for " ^ tn))
       in
       _next atc.table_names
@@ -143,7 +143,7 @@ let bdd_tables_create rules =
    } in
    List.iter (fun t -> Hashtbl.add atc.tables t (Hashtbl.create 10)) table_names;
    let actions_table = Hashtbl.create 10 in
-   Hashtbl.add atc.tables "tbl_actions" actions_table;
+   Hashtbl.add atc.tables "query_actions" actions_table;
    let getn u = Hashtbl.find bdd.tbl u in
    (* XXX we re-number the root to state 0 here *)
    Hashtbl.add bdd.tbl 0 (getn bdd.root);
