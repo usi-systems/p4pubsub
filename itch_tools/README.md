@@ -84,6 +84,21 @@ Find the most popular symbols:
 
     ./replay -o s ~/Downloads/08302017.NASDAQ_ITCH50 | awk ' { tot[$0]++ } END { for (i in tot) print tot[i],i } ' | sort -rh | awk '{print $2"\t"$1 }' > symbols.tsv
 
+Get the timestamp for Add Orders for "GOOGL":
+
+    ./replay -o a ~/Downloads/08302017.NASDAQ_ITCH50 | grep GOOGL | cut -f4
+
+Create a timestamp/frequency timeseries with 1s bin size:
+
+    ./replay -o a ~/Downloads/08302017.NASDAQ_ITCH50 | grep GOOGL | cut -f4 | ../scripts/bin.py 1000000000
+
+Finding the correlation between two timeseries:
+
+    ./replay -o a ~/Downloads/08302017.NASDAQ_ITCH50 | grep "AAPL    " | cut -f4 | ./scripts/bin.py 1000000000 - > aapl_ts.tsv
+    ./replay -o a ~/Downloads/08302017.NASDAQ_ITCH50 | grep "GOOG    " | cut -f4 | ./scripts/bin.py 1000000000 - > goog_ts.tsv
+    ../scripts/corr_ts.py aapl_ts.tsv goog_ts.tsv
+
+
 # Extract a single message type
 Save the first message with MessageType `D`:
 
