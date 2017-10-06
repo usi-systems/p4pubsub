@@ -48,9 +48,26 @@ with two Add Order messages:
 
 ## Generating MoldUDP64 encapsulated ITCH messages
 `./mold_feed.py` generates a stream of ITCH messages encapsulated in MoldUDP64
-headers.
+headers. It can generate streams with different distributions:
 
     ./mold_feed.py -m 1 -M 4 -D zipf -c 100 -s AAPL,MSFT,BFN -S zipf
+
+For example, to create the following stream of messages:
+
+    pkt 1: {AddOrder(AAPL), StockTradingAction}                    (MessageCount: 2)
+    pkt 2: {AddOrder(IBM)}                                         (MessageCount: 1)
+    pkt 3: {RegSHO, AddOrder(MSFT), MarketParticipatingPosition}   (MessageCount: 3)
+
+you could construct the stream one packet at a time:
+
+    ./mold_feed.py -c 1 -m 2 -t A,H -s AAPL > out.bin
+    ./mold_feed.py -c 1 -m 1 -t A -s IBM >> out.bin
+    ./mold_feed.py -c 1 -m 3 -t Y,A,L -s MSFT >> out.bin
+
+which you can then send to the network with:
+
+    ./send_mold_messages -v 3 -r out.bin 127.0.0.1:10001
+
 
 ## Sending MoldUDP64 messages
 The `./send_mold_messages` tool sends MoldUDP64 messages to the network.
