@@ -1,0 +1,28 @@
+Date: 9th October 2017
+Attendees: Theo, Antonio, Robert
+
+SUMMARY:
+
+We discussed how to express aggregate operators in our language, and how they
+would be implemented.
+
+NEXT STEPS:
+
+- Theo will add to the spec the necessary to generate a P4 program that
+  computes aggregagates. Then, expand a query's action to have an operator that
+  updates an aggregate.
+
+
+Some reactions:
+
+- for aggregates, we need to select the packets on which to compute the
+  aggregate
+- we can use the existing query language to select the packets
+- we should look at CQL for how stream processing queries are implemented:
+  https://dl.acm.org/citation.cfm?id=1146463
+- start off implementing COUNT, SUM, then EWMA
+- After we have that try implementing the Linear Road example that other stream
+  processing systems implement as a benchmark
+- we will start off by updating the state on the switch (e.g. aggregates), then
+  we will work on packet transformations, so we can do stream transformations
+
