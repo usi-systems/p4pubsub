@@ -2,7 +2,7 @@
 CC=gcc
 CFLAGS=-O3 -Ithird-party/libtrading/include
 
-all: receiver replay parse_log generate_mold_messages send_mold_messages monitor_udp
+all: receiver replay parse_log generate_mold_messages send_mold_messages monitor_udp multi_receiver
 
 replay: src/replay.c src/common.c
 	$(CC) -o $@ $< $(CFLAGS)
@@ -18,6 +18,14 @@ receiver: src/receiver.c src/common.c
 
 monitor_udp: src/monitor_udp.c src/common.c
 	$(CC) -o $@ $< $(CFLAGS)
+
+pipe.o: src/pipe.c
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+
+multi_receiver: src/multi_receiver.c pipe.o src/common.c
+	$(CC) -o $@ pipe.o $< -lm -lpthread $(CFLAGS)
+
 
 parse_log: src/parse_log.c src/common.c
 	$(CC) -o $@ $< $(CFLAGS)
