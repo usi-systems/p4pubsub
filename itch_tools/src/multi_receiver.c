@@ -1,5 +1,7 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
+#include <sched.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -38,7 +40,7 @@ pipe_producer_t* message_queue_w;
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-v VERBOSITY] [-o OPTIONS] [-T US] [-b SO_RCVBUF] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
+            "Usage: %s [-v VERBOSITY] [-o OPTIONS] [-T US] [-b SO_RCVBUF] [-q Q_SIZE] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
 \n\
@@ -52,6 +54,23 @@ OPTIONS is a string of chars, which can include:\n\
     exit(rc);
 }
 
+
+size_t ring_buf_count;
+size_t ring_buf_el_size;
+void *ring_buf;
+int ring_buf_idx;
+
+void ring_buf_init(size_t el_size, size_t el_count) {
+    ring_buf_el_size = el_size;
+    ring_buf_count = el_count;
+    ring_buf = malloc(el_count * el_size);
+    ring_buf_idx = 0;
+}
+
+void *ring_buf_next() {
+    ring_buf_idx = (ring_buf_idx + 1) % ring_buf_count;
+    return ring_buf + (ring_buf_idx * ring_buf_el_size);
+}
 
 
 void cleanup_and_exit() {
@@ -98,7 +117,6 @@ void busy_work(unsigned us) {
                      (ts1.tv_sec*1000000 + ts1.tv_nsec/1000);
     }
 }
-
 
 int count_chars(char *s, char c) {
     int i, count;
@@ -160,6 +178,21 @@ int do_update_timestamp = 0;
 char *forward_host_port = 0;
 struct sockaddr_in forward_addr;
 
+void pin_thread(int cpu) {
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    CPU_SET(cpu, &mask);
+    if (sched_setaffinity(0, sizeof(cpu_set_t), &mask) < 0)
+        error("sched_setaffinity()");
+}
+
+void assert_thread_affinity(int cpu) {
+    cpu_set_t mask;
+    if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) < 0)
+        error("sched_getaffinity()");
+    assert(CPU_ISSET(cpu, &mask));
+}
+
 void *process_messages(void *ignored) {
     struct itch50_msg_add_order *ao;
     size_t pop_cnt;
@@ -174,6 +207,10 @@ void *process_messages(void *ignored) {
     size_t size = sizeof(struct omx_moldudp64_header) +
                   sizeof(struct omx_moldudp64_message) +
                   sizeof(struct itch50_msg_add_order);
+
+    pin_thread(1);
+    assert_thread_affinity(1);
+
     while (1) {
         pop_cnt = pipe_pop(message_queue_r, &ao, 1);
         if (ao == NULL)
@@ -204,8 +241,6 @@ void *process_messages(void *ignored) {
                         (struct sockaddr *)&forward_addr, sizeof(forward_addr)) < 0)
                 error("sendto()");
         }
-
-        free(ao);
     }
 }
 
@@ -229,6 +264,7 @@ int main(int argc, char *argv[]) {
     int msg_len;
     int pkt_offset;
     int max_packets = 0;
+    int queue_size = 10;
     struct omx_moldudp64_header *h;
     struct omx_moldudp64_message *mm;
     struct itch50_message *m;
@@ -238,7 +274,7 @@ int main(int argc, char *argv[]) {
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "hv:o:b:t:f:s:c:m:T:")) != -1) {
+    while ((opt = getopt(argc, argv, "hv:o:b:q:t:f:s:m:T:")) != -1) {
         switch (opt) {
             case 'o':
                 extra_options = optarg;
@@ -251,6 +287,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 'b':
                 rcvbuf = atoi(optarg);
+                break;
+            case 'q':
+                queue_size = atoi(optarg);
                 break;
             case 't':
                 log_filename = optarg;
@@ -339,7 +378,6 @@ int main(int argc, char *argv[]) {
     int i, size;
     struct sockaddr_in localaddr;
     struct sockaddr_in remoteaddr;
-    char buf[BUFSIZE];
 
     if (stocks_with_commas)
         parse_stocks_str(stocks_with_commas);
@@ -352,6 +390,9 @@ int main(int argc, char *argv[]) {
 
     if (verbosity > 0 && busy_work_us)
         printf("Doing %uus of busy work for each matching message received.\n", busy_work_us);
+
+    if (verbosity > 0)
+        printf("Queue size set to %d elements\n", queue_size);
 
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -384,19 +425,26 @@ int main(int argc, char *argv[]) {
 
     int matched_filter;
 
-    pipe_t* pipe = pipe_new(sizeof(struct itch50_message *), 1000);
+    pipe_t* pipe = pipe_new(sizeof(struct itch50_message *), queue_size);
+    //pipe_reserve(PIPE_GENERIC(pipe), queue_size);
     message_queue_w = pipe_producer_new(pipe);
     message_queue_r = pipe_consumer_new(pipe);
     pipe_free(pipe);
+
+    ring_buf_init(BUFSIZE, queue_size+1);
+    char *buf = ring_buf_next();
 
     if (pthread_create(&consumer_thread, NULL, process_messages, NULL)) {
         error("pthread_create()");
     }
 
+    pin_thread(0);
+    assert_thread_affinity(0);
+
     while (1) {
         matched_filter = 0;
 
-        size = recvfrom(sockfd, buf, BUFSIZE, 0,
+        size = recvfrom(sockfd, buf, ring_buf_el_size, 0,
                 (struct sockaddr *)&remoteaddr, &remoteaddr_len);
         if (size < 0)
             error("recvfrom()");
@@ -421,10 +469,7 @@ int main(int argc, char *argv[]) {
                 ao = (struct itch50_msg_add_order *)m;
                 if (matches_filter(ao) || do_ignore_filter) {
                     matched_filter = 1;
-                    struct itch50_msg_add_order *ao_cpy =
-                        (struct itch50_msg_add_order *)malloc(msg_len);
-                    memcpy(ao_cpy, ao, msg_len);
-                    pipe_push(message_queue_w, &ao_cpy, 1);
+                    pipe_push(message_queue_w, &ao, 1);
                 }
             }
             else {
@@ -437,6 +482,7 @@ int main(int argc, char *argv[]) {
 
         if (matched_filter) {
             matching_cnt++;
+            buf = ring_buf_next();
         }
         else if (do_assert_match_filter) {
             fprintf(stderr, "Warning: message did not match filter!\n");
