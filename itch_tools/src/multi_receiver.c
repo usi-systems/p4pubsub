@@ -264,7 +264,7 @@ int main(int argc, char *argv[]) {
     int msg_len;
     int pkt_offset;
     int max_packets = 0;
-    int queue_size = 10;
+    int queue_size = 64;
     struct omx_moldudp64_header *h;
     struct omx_moldudp64_message *mm;
     struct itch50_message *m;
@@ -325,6 +325,10 @@ int main(int argc, char *argv[]) {
             port = 1234;
     }
 
+    if (!is_pow2(queue_size)) {
+        fprintf(stderr, "Queue size must be a power of 2\n");
+        exit(-1);
+    }
 
     if (extra_options) {
         if (strchr(extra_options, 'a'))
@@ -356,7 +360,7 @@ int main(int argc, char *argv[]) {
         struct hostent *server = gethostbyname(forward_hostname);
         if (server == NULL) {
             fprintf(stderr, "bad forward hostname: %s\n", forward_hostname);
-            exit(0);
+            exit(-1);
         }
 
         bzero((char *) &forward_addr, sizeof(forward_addr));
@@ -425,8 +429,8 @@ int main(int argc, char *argv[]) {
 
     int matched_filter;
 
-    pipe_t* pipe = pipe_new(sizeof(struct itch50_message *), queue_size);
-    //pipe_reserve(PIPE_GENERIC(pipe), queue_size);
+    pipe_t* pipe = pipe_new(sizeof(struct itch50_message *), queue_size-1);
+    //pipe_reserve(PIPE_GENERIC(pipe), queue_size-1);
     message_queue_w = pipe_producer_new(pipe);
     message_queue_r = pipe_consumer_new(pipe);
     pipe_free(pipe);

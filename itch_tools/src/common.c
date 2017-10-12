@@ -66,3 +66,9 @@ struct __attribute__((__packed__)) log_record {
     char received_ns_since_midnight[6];     // Big-endian (network)
     char stock[8];
 };
+
+int is_pow2(unsigned n) {
+    while (n > 1 && (n & 1) == 0)
+        n >>= 1;
+    return (n == 1);
+}

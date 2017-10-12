@@ -515,7 +515,8 @@ static inline void check_invariants(pipe_t* p)
         assertume(bytes_in_use(s) == capacity(s));
 
     assertume(in_bounds(DEFAULT_MINCAP*p->elem_size, p->min_cap, p->max_cap));
-    assertume(in_bounds(p->min_cap, capacity(s) + p->elem_size, p->max_cap));
+    // XXX: this assertion prevents us from filling the queue to its limit
+    //assertume(in_bounds(p->min_cap, capacity(s) + p->elem_size, p->max_cap));
 }
 
 static inline void lock_pipe(pipe_t* p)
