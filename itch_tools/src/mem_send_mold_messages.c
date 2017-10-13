@@ -58,6 +58,7 @@ int main(int argc, char *argv[]) {
     uint64_t timestamp;
     char *extra_options = 0;
     int do_print_ao = 0;
+    int sendbuf = 0;
     struct omx_moldudp64_header *h;
     struct omx_moldudp64_message *mm;
     struct itch50_message *m;
@@ -66,10 +67,13 @@ int main(int argc, char *argv[]) {
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "ha:m:v:r:")) != -1) {
+    while ((opt = getopt(argc, argv, "ha:m:b:v:r:")) != -1) {
         switch (opt) {
             case 'a':
                 extra_options = optarg;
+                break;
+            case 'b':
+                sendbuf = atoi(optarg);
                 break;
             case 'r':
                 filename = optarg;
@@ -128,6 +132,17 @@ int main(int argc, char *argv[]) {
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0)
         error("socket()");
+
+    if (sendbuf > 0) {
+        if (setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &sendbuf, sizeof(sendbuf)) < 0)
+            error("setsockopt()");
+        if (verbosity > 0)
+            printf("Socket kernel send buffer set to %d bytes\n", sendbuf);
+    }
+
+    int disable = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_NO_CHECK, &disable, sizeof(disable)) < 0)
+        error("setsockopt()");
 
     if (strcmp(hostname, "255.255.255.255") == 0) {
         int enable_bcast = 1;
