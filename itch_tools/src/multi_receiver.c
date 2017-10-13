@@ -425,6 +425,10 @@ int main(int argc, char *argv[]) {
             printf("Socket kernel receive buffer set to %d bytes\n", rcvbuf);
     }
 
+    int disable = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_NO_CHECK, &disable, sizeof(disable)) < 0)
+        error("setsockopt()");
+
     int remoteaddr_len = sizeof(remoteaddr);
 
     int matched_filter;
