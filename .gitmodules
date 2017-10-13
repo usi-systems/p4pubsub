@@ -4,3 +4,6 @@
 [submodule "itch_tools/third-party/libtrading"]
 	path = itch_tools/third-party/libtrading
 	url = https://github.com/libtrading/libtrading
+[submodule "itch_tools/third-party/liblfds"]
+	path = itch_tools/third-party/liblfds
+	url = https://github.com/liblfds/liblfds
