@@ -46,7 +46,7 @@ void *sender(void *ignored) {
 char *progname;
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-q Q_SIZE] LISTEN_HOST LISTEN_PORT DST_HOST DST_PORT\n\
+            "Usage: %s [-b SO_RCVBUF] [-q Q_SIZE] LISTEN_HOST LISTEN_PORT DST_HOST DST_PORT\n\
 \n\
 \n\
 ", progname);
@@ -56,9 +56,13 @@ void usage(int rc) {
 int main(int argc, char *argv[]) {
     int opt;
     int queue_size = 64;
+    int rcvbuf = 0;
     progname = basename(argv[0]);
-    while ((opt = getopt(argc, argv, "hq:")) != -1) {
+    while ((opt = getopt(argc, argv, "hb:q:")) != -1) {
         switch (opt) {
+            case 'b':
+                rcvbuf = atoi(optarg);
+                break;
             case 'q':
                 queue_size = atoi(optarg);
                 break;
@@ -90,6 +94,11 @@ int main(int argc, char *argv[]) {
     sock_addr.sin_port = htons(atoi(listen_port));
 	if (bind(sock_fd, (struct sockaddr *)&sock_addr, sizeof(sock_addr)) == -1)
         error("bind()");
+
+    if (rcvbuf > 0) {
+        if (setsockopt(sock_fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
+            error("setsockopt()");
+    }
 
 	sock_addr.sin_addr.s_addr = inet_addr(dst_host);
     sock_addr.sin_port = htons(atoi(dst_port));
