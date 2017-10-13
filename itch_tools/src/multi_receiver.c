@@ -435,7 +435,7 @@ int main(int argc, char *argv[]) {
     message_queue_r = pipe_consumer_new(pipe);
     pipe_free(pipe);
 
-    ring_buf_init(BUFSIZE, queue_size+1);
+    ring_buf_init(BUFSIZE, queue_size+2);
     char *buf = ring_buf_next();
 
     if (pthread_create(&consumer_thread, NULL, process_messages, NULL)) {

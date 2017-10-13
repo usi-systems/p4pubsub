@@ -18,7 +18,6 @@ struct sockaddr_in sock_addr;
 int sock_fd;
 struct lfds710_queue_bmm_state qbmms;
 
-
 struct queue_pkt {
     size_t size;
     char buf[BUFSIZE];
@@ -37,9 +36,8 @@ void *sender(void *ignored) {
         if (pkt == NULL)
             break;
 
-        //usleep(100000);
+        //usleep(1000000);
         sendto(sock_fd, pkt->buf, pkt->size, 0, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
-        free(pkt);
     }
 }
 
@@ -73,9 +71,9 @@ int main(int argc, char *argv[]) {
         }
     }
 
-	if (argc - optind != 4) {
-		usage(-1);
-	}
+    if (argc - optind != 4) {
+        usage(-1);
+    }
 
     if (!is_pow2(queue_size)) {
         fprintf(stderr, "Queue size must be a power of 2 (e.g. 2, 4, 8, 16, etc.)\n");
@@ -87,12 +85,12 @@ int main(int argc, char *argv[]) {
     char *dst_host = argv[optind+2];
     char *dst_port = argv[optind+3];
 
-	sock_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+    sock_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 
-	sock_addr.sin_family = AF_INET;
-	sock_addr.sin_addr.s_addr = inet_addr(listen_host);
+    sock_addr.sin_family = AF_INET;
+    sock_addr.sin_addr.s_addr = inet_addr(listen_host);
     sock_addr.sin_port = htons(atoi(listen_port));
-	if (bind(sock_fd, (struct sockaddr *)&sock_addr, sizeof(sock_addr)) == -1)
+    if (bind(sock_fd, (struct sockaddr *)&sock_addr, sizeof(sock_addr)) == -1)
         error("bind()");
 
     if (rcvbuf > 0) {
@@ -100,10 +98,10 @@ int main(int argc, char *argv[]) {
             error("setsockopt()");
     }
 
-	sock_addr.sin_addr.s_addr = inet_addr(dst_host);
+    sock_addr.sin_addr.s_addr = inet_addr(dst_host);
     sock_addr.sin_port = htons(atoi(dst_port));
 
-	struct sockaddr_in sa;
+    struct sockaddr_in sa;
     int sa_size = sizeof(sa);
 
     struct lfds710_queue_bmm_element qbmme[queue_size];
@@ -113,20 +111,24 @@ int main(int argc, char *argv[]) {
     if (pthread_create(&sender_thread, NULL, sender, NULL))
         error("pthread_create()");
 
+    int num_pkt_bufs = queue_size + 2;
+    int pkt_buf_idx = -1;
     struct queue_pkt *pkt;
+    struct queue_pkt *pkt_buf = (struct queue_pkt *)malloc(sizeof(struct queue_pkt) * num_pkt_bufs);
 
 	while (1) {
-        pkt = (struct queue_pkt *)malloc(sizeof(struct queue_pkt));
-		pkt->size = recvfrom(sock_fd, pkt->buf, BUFSIZE, 0, (struct sockaddr *)&sa, &sa_size);
-		if (pkt->size <= 0)
+        pkt_buf_idx = (pkt_buf_idx + 1) % num_pkt_bufs;
+        pkt = pkt_buf + pkt_buf_idx;
+
+        pkt->size = recvfrom(sock_fd, pkt->buf, BUFSIZE, 0, (struct sockaddr *)&sa, &sa_size);
+        if (pkt->size <= 0)
             continue;
 
         while (!lfds710_queue_bmm_enqueue(&qbmms, NULL, pkt)) {
             // Spin until pkt is enqueued
         }
-	}
+    }
 
     lfds710_queue_bmm_cleanup(&qbmms, NULL);
 
 }
-
