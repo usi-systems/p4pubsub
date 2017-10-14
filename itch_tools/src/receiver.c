@@ -31,9 +31,16 @@ FILE *fh_log = 0;
 int pkt_cnt = 0;
 int matching_cnt = 0;
 
+int log_buffer_max_entries = 1;
+int log_entries_count = 0;
+int log_flushed_count = 0;
+struct log_record *log_buffer;
+
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-v VERBOSITY] [-o OPTIONS] [-T US] [-b SO_RCVBUF] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST[:PORT]] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
+            "Usage: %s [-v VERBOSITY] [-o OPTIONS] [-B COUNT] [-T US] [-b SO_RCVBUF] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST[:PORT]] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
+\n\
+    -B COUNT   Buffer COUNT log entries in memory before writing.\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
 \n\
@@ -48,9 +55,28 @@ OPTIONS is a string of chars, which can include:\n\
     exit(rc);
 }
 
+void flush_log() {
+    size_t outstanding = log_entries_count - log_flushed_count;
+    fwrite(log_buffer, outstanding*sizeof(struct log_record), 1, fh_log);
+    log_flushed_count += outstanding;
+}
+
+void log_add_order(struct itch50_msg_add_order *ao) {
+    unsigned long long timestamp = ns_since_midnight();
+    struct log_record *rec = log_buffer + (log_entries_count % log_buffer_max_entries);
+    memcpy(rec->sent_ns_since_midnight, ao->Timestamp, 6);
+    memcpy(rec->received_ns_since_midnight, &timestamp, 6);
+    memcpy(rec->stock, ao->Stock, 8);
+    log_entries_count++;
+    if (log_entries_count % log_buffer_max_entries == 0)
+        flush_log();
+}
+
 void cleanup_and_exit() {
-    if (fh_log)
+    if (fh_log) {
+        flush_log();
         fclose(fh_log);
+    }
 
     if (sockfd)
         close(sockfd);
@@ -62,6 +88,7 @@ void cleanup_and_exit() {
 void catch_int(int signo) {
     cleanup_and_exit();
 }
+
 
 void busy_work(unsigned us) {
     unsigned i;
@@ -219,7 +246,7 @@ int main(int argc, char *argv[]) {
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "hv:o:b:t:f:s:c:m:T:")) != -1) {
+    while ((opt = getopt(argc, argv, "hv:o:b:t:D:f:s:c:m:T:")) != -1) {
         switch (opt) {
             case 'o':
                 extra_options = optarg;
@@ -235,6 +262,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 't':
                 log_filename = optarg;
+                break;
+            case 'D':
+                log_buffer_max_entries = atoi(optarg);
                 break;
             case 'T':
                 busy_work_us = atoi(optarg);
@@ -270,7 +300,6 @@ int main(int argc, char *argv[]) {
             port = 1234;
     }
 
-
     if (extra_options) {
         if (strchr(extra_options, 'q'))
             dont_listen = 1;
@@ -298,6 +327,11 @@ int main(int argc, char *argv[]) {
         fh_log = fopen(log_filename, "wb");
         if (!fh_log)
             error("open() log_filename");
+        if (log_buffer_max_entries < 1) {
+            fprintf(stderr, "Log buffer must contain at least 1 entry (%d is too few)\n", log_buffer_max_entries);
+            usage(-1);
+        }
+        log_buffer = (struct log_record *)malloc(sizeof(struct log_record) * log_buffer_max_entries);
     }
 
 
@@ -420,12 +454,8 @@ int main(int argc, char *argv[]) {
                     matched_filter = 1;
                     if (do_print_ao)
                         print_add_order(ao);
-                    if (fh_log) {
-                        timestamp = ns_since_midnight();
-                        fwrite(ao->Timestamp, 6, 1, fh_log);
-                        fwrite(&timestamp, 6, 1, fh_log);
-                        fwrite(ao->Stock, 8, 1, fh_log);
-                    }
+                    if (log_filename)
+                        log_add_order(ao);
                     if (busy_work_us)
                         busy_work(busy_work_us);
                     if (do_update_timestamp) {
