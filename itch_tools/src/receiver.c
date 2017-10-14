@@ -1,3 +1,5 @@
+#include "common.c"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -16,7 +18,6 @@
 #include "libtrading/proto/omx_moldudp_message.h"
 #include "../third-party/libtrading/lib/proto/nasdaq_itch50_message.c"
 
-#include "common.c"
 
 #define BUFSIZE 2048
 
@@ -38,9 +39,10 @@ struct log_record *log_buffer;
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-v VERBOSITY] [-o OPTIONS] [-B COUNT] [-T US] [-b SO_RCVBUF] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST[:PORT]] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
+            "Usage: %s [-v VERBOSITY] [-p CPU] [-o OPTIONS] [-B COUNT] [-T US] [-b SO_RCVBUF] [-m MAX_PKTS] [-t LOG_FILENAME] [-f FWD_HOST:PORT] [-c CONTROLLER_HOST[:PORT]] [-s STOCKS] [[LISTEN_HOST:]PORT]\n\
 \n\
     -B COUNT   Buffer COUNT log entries in memory before writing.\n\
+    -p CPU     Pin process to CPU.\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
 \n\
@@ -241,12 +243,13 @@ int main(int argc, char *argv[]) {
     struct itch50_message *m;
     struct itch50_msg_add_order *ao;
     struct sockaddr_in forward_addr;
+    int pin_cpu = -1;
 
     filtered_stocks.count = 0;
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "hv:o:b:t:D:f:s:c:m:T:")) != -1) {
+    while ((opt = getopt(argc, argv, "hv:o:p:b:t:D:f:s:c:m:T:")) != -1) {
         switch (opt) {
             case 'o':
                 extra_options = optarg;
@@ -256,6 +259,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 'v':
                 verbosity = atoi(optarg);
+                break;
+            case 'p':
+                pin_cpu = atoi(optarg);
                 break;
             case 'b':
                 rcvbuf = atoi(optarg);
@@ -359,6 +365,11 @@ int main(int argc, char *argv[]) {
     }
 
 
+    if (pin_cpu > -1) {
+        pin_thread(pin_cpu);
+        if (verbosity > 0)
+            fprintf(stderr, "Pinned process to CPU %d\n", pin_cpu);
+    }
 
     signal(SIGINT, catch_int);
 

@@ -1,7 +1,12 @@
+#define _GNU_SOURCE
+#include <sched.h>
 #include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <assert.h>
 #include "libtrading/proto/nasdaq_itch50_message.h"
 
 #define STOCK_SIZE 8
@@ -72,3 +77,19 @@ int is_pow2(unsigned n) {
         n >>= 1;
     return (n == 1);
 }
+
+void pin_thread(int cpu) {
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    CPU_SET(cpu, &mask);
+    if (sched_setaffinity(0, sizeof(cpu_set_t), &mask) < 0)
+        error("sched_setaffinity()");
+}
+
+void assert_thread_affinity(int cpu) {
+    cpu_set_t mask;
+    if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) < 0)
+        error("sched_getaffinity()");
+    assert(CPU_ISSET(cpu, &mask));
+}
+

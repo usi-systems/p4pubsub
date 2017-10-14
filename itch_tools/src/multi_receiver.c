@@ -1,7 +1,7 @@
-#define _GNU_SOURCE
+#include "common.c"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <sched.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -11,7 +11,6 @@
 #include <libgen.h>
 #include <signal.h>
 #include <fcntl.h>
-#include <assert.h>
 #include <math.h>
 #include <pthread.h>
 
@@ -20,7 +19,6 @@
 #include "../third-party/libtrading/lib/proto/nasdaq_itch50_message.c"
 
 #include "pipe.h"
-#include "common.c"
 
 #define BUFSIZE 2048
 
@@ -177,21 +175,6 @@ unsigned busy_work_us = 0;
 int do_update_timestamp = 0;
 char *forward_host_port = 0;
 struct sockaddr_in forward_addr;
-
-void pin_thread(int cpu) {
-    cpu_set_t mask;
-    CPU_ZERO(&mask);
-    CPU_SET(cpu, &mask);
-    if (sched_setaffinity(0, sizeof(cpu_set_t), &mask) < 0)
-        error("sched_setaffinity()");
-}
-
-void assert_thread_affinity(int cpu) {
-    cpu_set_t mask;
-    if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) < 0)
-        error("sched_getaffinity()");
-    assert(CPU_ISSET(cpu, &mask));
-}
 
 void *process_messages(void *ignored) {
     struct itch50_msg_add_order *ao;

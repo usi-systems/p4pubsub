@@ -1,3 +1,5 @@
+#include "common.c"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -9,8 +11,6 @@
 #include <libgen.h>
 #include <pthread.h>
 #include "liblfds710.h"
-
-#include "common.c"
 
 #define BUFSIZE 2048
 

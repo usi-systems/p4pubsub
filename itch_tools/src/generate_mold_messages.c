@@ -1,3 +1,5 @@
+#include "common.c"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,8 +12,6 @@
 #include "libtrading/proto/nasdaq_itch50_message.h"
 #include "libtrading/proto/omx_moldudp_message.h"
 #include "../third-party/libtrading/lib/proto/nasdaq_itch50_message.c"
-
-#include "common.c"
 
 char *progname;
 

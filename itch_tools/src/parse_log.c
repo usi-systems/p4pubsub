@@ -1,11 +1,11 @@
+#include "common.c"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <libgen.h>
 #include <assert.h>
-
-#include "common.c"
 
 char *my_hostname;
 
