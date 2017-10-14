@@ -22,7 +22,9 @@ int verbosity = 0;
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-    "Usage: %s [-a OPTIONS] [-v VERBOSITY] -r FILENAME HOST[:PORT]\n\
+    "Usage: %s [-a OPTIONS] [-p CPU] [-v VERBOSITY] -r FILENAME HOST[:PORT]\n\
+\n\
+    -p CPU     Pin process to CPU.\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
     a - print Add Order messages as TSV\n\
@@ -64,16 +66,20 @@ int main(int argc, char *argv[]) {
     struct itch50_message *m;
     struct itch50_msg_add_order *ao;
     int pkt_cnt = 0;
+    int pin_cpu = -1;
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "ha:m:b:v:r:")) != -1) {
+    while ((opt = getopt(argc, argv, "ha:m:b:v:r:p:")) != -1) {
         switch (opt) {
             case 'a':
                 extra_options = optarg;
                 break;
             case 'b':
                 sendbuf = atoi(optarg);
+                break;
+            case 'p':
+                pin_cpu = atoi(optarg);
                 break;
             case 'r':
                 filename = optarg;
@@ -114,6 +120,13 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Must specify a file\n");
         usage(-1);
     }
+
+    if (pin_cpu > -1) {
+        pin_thread(pin_cpu);
+        if (verbosity > 0)
+            fprintf(stderr, "Pinned process to CPU %d\n", pin_cpu);
+    }
+
 
     FILE *fh = fopen(filename, "rb");
     if (!fh)
