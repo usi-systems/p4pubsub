@@ -105,6 +105,10 @@ Get the timestamp for Add Orders for "GOOGL":
 
     ./replay -o a ~/Downloads/08302017.NASDAQ_ITCH50 | grep GOOGL | cut -f4
 
+Get the message inter-arrival times:
+
+    ./replay -o a ~/Downloads/08302017.NASDAQ_ITCH50 | grep GOOGL | cut -f4 | ../scripts/deltas.py -
+
 Create a timestamp/frequency timeseries with 1s bin size:
 
     ./replay -o a ~/Downloads/08302017.NASDAQ_ITCH50 | grep GOOGL | cut -f4 | ../scripts/bin.py 1000000000
