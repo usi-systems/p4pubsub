@@ -1,0 +1,47 @@
+Date: 18th October 2017
+Attendees: Theo, Antonio, Robert, Masoud
+
+SUMMARY:
+
+We discussed the shortcomings of our PoC for JS, and what would have to be
+improved (reliability and even lower latency). Then we brainstormed some other
+applications that are higher throughput.
+
+
+NEXT STEPS:
+
+- Identify pub/sub systems with high throughput that are used in industry
+- Add reliability to our filtering system
+- Identify some basic operations required on the switch to implement Linear
+  Road
+
+
+Some reactions:
+
+Nate: two takeaways from JS meeting:
+    1. We don't provide reliability 
+    2. They can do filtering faster at the end-host FPGAs
+
+We would also have to be able to process other types of protocols, e.g. PITCH.
+This would require stateful processing and varlength messages
+
+Is there some way we can provide reliability?
+    - Network coding?
+    - Switch to end-host seq number?
+
+Antonio has done some work on reliability for pub/sub systems. They added
+history to each packet so that end-host could figure out whether it missed a
+previous message that it is interested in.
+
+It could also be possible to truncate packets in queue and send empty packets
+to end-hosts to signal packet loss.
+
+Others have replay engines that replay lost packets.
+
+Maybe we should look into throughput applications.
+We should find a system and dial up the load.
+    - Broker vs. in-network pub/sub
+    - Filtering at end-hosts vs. upstream in-network
+      (sender bcasts all messages to all hosts, and switch could filter)
+
+
