@@ -1,0 +1,30 @@
+Date: 25th October 2017
+Attendees: Theo, Antonio, Robert
+
+SUMMARY:
+
+We discussed the limitations of implementing linear road on the switch, and
+then other applications that would be better suited, like high throughput
+pubsub and routing.
+
+NEXT STEPS:
+
+- Implement pub/sub replacement for AMQ
+
+Some reactions:
+
+- It's possible to implement some scaled-down Linear Road queries
+- For other queries, too much state is needed
+- We should find applications that require constant amount of state on the
+  switch
+- Maybe routing applications are better suited for the switch
+- Robert: could we do granular computing?
+    - descriptive way of routing to many small endpoints
+- We could do load balancing with state
+- Could we do NIDS? Or would that require too much state?
+- For throughput experiments, we can look at Antonio's 2017 Eurosys paper:
+  http://www.inf.usi.ch/carzaniga/papers/rpkmcc_eurosys17.pdf
+- We should find an application that uses AMQ/Kafka and drop in our switch
+  version to see performance benefits
+- We will have to implement reliable delivery
+- Where do you measure throughput? Send or receive side?
