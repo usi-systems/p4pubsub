@@ -7,3 +7,4 @@
 [submodule "itch_tools/third-party/liblfds"]
 	path = itch_tools/third-party/liblfds
 	url = https://github.com/liblfds/liblfds
+	ignore = dirty
