@@ -1,45 +1,6 @@
 #ifndef __HEADER_P4__
 #define __HEADER_P4__ 1
 
-header_type intrinsic_metadata_t {
-    fields {
-        resubmit_flag : 1;              // flag distinguishing original packets
-                                        // from resubmitted packets.
-
-        ingress_global_timestamp : 48;     // global timestamp (ns) taken upon
-                                        // arrival at ingress.
-
-        mcast_grp : 16;                 // multicast group id (key for the
-                                        // mcast replication table)
-
-        deflection_flag : 1;            // flag indicating whether a packet is
-                                        // deflected due to deflect_on_drop.
-        deflect_on_drop : 1;            // flag indicating whether a packet can
-                                        // be deflected by TM on congestion drop
-
-        enq_congest_stat : 2;           // queue congestion status at the packet
-                                        // enqueue time.
-
-        deq_congest_stat : 2;           // queue congestion status at the packet
-                                        // dequeue time.
-
-        mcast_hash : 13;                // multicast hashing
-
-        egress_rid : 16;                // Replication ID for multicast
-
-        lf_field_list : 32;             // Learn filter field list
-
-        priority : 3;                   // set packet priority
-
-        ingress_cos: 3;                 // ingress cos
-
-        packet_color: 2;                // packet color
-
-        qid: 5;                         // queue id
-    }
-}
-
-
 header_type ethernet_t {
     fields {
         dstAddr : 48;
@@ -75,7 +36,8 @@ header_type udp_t {
     }
 }
 
-#define LR_MSG_POS_REPORT 0
+#define LR_MSG_POS_REPORT       0
+#define LR_MSG_ACCIDENT_ALERT   1
 
 header_type lr_msg_type_t {
     fields {
@@ -91,6 +53,15 @@ header_type pos_report_t {
         xway: 8;
         lane: 8; // only uses 3 bits
         dir: 8; // only uses 1 bit
+        seg: 8;
+    }
+}
+
+header_type accident_alert_t {
+    fields {
+        time: 16;
+        vid: 32;
+        emit: 16;
         seg: 8;
     }
 }

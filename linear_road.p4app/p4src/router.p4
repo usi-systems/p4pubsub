@@ -28,7 +28,6 @@ table ipv4_lpm {
 
 action set_dmac(dmac) {
     modify_field(ethernet.dstAddr, dmac);
-    modify_field(udp.checksum, 0);
 }
 
 table forward {
@@ -97,10 +96,10 @@ register v_dir_reg {
 #define LR_NUM_DIRS    2
 
 #define STOPPED_IDX(xway, seg, dir, lane) \
-    ((xway * (LR_NUM_SEG * LR_NUM_DIRS * LR_NUM_LANES)) + \
-     (seg * LR_NUM_DIRS * LR_NUM_LANES) + \
-     (dir * LR_NUM_LANES) + \
-     lane)
+    (((xway) * (LR_NUM_SEG * LR_NUM_DIRS * LR_NUM_LANES)) + \
+     ((seg) * LR_NUM_DIRS * LR_NUM_LANES) + \
+     ((dir) * LR_NUM_LANES) + \
+     (lane))
 
 
 // XXX this has to be updated manually, because the macro is not expanded
@@ -113,12 +112,15 @@ register stopped_cnt_reg {
 }
 
 
-header_type lr_tmp_meta_t {
+header_type accident_meta_t {
     fields {
-        tmp: 8;
+        cur_stp_cnt: 8;
+        prev_stp_cnt: 8;
+        accident_seg: 8;
+        has_accident_ahead: 1;
     }
 }
-metadata lr_tmp_meta_t lr_tmp;
+metadata accident_meta_t accident_meta;
 
 header_type v_prev_metadata_t {
   fields {
@@ -128,7 +130,6 @@ header_type v_prev_metadata_t {
     lane: 3;
     seg: 8;
     dir: 1;
-    lane_stp_cnt: 3;
   }
 }
 metadata v_prev_metadata_t v_prev;
@@ -152,11 +153,6 @@ action do_update_state() {
     register_read(v_prev.lane, v_lane_reg, pos_report.vid);
     register_read(v_prev.seg, v_seg_reg, pos_report.vid);
     register_read(v_prev.dir, v_dir_reg, pos_report.vid);
-    register_read(v_prev.lane_stp_cnt, stopped_cnt_reg, STOPPED_IDX(
-                v_prev.xway,
-                v_prev.seg,
-                v_prev.dir,
-                v_prev.lane));
 
     // Overwrite the previous location state with the current
     register_write(v_valid_reg, pos_report.vid, 1);
@@ -165,49 +161,104 @@ action do_update_state() {
     register_write(v_lane_reg, pos_report.vid, pos_report.lane);
     register_write(v_seg_reg, pos_report.vid, pos_report.seg);
     register_write(v_dir_reg, pos_report.vid, pos_report.dir);
-
-    // Load the count of stopped vehicles ahead
 }
-
 table update_state {
     actions { do_update_state; }
 }
 
-action dec_prev_stopped() {
+action do_load_stopped_ahead() {
+    // Load the count of stopped vehicles ahead
+    register_read(accident_ahead.seg0, stopped_cnt_reg, STOPPED_IDX(
+                pos_report.xway,
+                pos_report.seg,
+                pos_report.dir,
+                pos_report.lane));
+    register_read(accident_ahead.seg1, stopped_cnt_reg, STOPPED_IDX(
+                pos_report.xway,
+                pos_report.seg+1,
+                pos_report.dir,
+                pos_report.lane));
+    register_read(accident_ahead.seg2, stopped_cnt_reg, STOPPED_IDX(
+                pos_report.xway,
+                pos_report.seg+2,
+                pos_report.dir,
+                pos_report.lane));
+    register_read(accident_ahead.seg3, stopped_cnt_reg, STOPPED_IDX(
+                pos_report.xway,
+                pos_report.seg+3,
+                pos_report.dir,
+                pos_report.lane));
+    register_read(accident_ahead.seg4, stopped_cnt_reg, STOPPED_IDX(
+                pos_report.xway,
+                pos_report.seg+4,
+                pos_report.dir,
+                pos_report.lane));
+}
+table load_stopped_ahead {
+    actions { do_load_stopped_ahead; }
+}
+
+action do_dec_prev_stopped() {
+    // Load stopped cnt for the previous loc:
+    register_read(accident_meta.prev_stp_cnt, stopped_cnt_reg, STOPPED_IDX(
+                v_prev.xway,
+                v_prev.seg,
+                v_prev.dir,
+                v_prev.lane));
+    // Decrement the count:
     register_write(stopped_cnt_reg, STOPPED_IDX(
                 v_prev.xway,
                 v_prev.seg,
                 v_prev.dir,
                 v_prev.lane),
-            v_prev.lane_stp_cnt - 1
+            accident_meta.prev_stp_cnt - 1
             );
 }
-table unstopped {
-    actions {
-        dec_prev_stopped;
-    }
-    size: 1;
+table dec_prev_stopped {
+    actions { do_dec_prev_stopped; }
 }
 
-action inc_stopped() {
-    register_read(lr_tmp.tmp, stopped_cnt_reg, STOPPED_IDX(
+action do_inc_stopped() {
+    // Load the current stopped count for this loc:
+    register_read(accident_meta.cur_stp_cnt, stopped_cnt_reg, STOPPED_IDX(
                 pos_report.xway,
                 pos_report.seg,
                 pos_report.dir,
                 pos_report.lane));
+    // Increment the stopped count:
     register_write(stopped_cnt_reg, STOPPED_IDX(
                 pos_report.xway,
                 pos_report.seg,
                 pos_report.dir,
                 pos_report.lane),
-            lr_tmp.tmp + 1
+            accident_meta.cur_stp_cnt + 1
             );
 }
-table stopped {
-    actions {
-        inc_stopped;
+table inc_stopped {
+    actions { do_inc_stopped; }
+}
+
+field_list no_fields {
+    accident_meta.accident_seg;
+}
+
+action set_accident_meta(ofst) {
+    modify_field(accident_meta.accident_seg, pos_report.seg + ofst);
+    modify_field(accident_meta.has_accident_ahead, 1);
+}
+
+table check_accidents {
+    reads {
+        accident_ahead.seg0: range;
+        accident_ahead.seg1: range;
+        accident_ahead.seg2: range;
+        accident_ahead.seg3: range;
+        accident_ahead.seg4: range;
     }
-    size: 1;
+    actions {
+        set_accident_meta;
+    }
+    size: 8;
 }
 
 control ingress {
@@ -221,17 +272,22 @@ control ingress {
                  (v_prev.lane != pos_report.lane) or // or it changed lanes
                  (v_prev.seg != pos_report.seg)      // or it changed seg
                 )) {
-                apply(unstopped);
+                apply(dec_prev_stopped);             // then dec stopped vehicles for prev loc
             }
 
-            if ((v_prev.isvalid == 0 and pos_report.spd == 0) or
+            if ((v_prev.isvalid == 0 and            // it's a new vehicle and it's stopped
+                        pos_report.spd == 0) or
                 (pos_report.spd == 0 and            // it's stopped
                 (v_prev.spd > 0 or                  // and it was moving
-                 v_prev.lane != pos_report.lane or  // or it changed lane
-                 v_prev.seg != pos_report.seg))
+                 v_prev.lane != pos_report.lane or  // or it entered a new lane
+                 v_prev.seg != pos_report.seg))     // or it entered a new seg
                     ) {
-                apply(stopped);
+                apply(inc_stopped);                 // then inc stopped vehicles for this loc
             }
+
+            apply(load_stopped_ahead);
+
+            apply(check_accidents);                 // check for accidents
         }
 
         apply(ipv4_lpm);
@@ -239,8 +295,56 @@ control ingress {
     }
 }
 
+header_type egress_metadata_t {
+    fields {
+        recirculate: 1;
+    }
+}
+metadata egress_metadata_t egress_metadata;
+
+header standard_metadata_t standard_metadata;
+
+field_list e2e_fl {
+    accident_meta;
+    egress_metadata;
+}
+
+action accident_alert_e2e(mir_ses) {
+    modify_field(egress_metadata.recirculate, 1);
+    clone_egress_pkt_to_egress(mir_ses, e2e_fl);
+}
+
+action make_accident_alert() {
+    modify_field(lr_msg_type.msg_type, 1);
+
+    add_header(accident_alert);
+    modify_field(accident_alert.time, pos_report.time);
+    modify_field(accident_alert.vid, pos_report.vid);
+    modify_field(accident_alert.seg, accident_meta.accident_seg);
+
+    remove_header(pos_report);
+
+    modify_field(ipv4.totalLen, 38);
+    modify_field(udp.length_, 18);
+    modify_field(udp.checksum, 0);
+}
+
+table send_accident_alert {
+    reads {
+        accident_meta.has_accident_ahead: exact;
+        egress_metadata.recirculate: exact;
+    }
+    actions {
+        accident_alert_e2e;
+        make_accident_alert;
+    }
+}
+
 control egress {
     if (valid(ipv4)) {
+        if (valid(pos_report)) {
+            apply(send_accident_alert);
+        }
         apply(send_frame);
     }
 }

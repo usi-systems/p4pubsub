@@ -3,35 +3,42 @@ from threading import Thread
 import json
 import os
 
-CONTROLLER_IPC_FILENAME = '/tmp/lr_controller.sock'
-
+CONTROLLER_IPC_SOCK = '/tmp/lr_controller.sock'
+CLIENT_IPC_SOCK_TMPL = '/tmp/lr_client_%d.sock'
 
 RPC_CMDS = ['getStoppedCnt', 'getVidState']
+
+def serialize(o):
+    return json.dumps(o)
+
+def deserialize(data):
+    o = json.loads(data)
+    return dict((str(k), v) for k,v in o.iteritems())
 
 class RPCClient:
 
     def __init__(self):
         self.cl_id = 1
-        self.sock_path = '/tmp/lr_client.sock'
-        self._connect()
+        self.sock_path = CLIENT_IPC_SOCK_TMPL % self.cl_id
+        self.__connect()
 
-    def _connect(self):
+    def __connect(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         self.sock.bind(self.sock_path)
 
-        if not os.path.exists(CONTROLLER_IPC_FILENAME):
-            raise Exception("Socket file does not exist: %s" % CONTROLLER_IPC_FILENAME)
+        if not os.path.exists(CONTROLLER_IPC_SOCK):
+            raise Exception("Socket file does not exist: %s" % CONTROLLER_IPC_SOCK)
         self.controller_sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        self.controller_sock.connect(CONTROLLER_IPC_FILENAME)
+        self.controller_sock.connect(CONTROLLER_IPC_SOCK)
 
-        self._send(dict(cmd='connect', cl_sock=self.sock_path))
+        self._send(dict(cmd='__connect', cl_sock=self.sock_path))
 
     def _send(self, msg):
         msg['cl_id'] = self.cl_id
-        data = json.dumps(msg)
+        data = serialize(msg)
         self.controller_sock.send(data)
         resp = self.sock.recv(2048)
-        return json.loads(resp)
+        return deserialize(resp)
 
 def addCmdMethod(cmd):
     def call_cmd(self, **kwargs):
@@ -52,11 +59,11 @@ class RPCServer(Thread):
         self.cl_socks = {}
 
     def run(self):
-        if os.path.exists(CONTROLLER_IPC_FILENAME):
-          os.remove(CONTROLLER_IPC_FILENAME)
+        if os.path.exists(CONTROLLER_IPC_SOCK):
+          os.remove(CONTROLLER_IPC_SOCK)
 
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        self.sock.bind(CONTROLLER_IPC_FILENAME)
+        self.sock.bind(CONTROLLER_IPC_SOCK)
 
         print "Controller RPC server listening..."
 
@@ -64,9 +71,9 @@ class RPCServer(Thread):
             data = self.sock.recv(2048)
             if not data: break
 
-            req = json.loads(data)
+            req = deserialize(data)
 
-            if req['cmd'] == 'connect':
+            if req['cmd'] == '__connect':
                 self.handleConnect(req)
             elif hasattr(self.controller, req['cmd']):
                 self.callAndReply(req)
@@ -84,10 +91,7 @@ class RPCServer(Thread):
         self.reply(req, dict(res=res))
 
     def reply(self, req, resp):
-        self.cl_socks[req['cl_id']].send(json.dumps(resp))
-
-    def send(self, cl_id, msg):
-        self.cl_socks[cl_id].send(json.dumps(msg))
+        self.cl_socks[req['cl_id']].send(serialize(resp))
 
     def stop(self):
         self.sock.shutdown(socket.SHUT_RDWR)

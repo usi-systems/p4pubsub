@@ -1,4 +1,15 @@
 table_set_default update_state do_update_state
-table_set_default unstopped dec_prev_stopped
-table_set_default stopped inc_stopped
-#table_add check_stopped set_stopped 0 =>
+table_set_default dec_prev_stopped do_dec_prev_stopped
+table_set_default inc_stopped do_inc_stopped
+table_set_default load_stopped_ahead do_load_stopped_ahead
+
+table_add check_accidents set_accident_meta 2->0xff 0->0xff 0->0xff 0->0xff 0->0xff => 0 1
+table_add check_accidents set_accident_meta 0->0xff 2->0xff 0->0xff 0->0xff 0->0xff => 1 1
+table_add check_accidents set_accident_meta 0->0xff 0->0xff 2->0xff 0->0xff 0->0xff => 2 1
+table_add check_accidents set_accident_meta 0->0xff 0->0xff 0->0xff 2->0xff 0->0xff => 3 1
+table_add check_accidents set_accident_meta 0->0xff 0->0xff 0->0xff 0->0xff 2->0xff => 4 1
+
+table_add send_accident_alert accident_alert_e2e 1 0 => 1
+table_add send_accident_alert make_accident_alert 1 1 =>
+
+mirroring_add 0 1 1 2

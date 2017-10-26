@@ -65,16 +65,23 @@ parser parse_udp {
 
 header lr_msg_type_t lr_msg_type;
 header pos_report_t pos_report;
+header accident_alert_t accident_alert;
 
 parser parse_lr {
     extract(lr_msg_type);
     return select(lr_msg_type.msg_type) {
         LR_MSG_POS_REPORT: parse_pos_report;
+        LR_MSG_ACCIDENT_ALERT: parse_accident_alert;
         default: ingress;
     }
 }
 
 parser parse_pos_report {
     extract(pos_report);
+    return ingress;
+}
+
+parser parse_accident_alert {
+    extract(accident_alert);
     return ingress;
 }
