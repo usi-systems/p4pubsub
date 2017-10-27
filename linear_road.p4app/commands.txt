@@ -1,7 +1,12 @@
-table_set_default update_state do_update_state
+table_set_default update_pos_state do_update_pos_state
+table_set_default update_new_seg set_new_seg
 table_set_default dec_prev_stopped do_dec_prev_stopped
 table_set_default inc_stopped do_inc_stopped
 table_set_default load_stopped_ahead do_load_stopped_ahead
+
+table_add update_vol_state load_vol 0 0 =>
+table_add update_vol_state load_and_inc_vol 1 1 =>
+table_add update_vol_state load_and_inc_and_dec_vol 0 1 =>
 
 table_add check_accidents set_accident_meta 2->0xff 0->0xff 0->0xff 0->0xff 0->0xff => 0 1
 table_add check_accidents set_accident_meta 0->0xff 2->0xff 0->0xff 0->0xff 0->0xff => 1 1

@@ -6,7 +6,7 @@ import os
 CONTROLLER_IPC_SOCK = '/tmp/lr_controller.sock'
 CLIENT_IPC_SOCK_TMPL = '/tmp/lr_client_%d.sock'
 
-RPC_CMDS = ['getStoppedCnt', 'getVidState']
+RPC_CMDS = ['getStoppedCnt', 'getVidState', 'getSegState']
 
 def serialize(o):
     return json.dumps(o)

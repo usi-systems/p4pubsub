@@ -5,7 +5,11 @@ from linear_road import *
 
 def stoppedIdx(xway, seg, dir, lane):
     """ Index into register of counters of stopped vehicles for each location """
-    return (xway * (LR_NUM_SEG * LR_NUM_DIRS * LR_NUM_LANES)) + (seg * LR_NUM_DIRS * LR_NUM_LANES) + (dir * LR_NUM_LANES) + lane
+    return (xway * LR_NUM_SEG * LR_NUM_DIRS * LR_NUM_LANES) + (seg * LR_NUM_DIRS * LR_NUM_LANES) + (dir * LR_NUM_LANES) + lane
+
+def dirsegIdx(xway, seg, dir):
+    """ Index into direction-segment state registers """
+    return (xway * LR_NUM_SEG * LR_NUM_DIRS) + (seg * LR_NUM_DIRS) + dir
 
 class CustomAppController(AppController):
 
@@ -27,6 +31,11 @@ class CustomAppController(AppController):
         for k in ['spd', 'valid', 'seg', 'xway', 'lane']:
             v = self.readRegister('v_%s_reg' % k, vid)
             state[k] = int(v)
+        return state
+
+    def getSegState(self, xway=None, seg=None, dir=None):
+        state = {}
+        state['vol'] = self.readRegister('seg_vol_reg', dirsegIdx(xway, seg, dir))
         return state
 
     def stop(self):

@@ -57,6 +57,7 @@ table send_frame {
     size: 256;
 }
 
+// XXX we don't support vehicles leaving and re-entering
 #define MAX_VID 32
 
 register v_valid_reg {
@@ -143,17 +144,27 @@ header_type accident_meta_t {
 }
 metadata accident_meta_t accident_meta;
 
-header_type v_prev_metadata_t {
+header_type v_state_metadata_t {
   fields {
-    isvalid: 1;
-    spd: 8;
-    xway: 8;
-    lane: 3;
-    seg: 8;
-    dir: 1;
+    new: 1; // new vehicle
+    new_seg: 1; // are we in a new seg now? i.e. v_state.prev_seg != pos_report.seg
+    prev_spd: 8; // state from previous pos_report
+    prev_xway: 8;
+    prev_lane: 3;
+    prev_seg: 8;
+    prev_dir: 1;
   }
 }
-metadata v_prev_metadata_t v_prev;
+metadata v_state_metadata_t v_state;
+
+header_type seg_metadata_t {
+    fields {
+        vol: 8;
+        avg_spd: 8;
+        prev_vol: 8; // vol in the previous seg
+    }
+}
+metadata seg_metadata_t seg_meta;
 
 header_type stopped_metadata_t {
   fields {
@@ -181,14 +192,15 @@ header_type stopped_metadata_t {
 }
 metadata stopped_metadata_t stopped_ahead;
 
-action do_update_state() {
+action do_update_pos_state() {
     // Load the state for the vehicle's previous location
-    register_read(v_prev.isvalid, v_valid_reg, pos_report.vid);
-    register_read(v_prev.spd, v_spd_reg, pos_report.vid);
-    register_read(v_prev.xway, v_xway_reg, pos_report.vid);
-    register_read(v_prev.lane, v_lane_reg, pos_report.vid);
-    register_read(v_prev.seg, v_seg_reg, pos_report.vid);
-    register_read(v_prev.dir, v_dir_reg, pos_report.vid);
+    register_read(v_state.new, v_valid_reg, pos_report.vid);
+    modify_field(v_state.new, ~v_state.new);
+    register_read(v_state.prev_spd, v_spd_reg, pos_report.vid);
+    register_read(v_state.prev_xway, v_xway_reg, pos_report.vid);
+    register_read(v_state.prev_lane, v_lane_reg, pos_report.vid);
+    register_read(v_state.prev_seg, v_seg_reg, pos_report.vid);
+    register_read(v_state.prev_dir, v_dir_reg, pos_report.vid);
 
     // Overwrite the previous location state with the current
     register_write(v_valid_reg, pos_report.vid, 1);
@@ -198,8 +210,53 @@ action do_update_state() {
     register_write(v_seg_reg, pos_report.vid, pos_report.seg);
     register_write(v_dir_reg, pos_report.vid, pos_report.dir);
 }
-table update_state {
-    actions { do_update_state; }
+table update_pos_state {
+    actions { do_update_pos_state; }
+}
+
+action set_new_seg() {
+    modify_field(v_state.new_seg, 1);
+}
+table update_new_seg {
+    actions { set_new_seg; }
+}
+
+action load_vol() {
+    register_read(seg_meta.vol, seg_vol_reg,
+            DIRSEG_IDX(pos_report.xway, pos_report.seg, pos_report.dir));
+}
+
+// only called for new vehicles, as there's no previous vol to dec
+action load_and_inc_vol() {
+    load_vol();
+    add_to_field(seg_meta.vol, 1);
+    register_write(seg_vol_reg,
+            DIRSEG_IDX(pos_report.xway, pos_report.seg, pos_report.dir),
+            seg_meta.vol);
+}
+
+// called for existing vehicles, because there's a previous vol to dec
+action load_and_inc_and_dec_vol() {
+    load_and_inc_vol();
+    register_read(seg_meta.prev_vol, seg_vol_reg,
+            DIRSEG_IDX(v_state.prev_xway, v_state.prev_seg, v_state.prev_dir));
+    subtract_from_field(seg_meta.prev_vol, 1);
+    register_write(seg_vol_reg,
+            DIRSEG_IDX(v_state.prev_xway, v_state.prev_seg, v_state.prev_dir),
+            seg_meta.prev_vol);
+}
+
+
+table update_vol_state {
+    reads {
+        v_state.new: exact;
+        v_state.new_seg: exact;
+    }
+    actions {
+        load_vol;                   // 0 0
+        load_and_inc_vol;           // 1 1
+        load_and_inc_and_dec_vol;   // 0 1
+    }
 }
 
 action do_load_stopped_ahead() {
@@ -259,16 +316,16 @@ table load_stopped_ahead {
 action do_dec_prev_stopped() {
     // Load stopped cnt for the previous loc:
     register_read(accident_meta.prev_stp_cnt, stopped_cnt_reg, STOPPED_IDX(
-                v_prev.xway,
-                v_prev.seg,
-                v_prev.dir,
-                v_prev.lane));
+                v_state.prev_xway,
+                v_state.prev_seg,
+                v_state.prev_dir,
+                v_state.prev_lane));
     // Decrement the count:
     register_write(stopped_cnt_reg, STOPPED_IDX(
-                v_prev.xway,
-                v_prev.seg,
-                v_prev.dir,
-                v_prev.lane),
+                v_state.prev_xway,
+                v_state.prev_seg,
+                v_state.prev_dir,
+                v_state.prev_lane),
             accident_meta.prev_stp_cnt - 1
             );
 }
@@ -322,23 +379,30 @@ table check_accidents {
 control ingress {
     if (valid(ipv4)) {
         if (valid(pos_report)) {
-            apply(update_state);
+            apply(update_pos_state);
 
-            if (v_prev.isvalid == 1 and
-                v_prev.spd == 0 and                  // it was stopped
-                (pos_report.spd != 0 or              // but it's moving now
-                 (v_prev.lane != pos_report.lane) or // or it changed lanes
-                 (v_prev.seg != pos_report.seg)      // or it changed seg
+            if (v_state.new == 1 or
+                v_state.prev_seg != pos_report.seg) {
+                apply(update_new_seg);
+            }
+
+            apply(update_vol_state);
+
+            if (v_state.new == 0 and
+                v_state.prev_spd == 0 and                   // it was stopped
+                (pos_report.spd != 0 or                     // but it's moving now
+                 (v_state.prev_lane != pos_report.lane) or  // or it changed lanes
+                 (v_state.prev_seg != pos_report.seg)       // or it changed seg
                 )) {
                 apply(dec_prev_stopped);             // then dec stopped vehicles for prev loc
             }
 
-            if ((v_prev.isvalid == 0 and            // it's a new vehicle and it's stopped
+            if ((v_state.new == 1 and                     // it's a new vehicle and it's stopped
                         pos_report.spd == 0) or
-                (pos_report.spd == 0 and            // it's stopped
-                (v_prev.spd > 0 or                  // and it was moving
-                 v_prev.lane != pos_report.lane or  // or it entered a new lane
-                 v_prev.seg != pos_report.seg))     // or it entered a new seg
+                (pos_report.spd == 0 and                  // it's stopped
+                (v_state.prev_spd > 0 or                  // and it was moving
+                 v_state.prev_lane != pos_report.lane or  // or it entered a new lane
+                 v_state.prev_seg != pos_report.seg))     // or it entered a new seg
                     ) {
                 apply(inc_stopped);                 // then inc stopped vehicles for this loc
             }

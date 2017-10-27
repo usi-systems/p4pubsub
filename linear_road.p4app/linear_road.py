@@ -12,6 +12,21 @@ LR_MSG_ACCIDENT_ALERT   = 1
 def locId(loc):
     return tuple(loc[k] for k in ['xway', 'seg', 'dir', 'lane'])
 
+def Loc(*args, **kw):
+    loc = {}
+
+    assert len(args) == 0 or len(args) == 1
+    if len(args) == 1:
+        msg = args[0]
+        for k in ['xway', 'seg', 'dir', 'lane']: loc[k] = msg[k]
+
+    for k,v in kw.iteritems():
+        if v is None:
+            if k in loc: del loc[k]
+        else:
+            loc[k] =v
+    return loc
+
 class LRMsg(dict):
     name = 'LRMsg'
     pretty_exclude_keys = []
