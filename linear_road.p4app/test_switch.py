@@ -7,6 +7,9 @@ from controller_rpc import RPCClient
 from lr_proto import LRProducer, LRConsumer, parseHostAndPort
 
 def log(x): sys.stderr.write(str(x) + ' ')
+def ewma(avg, x):
+    a = 0.25
+    return int((avg * (1 - a)) + (x * a))
 
 
 parser = argparse.ArgumentParser(description='Send stream of LR messages')
@@ -87,6 +90,21 @@ assert cont.getSegState(**segloc)['vol'] == 2
 loc2 = Loc(loc, seg=9)
 assert cont.getStoppedCnt(**loc2) == 1
 assert cont.getSegState(**Loc(loc2, lane=None))['vol'] == 1
+
+
+# Test EWMA
+sendPr(time=9, vid=5, spd=10, xway=0, lane=1, dir=0, seg=1)
+avg1 = cont.getVidState(vid=5)['ewma_spd']
+assert avg1 == 10
+
+sendPr(time=10, vid=5, spd=20, xway=0, lane=1, dir=0, seg=1)
+avg2 = cont.getVidState(vid=5)['ewma_spd']
+assert avg2 == ewma(avg1, 20)
+
+sendPr(time=11, vid=5, spd=40, xway=0, lane=1, dir=0, seg=1)
+avg3 = cont.getVidState(vid=5)['ewma_spd']
+assert avg3 == ewma(avg2, 40)
+
 
 assert not consumer.hasNewMsg()
 

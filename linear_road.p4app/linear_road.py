@@ -6,8 +6,9 @@ LR_NUM_SEG   = 100
 LR_NUM_LANES = 3
 LR_NUM_DIRS  = 2
 
-LR_MSG_POS_REPORT       = 0
-LR_MSG_ACCIDENT_ALERT   = 1
+LR_MSG_POS_REPORT           = 0
+LR_MSG_TOLL_NOTIFICATION    = 10
+LR_MSG_ACCIDENT_ALERT       = 11
 
 def locId(loc):
     return tuple(loc[k] for k in ['xway', 'seg', 'dir', 'lane'])

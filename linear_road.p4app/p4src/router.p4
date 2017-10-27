@@ -90,6 +90,11 @@ register v_dir_reg {
   instance_count: MAX_VID;
 }
 
+register v_ewma_spd_reg {
+  width: 8;
+  instance_count: MAX_VID;
+}
+
 
 #define LR_NUM_XWAY    2
 #define LR_NUM_SEG     100
@@ -128,11 +133,6 @@ register seg_vol_reg {
   instance_count: NUM_DIRSEG;
 }
 
-register seg_avg_spd_reg {
-  width: 8;
-  instance_count: NUM_DIRSEG;
-}
-
 
 header_type accident_meta_t {
     fields {
@@ -145,50 +145,50 @@ header_type accident_meta_t {
 metadata accident_meta_t accident_meta;
 
 header_type v_state_metadata_t {
-  fields {
-    new: 1; // new vehicle
-    new_seg: 1; // are we in a new seg now? i.e. v_state.prev_seg != pos_report.seg
-    prev_spd: 8; // state from previous pos_report
-    prev_xway: 8;
-    prev_lane: 3;
-    prev_seg: 8;
-    prev_dir: 1;
-  }
+    fields {
+        new: 1; // new vehicle
+        new_seg: 1; // are we in a new seg now? i.e. v_state.prev_seg != pos_report.seg
+        prev_spd: 8; // state from previous pos_report
+        prev_xway: 8;
+        prev_lane: 3;
+        prev_seg: 8;
+        prev_dir: 1;
+        ewma_spd: 8;
+    }
 }
 metadata v_state_metadata_t v_state;
 
 header_type seg_metadata_t {
     fields {
         vol: 8;
-        avg_spd: 8;
         prev_vol: 8; // vol in the previous seg
     }
 }
 metadata seg_metadata_t seg_meta;
 
 header_type stopped_metadata_t {
-  fields {
-    seg0l1: 8;
-    seg0l2: 8;
-    seg0l3: 8;
-    seg1l1: 8;
-    seg1l2: 8;
-    seg1l3: 8;
-    seg2l1: 8;
-    seg2l2: 8;
-    seg2l3: 8;
-    seg3l1: 8;
-    seg3l2: 8;
-    seg3l3: 8;
-    seg4l1: 8;
-    seg4l2: 8;
-    seg4l3: 8;
-    seg0_ord: 8; // OR of all the lanes in this seg
-    seg1_ord: 8;
-    seg2_ord: 8;
-    seg3_ord: 8;
-    seg4_ord: 8;
-  }
+    fields {
+        seg0l1: 8;
+        seg0l2: 8;
+        seg0l3: 8;
+        seg1l1: 8;
+        seg1l2: 8;
+        seg1l3: 8;
+        seg2l1: 8;
+        seg2l2: 8;
+        seg2l3: 8;
+        seg3l1: 8;
+        seg3l2: 8;
+        seg3l3: 8;
+        seg4l1: 8;
+        seg4l2: 8;
+        seg4l3: 8;
+        seg0_ord: 8; // OR of all the lanes in this seg
+        seg1_ord: 8;
+        seg2_ord: 8;
+        seg3_ord: 8;
+        seg4_ord: 8;
+    }
 }
 metadata stopped_metadata_t stopped_ahead;
 
@@ -219,6 +219,29 @@ action set_new_seg() {
 }
 table update_new_seg {
     actions { set_new_seg; }
+}
+
+action set_ewma_spd() {
+    modify_field(v_state.ewma_spd, pos_report.spd);
+    register_write(v_ewma_spd_reg, pos_report.vid, v_state.ewma_spd);
+}
+
+#define EWMA_A 25
+#define EWMA(avg, x) ((avg * (100 - EWMA_A)) + (x * EWMA_A)) / 100
+
+action calc_ewma_spd() {
+    register_read(v_state.ewma_spd, v_ewma_spd_reg, pos_report.vid);
+    modify_field(v_state.ewma_spd, EWMA(v_state.ewma_spd, pos_report.spd));
+    register_write(v_ewma_spd_reg, pos_report.vid, v_state.ewma_spd);
+}
+
+table update_ewma_spd {
+    reads { v_state.new: exact; }
+    actions {
+        set_ewma_spd;           // 1
+        calc_ewma_spd;          // 0
+    }
+    size: 2;
 }
 
 action load_vol() {
@@ -257,6 +280,7 @@ table update_vol_state {
         load_and_inc_vol;           // 1 1
         load_and_inc_and_dec_vol;   // 0 1
     }
+    size: 4;
 }
 
 action do_load_stopped_ahead() {
@@ -387,6 +411,7 @@ control ingress {
             }
 
             apply(update_vol_state);
+            apply(update_ewma_spd);
 
             if (v_state.new == 0 and
                 v_state.prev_spd == 0 and                   // it was stopped
@@ -397,6 +422,7 @@ control ingress {
                 apply(dec_prev_stopped);             // then dec stopped vehicles for prev loc
             }
 
+            // XXX divergence from spec: we say a car is stopped if spd=0
             if ((v_state.new == 1 and                     // it's a new vehicle and it's stopped
                         pos_report.spd == 0) or
                 (pos_report.spd == 0 and                  // it's stopped
@@ -437,7 +463,7 @@ action accident_alert_e2e(mir_ses) {
 }
 
 action make_accident_alert() {
-    modify_field(lr_msg_type.msg_type, 1);
+    modify_field(lr_msg_type.msg_type, LR_MSG_ACCIDENT_ALERT);
 
     add_header(accident_alert);
     modify_field(accident_alert.time, pos_report.time);

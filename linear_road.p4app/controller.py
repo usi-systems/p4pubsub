@@ -28,7 +28,7 @@ class CustomAppController(AppController):
 
     def getVidState(self, vid=None):
         state = LRMsg(dir=0)
-        for k in ['spd', 'valid', 'seg', 'xway', 'lane']:
+        for k in ['spd', 'valid', 'seg', 'xway', 'lane', 'ewma_spd']:
             v = self.readRegister('v_%s_reg' % k, vid)
             state[k] = int(v)
         return state

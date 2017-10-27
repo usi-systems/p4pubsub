@@ -36,8 +36,9 @@ header_type udp_t {
     }
 }
 
-#define LR_MSG_POS_REPORT       0
-#define LR_MSG_ACCIDENT_ALERT   1
+#define LR_MSG_POS_REPORT           0
+#define LR_MSG_TOLL_NOTIFICATION    10
+#define LR_MSG_ACCIDENT_ALERT       11
 
 header_type lr_msg_type_t {
     fields {
