@@ -1,13 +1,14 @@
 #!/usr/bin/env python
-import socket, sys
+import sys
 import signal
-from linear_road import unpackPosReport, unpackLRMsg, LRModel
+from linear_road import LRModel
+from lr_clients import LRConsumer
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.bind(('', int(sys.argv[1])))
+port = int(sys.argv[1])
+consumer = LRConsumer(port=port)
 
 def signalHandler(signal, frame):
-    sock.close()
+    consumer.close()
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signalHandler)
@@ -15,9 +16,6 @@ signal.signal(signal.SIGINT, signalHandler)
 lrm = LRModel()
 
 while True:
-    data, addr = sock.recvfrom(1024)
-    if not data: break
-
-    msg = unpackLRMsg(data)
+    msg = consumer.recv()
     print msg
     lrm.newMsg(msg)

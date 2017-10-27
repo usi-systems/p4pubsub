@@ -1,4 +1,5 @@
-import struct
+LR_ENTRY_LANE   = 0
+LR_EXIT_LANE    = 4
 
 LR_NUM_XWAY  = 2
 LR_NUM_SEG   = 100
@@ -7,10 +8,6 @@ LR_NUM_DIRS  = 2
 
 LR_MSG_POS_REPORT       = 0
 LR_MSG_ACCIDENT_ALERT   = 1
-
-msg_type_struct = struct.Struct('!B')
-position_report_struct = struct.Struct('!B H L B B B B B')
-accident_alert_struct = struct.Struct('!B H L H B')
 
 def locId(loc):
     return tuple(loc[k] for k in ['xway', 'seg', 'dir', 'lane'])
@@ -36,38 +33,10 @@ class AccidentAlert(LRMsg):
     name = 'Acc'
     pretty_exclude_keys = ['msg_type']
 
+class TollNotification(LRMsg):
+    name = 'Toll'
+    pretty_exclude_keys = ['msg_type']
 
-def packPosReport(time=0, vid=0, spd=0, xway=0,
-                        lane=0, dir=0, seg=0):
-    assert 0 <= time and time <= 10799
-    assert 0 <= spd and spd <= 100
-    assert 0 <= lane and lane <= 4
-    assert 0 <= dir and dir <= 1
-    assert 0 <= seg and seg <= 99
-    data = position_report_struct.pack(LR_MSG_POS_REPORT, time, vid, spd, xway, lane, dir, seg)
-    return data
-
-def unpackPosReport(data):
-    msg_type, time, vid, spd, xway, lane, dir, seg = position_report_struct.unpack(data)
-    assert msg_type == LR_MSG_POS_REPORT
-    d = PosReport(msg_type=msg_type, time=time, vid=vid, spd=spd,
-                xway=xway, lane=lane, dir=dir, seg=seg)
-    return d
-
-def unpackAccidentAlert(data):
-    msg_type, time, vid, emit, seg = accident_alert_struct.unpack(data)
-    assert msg_type == LR_MSG_ACCIDENT_ALERT
-    d = AccidentAlert(msg_type=msg_type, time=time, vid=vid, emit=emit, seg=seg)
-    return d
-
-def unpackLRMsg(data):
-    msg_type, = msg_type_struct.unpack(data[0])
-    if msg_type == LR_MSG_POS_REPORT:
-        return unpackPosReport(data)
-    elif msg_type == LR_MSG_ACCIDENT_ALERT:
-        return unpackAccidentAlert(data)
-    else:
-        raise Exception("Unrecognized msg type: %d" % msg_type)
 
 class LRException(Exception):
     pass
@@ -78,6 +47,7 @@ class LRModel:
         self.num_xway = num_xway
         self.num_seg = num_seg
 
+        self.seg_volume = {}
         self.position_reports = {}
         self.stopped_state = {}
         self.last_time = None
@@ -87,18 +57,28 @@ class LRModel:
             self._newPos(msg)
         elif isinstance(msg, AccidentAlert):
             self._newAccidentAlert(msg)
+        elif isinstance(msg, TollNotification):
+            self._newTollNotification(msg)
+        else:
+            raise LRException("Unrecognized message type")
 
         self.last_time = msg['time']
 
     def _newPos(self, pr):
         if pr['vid'] not in self.position_reports:
             self.position_reports[pr['vid']] = []
-        self.position_reports[pr['vid']].append(pr)
+
+        # TODO: check that a toll is received after entering new seg
 
         if pr['spd'] == 0:
             self._addStopped(pr)
         elif pr['spd'] > 0:
             self._rmStopped(pr)
+
+        self._updateVol(pr)
+
+        self.position_reports[pr['vid']].append(pr)
+
 
     def _newAccidentAlert(self, al):
         vid, seg = al['vid'], al['seg']
@@ -114,6 +94,51 @@ class LRModel:
 
         if seg != stopped_seg:
             raise LRException("Wrong AccidentAlert seg")
+
+    def _newTollNotification(self, tn):
+        vid, seg, dir = tn['vid'], tn['seg'], tn['dir']
+        if vid not in self.position_reports:
+            raise LRException("PosReports not yet received for VID")
+
+        latest_pr = self.position_reports[vid][-1]
+
+        if len(self.position_reports[vid]) > 1:
+            latest_pr2 = self.position_reports[vid][-2]
+            # Should only be emitted on entering a new segment
+            if latest_pr['seg'] == latest_pr2['seg']:
+                raise LRException("Unwarranted TollNotification: already in seg")
+
+        # Should not be emitted if in exit lane
+        if latest_pr['lane'] == LR_EXIT_LANE:
+            raise LRException("Unwarranted TollNotification: in exit lane")
+
+        # Should not be emitted if there's an accident
+        if self.hasAccident(pr):
+            raise LRException("Unwarranted TollNotification: accident in seg")
+
+    def _updateVol(self, pr):
+        time, vid = pr['time'], pr['vid']
+
+        if len(self.position_reports[vid]) > 0:
+            prev_pr = self.position_reports[vid][-1]
+            if prev_pr['seg'] != pr['seg']: # entered new seg
+                self._incVol(time, prev_pr['seg'], -1)
+                self._incVol(time, pr['seg'],      +1)
+        else:
+            self._incVol(time, pr['seg'],      +1)
+
+
+    def _incVol(self, time, seg, inc):
+        if seg not in self.seg_volume:
+            self.seg_volume[seg] = []
+
+        prev_vol = 0
+        if len(self.seg_volume[seg]) > 0:
+            prev_vol = self.seg_volume[seg][-1][1]
+
+        new_vol = prev_vol + inc
+        assert new_vol >= 0
+        self.seg_volume[seg].append((time, new_vol))
 
     def _rmStopped(self, pr):
         lid = locId(pr)
@@ -139,24 +164,31 @@ class LRModel:
         end_seg = min(start_seg+4, self.num_seg)
         for seg in range(start_seg, end_seg+1):
             lid = (xway, seg, dir, lane)
-            stopped_sets = self.getStopped(lid)
-            accident_sets = filter(lambda ss: len(ss) > 1, stopped_sets)
-            if len(accident_sets) > 0:
+            if self.hasAccident(lid):
                 return seg
         return None
 
+    def hasAccident(self, loc_or_lid):
+        stopped_sets = self.getStopped(loc_or_lid)
+        for ss in stopped_sets:
+            if len(ss) > 1:
+                return True
+        return False
+
     def getStopped(self, loc_or_lid):
-        """ Returns a list of VID sets for the latest time"""
+        """ Returns a list of VID sets for the latest time in this seg"""
         if type(loc_or_lid) == tuple:
             lid = loc_or_lid
         else:
-            locId(loc_or_lid)
+            lid = locId(loc_or_lid)
 
-        if lid not in self.stopped_state: return set()
-        latest_time = self.stopped_state[lid][-1][0]
         stopped_sets = []
-        for time, vid_set in self.stopped_state[lid]:
-            if time == latest_time: stopped_sets.append(vid_set)
+        for lane in range(1, 4):
+            lid = (lid[0], lid[1], lid[2], lane)
+            if lid not in self.stopped_state: continue
+            latest_time = self.stopped_state[lid][-1][0]
+            for time, vid_set in self.stopped_state[lid]:
+                if time == latest_time: stopped_sets.append(vid_set)
         return stopped_sets
 
     def getStoppedUnion(self, loc_or_lid):

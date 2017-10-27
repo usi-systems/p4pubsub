@@ -92,23 +92,44 @@ register v_dir_reg {
 
 #define LR_NUM_XWAY    2
 #define LR_NUM_SEG     100
-#define LR_NUM_LANES   3
-#define LR_NUM_DIRS    2
+#define LR_NUM_LANE   3
+#define LR_NUM_DIR    2
 
 #define STOPPED_IDX(xway, seg, dir, lane) \
-    (((xway) * (LR_NUM_SEG * LR_NUM_DIRS * LR_NUM_LANES)) + \
-     ((seg) * LR_NUM_DIRS * LR_NUM_LANES) + \
-     ((dir) * LR_NUM_LANES) + \
+    (((xway) * (LR_NUM_SEG * LR_NUM_DIR * LR_NUM_LANE)) + \
+     ((seg) * LR_NUM_DIR * LR_NUM_LANE) + \
+     ((dir) * LR_NUM_LANE) + \
      (lane))
+
+#define DIRSEG_IDX(xway, seg, dir) \
+    (((xway) * (LR_NUM_SEG * LR_NUM_DIR)) + \
+     ((seg) * LR_NUM_DIR) + \
+     (dir))
+
 
 
 // XXX this has to be updated manually, because the macro is not expanded
-//#define NUM_STOPPED_CELLS (LR_NUM_XWAY * (LR_NUM_SEG * LR_NUM_DIRS * LR_NUM_LANES))
+//#define NUM_STOPPED_CELLS (LR_NUM_XWAY * (LR_NUM_SEG * LR_NUM_DIR * LR_NUM_LANE))
 #define NUM_STOPPED_CELLS 1200
 
 register stopped_cnt_reg {
   width: 4;
   instance_count: NUM_STOPPED_CELLS;
+}
+
+
+// XXX this has to be updated manually, because the macro is not expanded
+//#define NUM_TOLL_LOC LR_NUM_XWAY * LR_NUM_SEG * LR_NUM_DIR
+#define NUM_DIRSEG 400
+
+register seg_vol_reg {
+  width: 8;
+  instance_count: NUM_DIRSEG;
+}
+
+register seg_avg_spd_reg {
+  width: 8;
+  instance_count: NUM_DIRSEG;
 }
 
 
@@ -134,16 +155,31 @@ header_type v_prev_metadata_t {
 }
 metadata v_prev_metadata_t v_prev;
 
-header_type accident_metadata_t {
+header_type stopped_metadata_t {
   fields {
-    seg0: 8;
-    seg1: 8;
-    seg2: 8;
-    seg3: 8;
-    seg4: 8;
+    seg0l1: 8;
+    seg0l2: 8;
+    seg0l3: 8;
+    seg1l1: 8;
+    seg1l2: 8;
+    seg1l3: 8;
+    seg2l1: 8;
+    seg2l2: 8;
+    seg2l3: 8;
+    seg3l1: 8;
+    seg3l2: 8;
+    seg3l3: 8;
+    seg4l1: 8;
+    seg4l2: 8;
+    seg4l3: 8;
+    seg0_ord: 8; // OR of all the lanes in this seg
+    seg1_ord: 8;
+    seg2_ord: 8;
+    seg3_ord: 8;
+    seg4_ord: 8;
   }
 }
-metadata accident_metadata_t accident_ahead;
+metadata stopped_metadata_t stopped_ahead;
 
 action do_update_state() {
     // Load the state for the vehicle's previous location
@@ -167,32 +203,54 @@ table update_state {
 }
 
 action do_load_stopped_ahead() {
+    // XXX HW: can't read this many regs per stage.
     // Load the count of stopped vehicles ahead
-    register_read(accident_ahead.seg0, stopped_cnt_reg, STOPPED_IDX(
-                pos_report.xway,
-                pos_report.seg,
-                pos_report.dir,
-                pos_report.lane));
-    register_read(accident_ahead.seg1, stopped_cnt_reg, STOPPED_IDX(
-                pos_report.xway,
-                pos_report.seg+1,
-                pos_report.dir,
-                pos_report.lane));
-    register_read(accident_ahead.seg2, stopped_cnt_reg, STOPPED_IDX(
-                pos_report.xway,
-                pos_report.seg+2,
-                pos_report.dir,
-                pos_report.lane));
-    register_read(accident_ahead.seg3, stopped_cnt_reg, STOPPED_IDX(
-                pos_report.xway,
-                pos_report.seg+3,
-                pos_report.dir,
-                pos_report.lane));
-    register_read(accident_ahead.seg4, stopped_cnt_reg, STOPPED_IDX(
-                pos_report.xway,
-                pos_report.seg+4,
-                pos_report.dir,
-                pos_report.lane));
+    register_read(stopped_ahead.seg0l1, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg, pos_report.dir, 1));
+    register_read(stopped_ahead.seg0l2, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg, pos_report.dir, 2));
+    register_read(stopped_ahead.seg0l3, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg, pos_report.dir, 3));
+
+    register_read(stopped_ahead.seg1l1, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg+1, pos_report.dir, 1));
+    register_read(stopped_ahead.seg1l2, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg+1, pos_report.dir, 2));
+    register_read(stopped_ahead.seg1l3, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg+1, pos_report.dir, 3));
+
+    register_read(stopped_ahead.seg2l1, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg+2, pos_report.dir, 1));
+    register_read(stopped_ahead.seg2l2, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg+2, pos_report.dir, 2));
+    register_read(stopped_ahead.seg2l3, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg+2, pos_report.dir, 3));
+
+    register_read(stopped_ahead.seg3l1, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg+3, pos_report.dir, 1));
+    register_read(stopped_ahead.seg3l2, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg+3, pos_report.dir, 2));
+    register_read(stopped_ahead.seg3l3, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg+3, pos_report.dir, 3));
+
+    register_read(stopped_ahead.seg4l1, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg+4, pos_report.dir, 1));
+    register_read(stopped_ahead.seg4l2, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg+4, pos_report.dir, 2));
+    register_read(stopped_ahead.seg4l3, stopped_cnt_reg,
+                STOPPED_IDX(pos_report.xway, pos_report.seg+4, pos_report.dir, 3));
+
+    // OR the stopped count in each seg
+    modify_field(stopped_ahead.seg0_ord,
+                stopped_ahead.seg0l1 | stopped_ahead.seg0l2 | stopped_ahead.seg0l3);
+    modify_field(stopped_ahead.seg1_ord,
+                stopped_ahead.seg1l1 | stopped_ahead.seg1l2 | stopped_ahead.seg1l3);
+    modify_field(stopped_ahead.seg2_ord,
+                stopped_ahead.seg2l1 | stopped_ahead.seg2l2 | stopped_ahead.seg2l3);
+    modify_field(stopped_ahead.seg3_ord,
+                stopped_ahead.seg3l1 | stopped_ahead.seg3l2 | stopped_ahead.seg3l3);
+    modify_field(stopped_ahead.seg4_ord,
+                stopped_ahead.seg4l1 | stopped_ahead.seg4l2 | stopped_ahead.seg4l3);
 }
 table load_stopped_ahead {
     actions { do_load_stopped_ahead; }
@@ -249,11 +307,11 @@ action set_accident_meta(ofst) {
 
 table check_accidents {
     reads {
-        accident_ahead.seg0: range;
-        accident_ahead.seg1: range;
-        accident_ahead.seg2: range;
-        accident_ahead.seg3: range;
-        accident_ahead.seg4: range;
+        stopped_ahead.seg0_ord: range;
+        stopped_ahead.seg1_ord: range;
+        stopped_ahead.seg2_ord: range;
+        stopped_ahead.seg3_ord: range;
+        stopped_ahead.seg4_ord: range;
     }
     actions {
         set_accident_meta;
