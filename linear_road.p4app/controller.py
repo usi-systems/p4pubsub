@@ -16,6 +16,7 @@ class CustomAppController(AppController):
     def __init__(self, *args, **kwargs):
         AppController.__init__(self, *args, **kwargs)
         self.rpc_server = RPCServer(self)
+        self.toll_settings = dict(base_toll=2, min_spd=40, min_cars=50)
 
     def start(self):
         self.rpc_server.start()
@@ -37,6 +38,16 @@ class CustomAppController(AppController):
         state = {}
         state['vol'] = self.readRegister('seg_vol_reg', dirsegIdx(xway, seg, dir))
         return state
+
+    def setToll(self, **kw):
+        self.toll_settings.update(kw)
+        commands = ['table_clear check_toll']
+        commands += ['table_add check_toll issue_toll 1 0->%d %d->0xff 0 => %d 1' %
+                            (self.toll_settings['min_spd'],
+                             self.toll_settings['min_cars'],
+                             self.toll_settings['base_toll'])]
+        self.sendCommands(commands)
+        return self.toll_settings
 
     def stop(self):
         v_state = self.getVidState(vid=1)

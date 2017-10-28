@@ -5,6 +5,7 @@ from linear_road import *
 
 msg_type_struct = struct.Struct('!B')
 position_report_struct = struct.Struct('!B H L B B B B B')
+toll_notification_struct = struct.Struct('!B H L H B H')
 accident_alert_struct = struct.Struct('!B H L H B')
 
 def packPosReport(msg_type=LR_MSG_POS_REPORT, time=0, vid=0, spd=0,
@@ -24,6 +25,17 @@ def unpackPosReport(data):
                 xway=xway, lane=lane, dir=dir, seg=seg)
     return msg
 
+def packTollNotification(msg_type=LR_MSG_TOLL_NOTIFICATION, time=0, vid=0,
+                            emit=0, spd=0, toll=0):
+    data = toll_notification_struct.pack(msg_type, time, vid, emit, spd, toll)
+    return data
+
+def unpackTollNotification(data):
+    msg_type, time, vid, emit, spd, toll = toll_notification_struct.unpack(data)
+    assert msg_type == LR_MSG_TOLL_NOTIFICATION
+    msg = TollNotification(msg_type=msg_type, time=time, vid=vid, emit=emit, spd=spd, toll=toll)
+    return msg
+
 def packAccidentAlert(msg_type=LR_MSG_ACCIDENT_ALERT, time=0, vid=0, emit=0, seg=0):
     data = accident_alert_struct.pack(msg_type, time, vid, emit, seg)
     return data
@@ -40,6 +52,8 @@ def unpackLRMsg(data):
         return unpackPosReport(data)
     elif msg_type == LR_MSG_ACCIDENT_ALERT:
         return unpackAccidentAlert(data)
+    elif msg_type == LR_MSG_TOLL_NOTIFICATION:
+        return unpackTollNotification(data)
     else:
         raise Exception("Unrecognized msg type: %d" % msg_type)
 
@@ -48,6 +62,8 @@ def packLRMsg(msg):
         return packPosReport(**msg)
     elif isinstance(msg, AccidentAlert):
         return packAccidentAlert(**msg)
+    elif isinstance(msg, TollNotification):
+        return packTollNotification(**msg)
     else:
         raise Exception("Packing this msg type isn't supported yet")
 

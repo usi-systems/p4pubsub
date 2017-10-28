@@ -58,6 +58,16 @@ header_type pos_report_t {
     }
 }
 
+header_type toll_notification_t {
+    fields {
+        time: 16;
+        vid: 32;
+        emit: 16;  // TODO: how can we set this in the switch?
+        spd: 8;
+        toll: 16;
+    }
+}
+
 header_type accident_alert_t {
     fields {
         time: 16;

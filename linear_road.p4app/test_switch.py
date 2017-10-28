@@ -2,7 +2,7 @@
 import sys
 import argparse
 from time import sleep
-from linear_road import PosReport, AccidentAlert, Loc
+from linear_road import PosReport, AccidentAlert, TollNotification, Loc
 from controller_rpc import RPCClient
 from lr_proto import LRProducer, LRConsumer, parseHostAndPort
 
@@ -10,6 +10,10 @@ def log(x): sys.stderr.write(str(x) + ' ')
 def ewma(avg, x):
     a = 0.25
     return int((avg * (1 - a)) + (x * a))
+
+toll_settings = dict(min_spd=40, min_cars=5, base_toll=1)
+def calc_toll(cars_in_seg=None):
+    return toll_settings['base_toll'] * ((cars_in_seg - 50) ** 2)
 
 
 parser = argparse.ArgumentParser(description='Send stream of LR messages')
@@ -32,6 +36,9 @@ def sendPr(**pr):
 
 loc = Loc(xway=1, lane=1, dir=0, seg=8)
 segloc = Loc(loc, lane=None)
+
+# Configure toll settings
+cont.setToll(**toll_settings)
 
 assert cont.getStoppedCnt(**loc) == 0
 ss = cont.getSegState(**segloc)
@@ -105,6 +112,24 @@ sendPr(time=11, vid=5, spd=40, xway=0, lane=1, dir=0, seg=1)
 avg3 = cont.getVidState(vid=5)['ewma_spd']
 assert avg3 == ewma(avg2, 40)
 
+# Test toll notification
+sendPr(time=12, vid=6, spd=30, xway=0, lane=1, dir=0, seg=2)
+sendPr(time=12, vid=7, spd=30, xway=0, lane=1, dir=0, seg=2)
+sendPr(time=12, vid=8, spd=30, xway=0, lane=1, dir=0, seg=2)
+sendPr(time=12, vid=9, spd=30, xway=0, lane=1, dir=0, seg=2)
+
+sendPr(time=11, vid=5, spd=40, xway=0, lane=1, dir=0, seg=2)
+avg4 = cont.getVidState(vid=5)['ewma_spd']
+assert avg4 == ewma(avg3, 40)
+
+toll = calc_toll(cars_in_seg=5)
+
+msg = consumer.recv()
+assert isinstance(msg, TollNotification)
+assert msg['time'] == 11
+assert msg['vid'] == 5
+assert msg['toll'] == toll
+assert msg['spd'] == avg4
 
 assert not consumer.hasNewMsg()
 

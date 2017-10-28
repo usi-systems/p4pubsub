@@ -20,4 +20,8 @@ table_add check_accidents set_accident_meta 0->0xff 0->0xff 0->0xff 0->0xff 2->0
 table_add send_accident_alert accident_alert_e2e 1 0 => 1
 table_add send_accident_alert make_accident_alert 1 1 =>
 
+table_add check_toll issue_toll 1 0->39 51->0xff 0 => 1 1
+table_add send_toll_notification toll_notification_e2e 1 0 => 1
+table_add send_toll_notification make_toll_notification 1 1 =>
+
 mirroring_add 0 1 1 2

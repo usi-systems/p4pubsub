@@ -377,10 +377,6 @@ table inc_stopped {
     actions { do_inc_stopped; }
 }
 
-field_list no_fields {
-    accident_meta.accident_seg;
-}
-
 action set_accident_meta(ofst) {
     modify_field(accident_meta.accident_seg, pos_report.seg + ofst);
     modify_field(accident_meta.has_accident_ahead, 1);
@@ -398,6 +394,36 @@ table check_accidents {
         set_accident_meta;
     }
     size: 8;
+}
+
+
+#define CALC_TOLL(basetoll, cars) (base_toll * (cars - 50) * (cars - 50))
+
+header_type toll_metadata_t {
+    fields {
+        toll: 16;
+        has_toll: 1;
+    }
+}
+metadata toll_metadata_t toll_meta;
+
+action issue_toll(base_toll) {
+    modify_field(toll_meta.has_toll, 1);
+    modify_field(toll_meta.toll, CALC_TOLL(base_toll, seg_meta.vol));
+}
+
+// XXX we should explain that these parameters are configurable at runtime
+table check_toll {
+    reads {
+        v_state.new_seg: exact;                     // if the car entered a new seg
+        v_state.ewma_spd: range;                    // and its spd < 40
+        seg_meta.vol: range;                        // and the |cars| in seg > 50
+        accident_meta.has_accident_ahead: exact;    // and no accident ahead
+    }
+    actions {
+        issue_toll;
+    }
+    size: 1;
 }
 
 control ingress {
@@ -435,7 +461,9 @@ control ingress {
 
             apply(load_stopped_ahead);
 
-            apply(check_accidents);                 // check for accidents
+            apply(check_accidents);
+
+            apply(check_toll);
         }
 
         apply(ipv4_lpm);
@@ -448,18 +476,19 @@ header_type egress_metadata_t {
         recirculate: 1;
     }
 }
-metadata egress_metadata_t egress_metadata;
+metadata egress_metadata_t accident_egress_meta;
+metadata egress_metadata_t toll_egress_meta;
 
 header standard_metadata_t standard_metadata;
 
-field_list e2e_fl {
+field_list alert_e2e_fl {
     accident_meta;
-    egress_metadata;
+    accident_egress_meta;
 }
 
 action accident_alert_e2e(mir_ses) {
-    modify_field(egress_metadata.recirculate, 1);
-    clone_egress_pkt_to_egress(mir_ses, e2e_fl);
+    modify_field(accident_egress_meta.recirculate, 1);
+    clone_egress_pkt_to_egress(mir_ses, alert_e2e_fl);
 }
 
 action make_accident_alert() {
@@ -480,7 +509,7 @@ action make_accident_alert() {
 table send_accident_alert {
     reads {
         accident_meta.has_accident_ahead: exact;
-        egress_metadata.recirculate: exact;
+        accident_egress_meta.recirculate: exact;
     }
     actions {
         accident_alert_e2e;
@@ -488,10 +517,49 @@ table send_accident_alert {
     }
 }
 
+field_list toll_e2e_fl {
+    toll_meta;
+    toll_egress_meta;
+    v_state;
+}
+
+action toll_notification_e2e(mir_ses) {
+    modify_field(toll_egress_meta.recirculate, 1);
+    clone_egress_pkt_to_egress(mir_ses, toll_e2e_fl);
+}
+
+action make_toll_notification() {
+    modify_field(lr_msg_type.msg_type, LR_MSG_TOLL_NOTIFICATION);
+
+    add_header(toll_notification);
+    modify_field(toll_notification.time, pos_report.time);
+    modify_field(toll_notification.vid, pos_report.vid);
+    modify_field(toll_notification.spd, v_state.ewma_spd);
+    modify_field(toll_notification.toll, toll_meta.toll);
+
+    remove_header(pos_report);
+
+    modify_field(ipv4.totalLen, 40);
+    modify_field(udp.length_, 20);
+    modify_field(udp.checksum, 0);
+}
+
+table send_toll_notification {
+    reads {
+        toll_meta.has_toll: exact;
+        toll_egress_meta.recirculate: exact;
+    }
+    actions {
+        toll_notification_e2e;
+        make_toll_notification;
+    }
+}
+
 control egress {
     if (valid(ipv4)) {
         if (valid(pos_report)) {
             apply(send_accident_alert);
+            apply(send_toll_notification);
         }
         apply(send_frame);
     }
