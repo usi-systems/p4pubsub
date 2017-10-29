@@ -3,6 +3,8 @@ table_set_default update_new_seg set_new_seg
 table_set_default dec_prev_stopped do_dec_prev_stopped
 table_set_default inc_stopped do_inc_stopped
 table_set_default load_stopped_ahead do_load_stopped_ahead
+table_set_default loc_changed do_loc_changed
+table_set_default loc_not_changed do_loc_not_changed
 
 table_add update_vol_state load_vol 0 0 =>
 table_add update_vol_state load_and_inc_vol 1 1 =>

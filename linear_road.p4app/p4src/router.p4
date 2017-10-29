@@ -61,6 +61,11 @@ table send_frame {
 // XXX we don't support vehicles leaving and re-entering
 #define MAX_VID 32
 
+register v_seq_reg { // seq number of pos_report for this vehicle
+  width: 32;
+  instance_count: MAX_VID;
+}
+
 register v_valid_reg {
   width: 1;
   instance_count: MAX_VID;
@@ -96,8 +101,14 @@ register v_ewma_spd_reg {
   instance_count: MAX_VID;
 }
 
-register v_accnt_bal { // sum of tolls
+register v_accnt_bal_reg { // sum of tolls
   width: 32;
+  instance_count: MAX_VID;
+}
+
+
+register v_same_loc_reg {
+  width: 4;
   instance_count: MAX_VID;
 }
 
@@ -152,6 +163,7 @@ metadata accident_meta_t accident_meta;
 
 header_type v_state_metadata_t {
     fields {
+        seq: 32;
         new: 1; // new vehicle
         new_seg: 1; // are we in a new seg now? i.e. v_state.prev_seg != pos_report.seg
         prev_spd: 8; // state from previous pos_report
@@ -159,6 +171,11 @@ header_type v_state_metadata_t {
         prev_lane: 3;
         prev_seg: 8;
         prev_dir: 1;
+        prev_same_loc: 3;
+        // Each bit represents no change from the previous pos_report.
+        // 111 means four consecutive pos_reports at the same loc
+#define STOPPED_LOC 7
+        same_loc: 3;
         ewma_spd: 8;
     }
 }
@@ -200,6 +217,8 @@ metadata stopped_metadata_t stopped_ahead;
 
 action do_update_pos_state() {
     // Load the state for the vehicle's previous location
+    register_read(v_state.seq, v_seq_reg, pos_report.vid);
+    add_to_field(v_state.seq, 1);
     register_read(v_state.new, v_valid_reg, pos_report.vid);
     modify_field(v_state.new, ~v_state.new);
     register_read(v_state.prev_spd, v_spd_reg, pos_report.vid);
@@ -209,6 +228,7 @@ action do_update_pos_state() {
     register_read(v_state.prev_dir, v_dir_reg, pos_report.vid);
 
     // Overwrite the previous location state with the current
+    register_write(v_seq_reg, pos_report.vid, v_state.seq);
     register_write(v_valid_reg, pos_report.vid, 1);
     register_write(v_spd_reg, pos_report.vid, pos_report.spd);
     register_write(v_xway_reg, pos_report.vid, pos_report.xway);
@@ -248,6 +268,23 @@ table update_ewma_spd {
         calc_ewma_spd;          // 0
     }
     size: 2;
+}
+
+action do_loc_not_changed() {
+    register_read(v_state.prev_same_loc, v_same_loc_reg, pos_report.vid);
+    modify_field(v_state.same_loc, v_state.prev_same_loc | (1 << (v_state.seq % 3)));
+    register_write(v_same_loc_reg, pos_report.vid, v_state.same_loc);
+}
+table loc_not_changed {
+    actions { do_loc_not_changed; }
+}
+
+action do_loc_changed() {
+    register_read(v_state.prev_same_loc, v_same_loc_reg, pos_report.vid);
+    register_write(v_same_loc_reg, pos_report.vid, 0);
+}
+table loc_changed {
+    actions { do_loc_changed; }
 }
 
 action load_vol() {
@@ -419,9 +456,9 @@ action issue_toll(base_toll) {
     modify_field(toll_meta.toll, CALC_TOLL(base_toll, seg_meta.vol));
 
     // Update the account balance
-    register_read(toll_meta.bal, v_accnt_bal, pos_report.vid);
+    register_read(toll_meta.bal, v_accnt_bal_reg, pos_report.vid);
     add_to_field(toll_meta.bal, toll_meta.toll);
-    register_write(v_accnt_bal, pos_report.vid, toll_meta.bal);
+    register_write(v_accnt_bal_reg, pos_report.vid, toll_meta.bal);
 
 }
 
@@ -440,7 +477,7 @@ table check_toll {
 }
 
 action do_load_accnt_bal() {
-    register_read(toll_meta.bal, v_accnt_bal, accnt_bal_req.vid);
+    register_read(toll_meta.bal, v_accnt_bal_reg, accnt_bal_req.vid);
 }
 table load_accnt_bal {
     actions { do_load_accnt_bal; }
@@ -459,23 +496,26 @@ control ingress {
             apply(update_vol_state);
             apply(update_ewma_spd);
 
-            if (v_state.new == 0 and
-                v_state.prev_spd == 0 and                   // it was stopped
-                (pos_report.spd != 0 or                     // but it's moving now
-                 (v_state.prev_lane != pos_report.lane) or  // or it changed lanes
-                 (v_state.prev_seg != pos_report.seg)       // or it changed seg
-                )) {
+            if (pos_report.xway == v_state.prev_xway and
+                pos_report.seg == v_state.prev_seg and
+                pos_report.dir == v_state.prev_dir and
+                pos_report.lane == v_state.prev_lane) {
+                apply(loc_not_changed);
+            }
+            else {
+                apply(loc_changed);
+            }
+
+            if (v_state.prev_same_loc == STOPPED_LOC and    // it was stopped
+                v_state.same_loc != STOPPED_LOC             // but it's moved
+                ) {
                 apply(dec_prev_stopped);             // then dec stopped vehicles for prev loc
             }
 
             // XXX divergence from spec: we say a car is stopped if spd=0
-            if ((v_state.new == 1 and                     // it's a new vehicle and it's stopped
-                        pos_report.spd == 0) or
-                (pos_report.spd == 0 and                  // it's stopped
-                (v_state.prev_spd > 0 or                  // and it was moving
-                 v_state.prev_lane != pos_report.lane or  // or it entered a new lane
-                 v_state.prev_seg != pos_report.seg))     // or it entered a new seg
-                    ) {
+            if (v_state.prev_same_loc != STOPPED_LOC and   // it wasn't stopped before
+                v_state.same_loc == STOPPED_LOC            // but is stopped now
+                ) {
                 apply(inc_stopped);                 // then inc stopped vehicles for this loc
             }
 
