@@ -2,7 +2,7 @@
 import sys
 import argparse
 from time import sleep
-from linear_road import PosReport, AccidentAlert, TollNotification, Loc
+from linear_road import PosReport, AccidentAlert, TollNotification, AccntBalReq, AccntBal, Loc
 from controller_rpc import RPCClient
 from lr_proto import LRProducer, LRConsumer, parseHostAndPort
 
@@ -32,6 +32,8 @@ cont = RPCClient()
 
 def sendPr(**pr):
     producer.send(PosReport(**pr))
+def sendBr(**br):
+    producer.send(AccntBalReq(**br))
 
 
 loc = Loc(xway=1, lane=1, dir=0, seg=8)
@@ -113,23 +115,64 @@ avg3 = cont.getVidState(vid=5)['ewma_spd']
 assert avg3 == ewma(avg2, 40)
 
 # Test toll notification
-sendPr(time=12, vid=6, spd=30, xway=0, lane=1, dir=0, seg=2)
-sendPr(time=12, vid=7, spd=30, xway=0, lane=1, dir=0, seg=2)
-sendPr(time=12, vid=8, spd=30, xway=0, lane=1, dir=0, seg=2)
-sendPr(time=12, vid=9, spd=30, xway=0, lane=1, dir=0, seg=2)
+for vid in [6, 7, 8, 9]:
+    sendPr(time=12, vid=vid, spd=30, xway=0, lane=1, dir=0, seg=2)
 
-sendPr(time=11, vid=5, spd=40, xway=0, lane=1, dir=0, seg=2)
+sendPr(time=13, vid=5, spd=40, xway=0, lane=1, dir=0, seg=2)
 avg4 = cont.getVidState(vid=5)['ewma_spd']
 assert avg4 == ewma(avg3, 40)
 
-toll = calc_toll(cars_in_seg=5)
+vol = cont.getSegState(xway=0, dir=0, seg=2)['vol']
+assert vol == 5
+toll1 = calc_toll(cars_in_seg=vol)
 
 msg = consumer.recv()
 assert isinstance(msg, TollNotification)
-assert msg['time'] == 11
+assert msg['time'] == 13
 assert msg['vid'] == 5
-assert msg['toll'] == toll
+assert msg['toll'] == toll1
 assert msg['spd'] == avg4
+
+
+# Move all the cars ahead, and check the next toll
+for vid in [6, 7, 8, 9]:
+    sendPr(time=14, vid=vid, spd=30, xway=0, lane=1, dir=0, seg=3)
+
+sendPr(time=15, vid=5, spd=40, xway=0, lane=1, dir=0, seg=3)
+avg5 = cont.getVidState(vid=5)['ewma_spd']
+assert avg5 == ewma(avg4, 40)
+
+ss = cont.getSegState(xway=0, dir=0, seg=2)
+assert ss['vol'] == 0
+
+toll2 = calc_toll(cars_in_seg=vol)
+
+msg = consumer.recv()
+assert isinstance(msg, TollNotification)
+assert msg['time'] == 15
+assert msg['vid'] == 5
+assert msg['toll'] == toll2
+assert msg['spd'] == avg5
+
+# Check accnt bal
+sendBr(time=16, vid=5, qid=2)
+
+msg = consumer.recv()
+assert isinstance(msg, AccntBal)
+assert msg['time'] == 16
+assert msg['vid'] == 5
+assert msg['qid'] == 2
+assert msg['bal'] == toll1 + toll2
+
+# Other cars should have zero ballance
+for vid in [6, 7, 8, 9]:
+    sendBr(time=17, vid=vid, qid=3)
+
+for _ in xrange(4):
+    msg = consumer.recv()
+    assert isinstance(msg, AccntBal)
+    assert msg['qid'] == 3
+    assert msg['bal'] == 0
 
 assert not consumer.hasNewMsg()
 

@@ -24,4 +24,8 @@ table_add check_toll issue_toll 1 0->39 51->0xff 0 => 1 1
 table_add send_toll_notification toll_notification_e2e 1 0 => 1
 table_add send_toll_notification make_toll_notification 1 1 =>
 
+table_set_default load_accnt_bal do_load_accnt_bal
+table_add send_accnt_bal accnt_bal_e2e 0 => 1
+table_add send_accnt_bal make_accnt_bal 1 =>
+
 mirroring_add 0 1 1 2

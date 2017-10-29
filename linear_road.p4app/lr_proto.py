@@ -7,6 +7,8 @@ msg_type_struct = struct.Struct('!B')
 position_report_struct = struct.Struct('!B H L B B B B B')
 toll_notification_struct = struct.Struct('!B H L H B H')
 accident_alert_struct = struct.Struct('!B H L H B')
+accnt_bal_req_struct = struct.Struct('!B H L H')
+accnt_bal_struct = struct.Struct('!B H L H H L')
 
 def packPosReport(msg_type=LR_MSG_POS_REPORT, time=0, vid=0, spd=0,
                     xway=0, lane=0, dir=0, seg=0):
@@ -46,6 +48,27 @@ def unpackAccidentAlert(data):
     msg = AccidentAlert(msg_type=msg_type, time=time, vid=vid, emit=emit, seg=seg)
     return msg
 
+def packAccntBalReq(msg_type=LR_MSG_ACCNT_BAL_REQ, time=0, vid=0, qid=0):
+    data = accnt_bal_req_struct.pack(msg_type, time, vid, qid)
+    return data
+
+def unpackAccntBalReq(data):
+    msg_type, time, vid, qid = accnt_bal_req_struct.unpack(data)
+    assert msg_type == LR_MSG_ACCNT_BAL_REQ
+    msg = AccntBalReq(msg_type=msg_type, time=time, vid=vid, qid=qid)
+    return msg
+
+def packAccntBal(msg_type=LR_MSG_ACCNT_BAL, time=0, vid=0, emit=0, qid=0, bal=0):
+    data = accnt_bal_struct.pack(msg_type, time, vid, emit, qid, bal)
+    return data
+
+def unpackAccntBal(data):
+    msg_type, time, vid, emit, qid, bal = accnt_bal_struct.unpack(data)
+    assert msg_type == LR_MSG_ACCNT_BAL
+    msg = AccntBal(msg_type=msg_type, time=time, vid=vid, emit=emit, qid=qid, bal=bal)
+    return msg
+
+
 def unpackLRMsg(data):
     msg_type, = msg_type_struct.unpack(data[0])
     if msg_type == LR_MSG_POS_REPORT:
@@ -54,6 +77,10 @@ def unpackLRMsg(data):
         return unpackAccidentAlert(data)
     elif msg_type == LR_MSG_TOLL_NOTIFICATION:
         return unpackTollNotification(data)
+    elif msg_type == LR_MSG_ACCNT_BAL_REQ:
+        return unpackAccntBalReq(data)
+    elif msg_type == LR_MSG_ACCNT_BAL:
+        return unpackAccntBal(data)
     else:
         raise Exception("Unrecognized msg type: %d" % msg_type)
 
@@ -64,6 +91,10 @@ def packLRMsg(msg):
         return packAccidentAlert(**msg)
     elif isinstance(msg, TollNotification):
         return packTollNotification(**msg)
+    elif isinstance(msg, AccntBalReq):
+        return packAccntBalReq(**msg)
+    elif isinstance(msg, AccntBal):
+        return packAccntBal(**msg)
     else:
         raise Exception("Packing this msg type isn't supported yet")
 

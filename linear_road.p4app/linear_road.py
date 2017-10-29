@@ -7,8 +7,10 @@ LR_NUM_LANES = 3
 LR_NUM_DIRS  = 2
 
 LR_MSG_POS_REPORT           = 0
+LR_MSG_ACCNT_BAL_REQ        = 2
 LR_MSG_TOLL_NOTIFICATION    = 10
 LR_MSG_ACCIDENT_ALERT       = 11
+LR_MSG_ACCNT_BAL            = 12
 
 def locId(loc):
     return tuple(loc[k] for k in ['xway', 'seg', 'dir', 'lane'])
@@ -51,6 +53,14 @@ class AccidentAlert(LRMsg):
 
 class TollNotification(LRMsg):
     name = 'Toll'
+    pretty_exclude_keys = ['msg_type']
+
+class AccntBalReq(LRMsg):
+    name = 'BalReq'
+    pretty_exclude_keys = ['msg_type']
+
+class AccntBal(LRMsg):
+    name = 'Bal'
     pretty_exclude_keys = ['msg_type']
 
 

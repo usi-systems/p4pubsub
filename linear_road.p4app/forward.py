@@ -3,7 +3,7 @@ import sys
 import signal
 import argparse
 from linear_road import PosReport
-from lr_proto import LRProducer, LRConsumer, parseHostAndPort
+from lr_proto import LRProducer, LRConsumer, AccntBalReq, parseHostAndPort
 
 parser = argparse.ArgumentParser(description='Forward stream of LR messages')
 parser.add_argument('dst', help='host:port to forward messages to', type=str)
@@ -24,4 +24,6 @@ signal.signal(signal.SIGINT, signalHandler)
 while True:
     msg = consumer.recv()
     if isinstance(msg, PosReport): continue
+    if isinstance(msg, AccntBalReq): continue
+    print msg
     producer.send(msg)

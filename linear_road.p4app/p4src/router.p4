@@ -57,6 +57,7 @@ table send_frame {
     size: 256;
 }
 
+// XXX VID is used as index into registers
 // XXX we don't support vehicles leaving and re-entering
 #define MAX_VID 32
 
@@ -92,6 +93,11 @@ register v_dir_reg {
 
 register v_ewma_spd_reg {
   width: 8;
+  instance_count: MAX_VID;
+}
+
+register v_accnt_bal { // sum of tolls
+  width: 32;
   instance_count: MAX_VID;
 }
 
@@ -403,6 +409,7 @@ header_type toll_metadata_t {
     fields {
         toll: 16;
         has_toll: 1;
+        bal: 32;
     }
 }
 metadata toll_metadata_t toll_meta;
@@ -410,6 +417,12 @@ metadata toll_metadata_t toll_meta;
 action issue_toll(base_toll) {
     modify_field(toll_meta.has_toll, 1);
     modify_field(toll_meta.toll, CALC_TOLL(base_toll, seg_meta.vol));
+
+    // Update the account balance
+    register_read(toll_meta.bal, v_accnt_bal, pos_report.vid);
+    add_to_field(toll_meta.bal, toll_meta.toll);
+    register_write(v_accnt_bal, pos_report.vid, toll_meta.bal);
+
 }
 
 // XXX we should explain that these parameters are configurable at runtime
@@ -424,6 +437,13 @@ table check_toll {
         issue_toll;
     }
     size: 1;
+}
+
+action do_load_accnt_bal() {
+    register_read(toll_meta.bal, v_accnt_bal, accnt_bal_req.vid);
+}
+table load_accnt_bal {
+    actions { do_load_accnt_bal; }
 }
 
 control ingress {
@@ -464,6 +484,10 @@ control ingress {
             apply(check_accidents);
 
             apply(check_toll);
+
+        }
+        else if (valid(accnt_bal_req)) {
+            apply(load_accnt_bal);
         }
 
         apply(ipv4_lpm);
@@ -478,6 +502,7 @@ header_type egress_metadata_t {
 }
 metadata egress_metadata_t accident_egress_meta;
 metadata egress_metadata_t toll_egress_meta;
+metadata egress_metadata_t accnt_bal_egress_meta;
 
 header standard_metadata_t standard_metadata;
 
@@ -555,11 +580,50 @@ table send_toll_notification {
     }
 }
 
+field_list accnt_bal_e2e_fl {
+    toll_meta;
+    accnt_bal_egress_meta;
+}
+
+action accnt_bal_e2e(mir_ses) {
+    modify_field(accnt_bal_egress_meta.recirculate, 1);
+    clone_egress_pkt_to_egress(mir_ses, accnt_bal_e2e_fl);
+}
+
+action make_accnt_bal() {
+    modify_field(lr_msg_type.msg_type, LR_MSG_ACCNT_BAL);
+
+    add_header(accnt_bal);
+    modify_field(accnt_bal.time, accnt_bal_req.time);
+    modify_field(accnt_bal.vid, accnt_bal_req.vid);
+    modify_field(accnt_bal.qid, accnt_bal_req.qid);
+    modify_field(accnt_bal.bal, toll_meta.bal);
+
+    remove_header(accnt_bal_req);
+
+    modify_field(ipv4.totalLen, 43);
+    modify_field(udp.length_, 23);
+    modify_field(udp.checksum, 0);
+}
+
+table send_accnt_bal {
+    reads {
+        accnt_bal_egress_meta.recirculate: exact;
+    }
+    actions {
+        accnt_bal_e2e;
+        make_accnt_bal;
+    }
+}
+
 control egress {
     if (valid(ipv4)) {
         if (valid(pos_report)) {
             apply(send_accident_alert);
             apply(send_toll_notification);
+        }
+        else if (valid(accnt_bal_req)) {
+            apply(send_accnt_bal);
         }
         apply(send_frame);
     }

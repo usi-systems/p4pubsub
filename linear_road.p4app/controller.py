@@ -39,6 +39,10 @@ class CustomAppController(AppController):
         state['vol'] = self.readRegister('seg_vol_reg', dirsegIdx(xway, seg, dir))
         return state
 
+    def getBal(self, vid=None):
+        bal = int(self.readRegister('v_accnt_bal', vid))
+        return bal
+
     def setToll(self, **kw):
         self.toll_settings.update(kw)
         commands = ['table_clear check_toll']
