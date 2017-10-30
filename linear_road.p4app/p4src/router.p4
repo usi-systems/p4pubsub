@@ -397,6 +397,7 @@ action do_inc_stopped() {
                 pos_report.seg,
                 pos_report.dir,
                 pos_report.lane));
+    // XXX this could overflow
     // Increment the stopped count:
     register_write(stopped_cnt_reg, STOPPED_IDX(
                 pos_report.xway,
