@@ -1,21 +1,28 @@
 #!/usr/bin/env python
 import sys
 import signal
-from linear_road import LRModel
-from lr_clients import LRConsumer
+import argparse
+from linear_road import PosReport, LRModel
+from lr_proto import LRConsumer, AccntBalReq
 
-port = int(sys.argv[1])
-consumer = LRConsumer(port=port)
+parser = argparse.ArgumentParser(description='Receive a stream of messages')
+parser.add_argument('--port', '-p', help='Listen port', type=int, default=1234)
+args = parser.parse_args()
+
+consumer = LRConsumer(args.port)
+lrm = LRModel()
+
+def handleMsg(msg):
+    print msg
+    lrm.newMsg(msg)
 
 def signalHandler(signal, frame):
+    while consumer.hasNewMsg():
+        handleMsg(consumer.recv())
     consumer.close()
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signalHandler)
 
-lrm = LRModel()
-
 while True:
-    msg = consumer.recv()
-    print msg
-    lrm.newMsg(msg)
+    handleMsg(consumer.recv())

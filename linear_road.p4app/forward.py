@@ -14,7 +14,15 @@ consumer = LRConsumer(args.port)
 dst_host, dst_port = parseHostAndPort(args.dst)
 producer = LRProducer(dst_host, dst_port)
 
+def handleMsg(msg):
+    print msg
+    if isinstance(msg, PosReport): return
+    if isinstance(msg, AccntBalReq): return
+    producer.send(msg)
+
 def signalHandler(signal, frame):
+    while consumer.hasNewMsg():
+        handleMsg(consumer.recv())
     consumer.close()
     producer.close()
     sys.exit(0)
@@ -22,8 +30,4 @@ def signalHandler(signal, frame):
 signal.signal(signal.SIGINT, signalHandler)
 
 while True:
-    msg = consumer.recv()
-    if isinstance(msg, PosReport): continue
-    if isinstance(msg, AccntBalReq): continue
-    print msg
-    producer.send(msg)
+    handleMsg(consumer.recv())

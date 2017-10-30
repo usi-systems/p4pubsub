@@ -122,7 +122,7 @@ class LRModel:
             raise LRException("Wrong AccidentAlert seg")
 
     def _newTollNotification(self, tn):
-        vid, seg, dir = tn['vid'], tn['seg'], tn['dir']
+        vid = tn['vid']
         if vid not in self.position_reports:
             raise LRException("PosReports not yet received for VID")
 
@@ -139,7 +139,7 @@ class LRModel:
             raise LRException("Unwarranted TollNotification: in exit lane")
 
         # Should not be emitted if there's an accident
-        if self.hasAccident(pr):
+        if self.hasAccident(latest_pr):
             raise LRException("Unwarranted TollNotification: accident in seg")
 
     def _updateVol(self, pr):

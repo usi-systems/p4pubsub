@@ -128,6 +128,7 @@ class LRConsumer:
         return msg
 
     def hasNewMsg(self):
+        if len(self.recv_queue) > 0: return True
         try:
             self.sock.setblocking(0)
             data, addr = self.sock.recvfrom(2048)

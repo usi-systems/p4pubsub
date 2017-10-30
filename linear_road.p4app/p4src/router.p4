@@ -59,7 +59,7 @@ table send_frame {
 
 // XXX VID is used as index into registers
 // XXX we don't support vehicles leaving and re-entering
-#define MAX_VID 32
+#define MAX_VID 512
 
 register v_seq_reg { // seq number of pos_report for this vehicle
   width: 32;
@@ -512,7 +512,6 @@ control ingress {
                 apply(dec_prev_stopped);             // then dec stopped vehicles for prev loc
             }
 
-            // XXX divergence from spec: we say a car is stopped if spd=0
             if (v_state.prev_same_loc != STOPPED_LOC and   // it wasn't stopped before
                 v_state.same_loc == STOPPED_LOC            // but is stopped now
                 ) {
