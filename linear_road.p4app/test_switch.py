@@ -8,8 +8,8 @@ from lr_proto import LRProducer, LRConsumer, parseHostAndPort
 
 def log(x): sys.stderr.write(str(x) + ' ')
 def ewma(avg, x):
-    a = 0.25
-    return int((avg * (1 - a)) + (x * a))
+    a = 32
+    return int((avg * (128 - a)) + (x * a)) >> 128
 
 toll_settings = dict(min_spd=40, min_cars=5, base_toll=1)
 def calc_toll(cars_in_seg=None):
@@ -61,7 +61,9 @@ for _ in range(3):
     sendPr(time=ts(), vid=1, spd=12, xway=1, lane=1, dir=0, seg=8)
 assert cont.getStoppedCnt(**loc) == 1
 
-sendPr(time=ts(), vid=1, spd=0, xway=1, lane=1, dir=0, seg=8)
+# Check that the saturating same loc countr doesn't overflow:
+for _ in range(5):
+    sendPr(time=ts(), vid=1, spd=12, xway=1, lane=1, dir=0, seg=8)
 assert cont.getStoppedCnt(**loc) == 1
 
 # Stop another car

@@ -1,5 +1,3 @@
-#include <tofino/intrinsic_metadata.p4>
-#include <tofino/constants.p4>
 #include "header.p4"
 #include "parser.p4"
 
@@ -12,7 +10,7 @@ action _nop() {
 
 action set_nhop(nhop_ipv4, port) {
     modify_field(ipv4.dstAddr, nhop_ipv4);
-    modify_field(ig_intr_md_for_tm.ucast_egress_port, port);
+    modify_field(standard_metadata.egress_spec, port);
 }
 
 table ipv4_lpm {
@@ -48,7 +46,7 @@ action rewrite_mac(smac) {
 
 table send_frame {
     reads {
-        eg_intr_md.egress_port: exact;
+        standard_metadata.egress_port: exact;
     }
     actions {
         rewrite_mac;
@@ -57,16 +55,12 @@ table send_frame {
     size: 256;
 }
 
-// XXX VID is used as index into registers
 // XXX we don't support vehicles leaving and re-entering
+
+// XXX VID is used as index into registers
 #define MAX_VID 512
 
-register v_seq_reg { // seq number of pos_report for this vehicle
-  width: 32;
-  instance_count: MAX_VID;
-}
-
-register v_valid_reg {
+register v_valid_reg { // 1 iff the v_* registers have been set for this VID
   width: 1;
   instance_count: MAX_VID;
 }
@@ -96,7 +90,7 @@ register v_dir_reg {
   instance_count: MAX_VID;
 }
 
-register v_ewma_spd_reg {
+register v_ewma_spd_reg { // EWMA of spd for the whole simulation (no windowing)
   width: 8;
   instance_count: MAX_VID;
 }
@@ -106,17 +100,16 @@ register v_accnt_bal_reg { // sum of tolls
   instance_count: MAX_VID;
 }
 
-
-register v_same_loc_reg {
-  width: 4;
+register v_nomove_cnt_reg { // number of consecutive pos_reports from the same position
+  width: 3;
   instance_count: MAX_VID;
 }
 
 
 #define LR_NUM_XWAY    2
-#define LR_NUM_SEG     100
-#define LR_NUM_LANE   3
-#define LR_NUM_DIR    2
+#define LR_NUM_SEG     16'100
+#define LR_NUM_LANE    16'3
+#define LR_NUM_DIR     2
 
 #define STOPPED_IDX(xway, seg, dir, lane) \
     (((xway) * (LR_NUM_SEG * LR_NUM_DIR * LR_NUM_LANE)) + \
@@ -136,7 +129,7 @@ register v_same_loc_reg {
 #define NUM_STOPPED_CELLS 1200
 
 register stopped_cnt_reg {
-  width: 4;
+  width: 8;
   instance_count: NUM_STOPPED_CELLS;
 }
 
@@ -163,7 +156,6 @@ metadata accident_meta_t accident_meta;
 
 header_type v_state_metadata_t {
     fields {
-        seq: 32;
         new: 1; // new vehicle
         new_seg: 1; // are we in a new seg now? i.e. v_state.prev_seg != pos_report.seg
         prev_spd: 8; // state from previous pos_report
@@ -171,11 +163,8 @@ header_type v_state_metadata_t {
         prev_lane: 3;
         prev_seg: 8;
         prev_dir: 1;
-        prev_same_loc: 3;
-        // Each bit represents no change from the previous pos_report.
-        // 111 means four consecutive pos_reports at the same loc
-#define STOPPED_LOC 7
-        same_loc: 3;
+        prev_nomove_cnt: 3;
+        nomove_cnt: 3;
         ewma_spd: 8;
     }
 }
@@ -217,8 +206,6 @@ metadata stopped_metadata_t stopped_ahead;
 
 action do_update_pos_state() {
     // Load the state for the vehicle's previous location
-    register_read(v_state.seq, v_seq_reg, pos_report.vid);
-    add_to_field(v_state.seq, 1);
     register_read(v_state.new, v_valid_reg, pos_report.vid);
     modify_field(v_state.new, ~v_state.new);
     register_read(v_state.prev_spd, v_spd_reg, pos_report.vid);
@@ -228,7 +215,6 @@ action do_update_pos_state() {
     register_read(v_state.prev_dir, v_dir_reg, pos_report.vid);
 
     // Overwrite the previous location state with the current
-    register_write(v_seq_reg, pos_report.vid, v_state.seq);
     register_write(v_valid_reg, pos_report.vid, 1);
     register_write(v_spd_reg, pos_report.vid, pos_report.spd);
     register_write(v_xway_reg, pos_report.vid, pos_report.xway);
@@ -252,8 +238,8 @@ action set_ewma_spd() {
     register_write(v_ewma_spd_reg, pos_report.vid, v_state.ewma_spd);
 }
 
-#define EWMA_A 25
-#define EWMA(avg, x) ((avg * (100 - EWMA_A)) + (x * EWMA_A)) / 100
+#define EWMA_A 32
+#define EWMA(avg, x) ((avg * (128 - EWMA_A)) + (x * EWMA_A)) >> 7
 
 action calc_ewma_spd() {
     register_read(v_state.ewma_spd, v_ewma_spd_reg, pos_report.vid);
@@ -271,17 +257,21 @@ table update_ewma_spd {
 }
 
 action do_loc_not_changed() {
-    register_read(v_state.prev_same_loc, v_same_loc_reg, pos_report.vid);
-    modify_field(v_state.same_loc, v_state.prev_same_loc | (1 << (v_state.seq % 3)));
-    register_write(v_same_loc_reg, pos_report.vid, v_state.same_loc);
+    register_read(v_state.prev_nomove_cnt, v_nomove_cnt_reg, pos_report.vid);
+    // XXX BMV2 doesn't support saturating, so we do a trick with bit ops:
+    // inc the counter, then subtract from it (carry >> 2)
+    modify_field(v_state.nomove_cnt,
+        (v_state.prev_nomove_cnt + 1) -
+            (((v_state.prev_nomove_cnt + 1) & 4) >> 2));
+    register_write(v_nomove_cnt_reg, pos_report.vid, v_state.nomove_cnt);
 }
 table loc_not_changed {
     actions { do_loc_not_changed; }
 }
 
 action do_loc_changed() {
-    register_read(v_state.prev_same_loc, v_same_loc_reg, pos_report.vid);
-    register_write(v_same_loc_reg, pos_report.vid, 0);
+    register_read(v_state.prev_nomove_cnt, v_nomove_cnt_reg, pos_report.vid);
+    register_write(v_nomove_cnt_reg, pos_report.vid, 0);
 }
 table loc_changed {
     actions { do_loc_changed; }
@@ -440,8 +430,6 @@ table check_accidents {
 }
 
 
-#define CALC_TOLL(basetoll, cars) (base_toll * (cars - 50) * (cars - 50))
-
 header_type toll_metadata_t {
     fields {
         toll: 16;
@@ -453,7 +441,8 @@ metadata toll_metadata_t toll_meta;
 
 action issue_toll(base_toll) {
     modify_field(toll_meta.has_toll, 1);
-    modify_field(toll_meta.toll, CALC_TOLL(base_toll, seg_meta.vol));
+    modify_field(toll_meta.toll,
+            base_toll * (seg_meta.vol - 16'50) * (seg_meta.vol - 16'50));
 
     // Update the account balance
     register_read(toll_meta.bal, v_accnt_bal_reg, pos_report.vid);
@@ -506,16 +495,16 @@ control ingress {
                 apply(loc_changed);
             }
 
-            if (v_state.prev_same_loc == STOPPED_LOC and    // it was stopped
-                v_state.same_loc != STOPPED_LOC             // but it's moved
+            if (v_state.prev_nomove_cnt == 3 and   // it was stopped
+                v_state.nomove_cnt <3              // but it's moved
                 ) {
                 apply(dec_prev_stopped);             // then dec stopped vehicles for prev loc
             }
 
-            if (v_state.prev_same_loc != STOPPED_LOC and   // it wasn't stopped before
-                v_state.same_loc == STOPPED_LOC            // but is stopped now
+            if (v_state.prev_nomove_cnt <3 and     // it wasn't stopped before
+                v_state.nomove_cnt == 3            // but is stopped now
                 ) {
-                apply(inc_stopped);                 // then inc stopped vehicles for this loc
+                apply(inc_stopped);                  // then inc stopped vehicles for this loc
             }
 
             apply(load_stopped_ahead);
@@ -542,8 +531,6 @@ header_type egress_metadata_t {
 metadata egress_metadata_t accident_egress_meta;
 metadata egress_metadata_t toll_egress_meta;
 metadata egress_metadata_t accnt_bal_egress_meta;
-
-header standard_metadata_t standard_metadata;
 
 field_list alert_e2e_fl {
     accident_meta;

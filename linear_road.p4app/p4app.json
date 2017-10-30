@@ -3,7 +3,7 @@
   "language": "p4-14",
   "targets": {
     "multiswitch": {
-      "model": "tofino",
+      "model": "bmv2",
       "bmv2_log": true,
       "pcap_dump": false,
       "auto-control-plane": true,
@@ -13,11 +13,13 @@
       "hosts": {
         "h1": {
             "cmd": "./forward.py -p 1234 h2:1235",
+            "_cmd": "./recv.py -p 1234",
             "startup_sleep": 0.1,
             "wait": false
         },
         "h2": {
             "cmd": "./test_switch.py -p 1235 h1:1234",
+            "_cmd": "./data_feeder.py ./datafile20seconds.dat h1:1234",
             "wait": true
         }
       },
