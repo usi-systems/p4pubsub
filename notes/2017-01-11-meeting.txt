@@ -1,0 +1,39 @@
+Date: 1st November 2017
+Attendees: Theo, Antonio, Robert, Nate, Masoud
+
+SUMMARY:
+
+Discussed outline for Linear Road paper and what our pitch should be.
+
+NEXT STEPS:
+
+- Robert is going to start working on the intro and discussion
+- Masoud and Theo are going to work on the HW implementation
+
+Some reactions:
+
+What should the pitch be for our Linear Road paper?
+- Nate: we shouldn't root it in any app, but use LR as a representative 
+  benchmark
+- How to improve dataplane programming? Add stateful computation
+    - propose enhancements to better support stateful programs
+    - to understand what abstractions you need, we need a good case study:
+      stream processing, specifically LR
+
+Paper outline:
+- background on P4
+- describe LR
+- discuss implementation
+- evaluation: throughput, and upper bound on latency
+
+Antonio: sketch what we'd like to see from dataplane programming
+    - what primitives would we like to see? Both in arch + lang
+
+- Pitch of the paper: how do we do stateful processing with hardware designed for
+  networking?
+- What's the essence of the difficulty?
+    - high level changes that we'd like from HW + P4 lang
+
+Antonio: what abstractions would stateful computing need on the switch?
+    - Context. With per-action context, we could do stateful more easily
+    - This would require a execution model for concurrency
