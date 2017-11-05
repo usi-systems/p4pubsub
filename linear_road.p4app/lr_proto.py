@@ -9,6 +9,8 @@ toll_notification_struct = struct.Struct('!B H L H B H')
 accident_alert_struct = struct.Struct('!B H L H B')
 accnt_bal_req_struct = struct.Struct('!B H L H')
 accnt_bal_struct = struct.Struct('!B H L H H L')
+expenditure_req_struct = struct.Struct('!B H L H B B')
+expenditure_report_struct = struct.Struct('!B H H H H')
 
 def packPosReport(msg_type=LR_MSG_POS_REPORT, time=0, vid=0, spd=0,
                     xway=0, lane=0, dir=0, seg=0):
@@ -68,6 +70,26 @@ def unpackAccntBal(data):
     msg = AccntBal(msg_type=msg_type, time=time, vid=vid, emit=emit, qid=qid, bal=bal)
     return msg
 
+def packExpenditureReq(msg_type=LR_MSG_EXPENDITURE_REQ, time=0, vid=0, qid=0, xway=0, day=0):
+    data = expenditure_req_struct.pack(msg_type, time, vid, qid, xway, day)
+    return data
+
+def unpackExpenditureReq(data):
+    msg_type, time, vid, qid, xway, day = expenditure_req_struct.unpack(data)
+    assert msg_type == LR_MSG_EXPENDITURE_REQ
+    msg = ExpenditureReq(msg_type=msg_type, time=time, vid=vid, qid=qid, xway=xway, day=day)
+    return msg
+
+def packExpenditureReport(msg_type=LR_MSG_EXPENDITURE_REPORT, time=0, emit=0, qid=0, bal=0):
+    data = expenditure_report_struct.pack(msg_type, time, emit, qid, bal)
+    return data
+
+def unpackExpenditureReport(data):
+    msg_type, time, emit, qid, bal = expenditure_report_struct.unpack(data)
+    assert msg_type == LR_MSG_EXPENDITURE_REPORT
+    msg = ExpenditureReport(msg_type=msg_type, time=time, emit=emit, qid=qid, bal=bal)
+    return msg
+
 
 def unpackLRMsg(data):
     msg_type, = msg_type_struct.unpack(data[0])
@@ -81,6 +103,10 @@ def unpackLRMsg(data):
         return unpackAccntBalReq(data)
     elif msg_type == LR_MSG_ACCNT_BAL:
         return unpackAccntBal(data)
+    elif msg_type == LR_MSG_EXPENDITURE_REQ:
+        return unpackExpenditureReq(data)
+    elif msg_type == LR_MSG_EXPENDITURE_REPORT:
+        return unpackExpenditureReport(data)
     else:
         raise Exception("Unrecognized msg type: %d" % msg_type)
 
@@ -95,6 +121,10 @@ def packLRMsg(msg):
         return packAccntBalReq(**msg)
     elif isinstance(msg, AccntBal):
         return packAccntBal(**msg)
+    elif isinstance(msg, ExpenditureReq):
+        return packExpenditureReq(**msg)
+    elif isinstance(msg, ExpenditureReport):
+        return packExpenditureReport(**msg)
     else:
         raise Exception("Packing this msg type isn't supported yet")
 

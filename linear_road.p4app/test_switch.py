@@ -3,6 +3,7 @@ import sys
 import argparse
 from time import sleep
 from linear_road import PosReport, AccidentAlert, TollNotification, AccntBalReq, AccntBal, Loc
+from linear_road import ExpenditureReq, ExpenditureReport
 from controller_rpc import RPCClient
 from lr_proto import LRProducer, LRConsumer, parseHostAndPort
 
@@ -39,6 +40,10 @@ def sendPr(**pr):
     producer.send(PosReport(**pr))
 def sendBr(**br):
     producer.send(AccntBalReq(**br))
+
+def sendEr(**er):
+    producer.send(ExpenditureReq(**er))
+
 
 
 loc = Loc(xway=1, lane=1, dir=0, seg=8)
@@ -184,6 +189,56 @@ for _ in xrange(4):
     assert isinstance(msg, AccntBal)
     assert msg['qid'] == 3
     assert msg['bal'] == 0
+
+# Test historical queries
+sendEr(time=ts(), vid=1, qid=1, xway=1, day=1)
+msg = consumer.recv()
+assert isinstance(msg, ExpenditureReport)
+assert msg['time'] == last_time
+assert msg['emit'] == last_time
+assert msg['qid'] == 1
+assert msg['bal'] == 10
+
+sendEr(time=ts(), vid=1, qid=2, xway=1, day=3)
+msg = consumer.recv()
+assert isinstance(msg, ExpenditureReport)
+assert msg['time'] == last_time
+assert msg['emit'] == last_time
+assert msg['qid'] == 2
+assert msg['bal'] == 12
+
+sendEr(time=ts(), vid=1, qid=3, xway=2, day=2)
+msg = consumer.recv()
+assert isinstance(msg, ExpenditureReport)
+assert msg['time'] == last_time
+assert msg['emit'] == last_time
+assert msg['qid'] == 3
+assert msg['bal'] == 14
+
+sendEr(time=ts(), vid=2, qid=4, xway=1, day=1)
+msg = consumer.recv()
+assert isinstance(msg, ExpenditureReport)
+assert msg['time'] == last_time
+assert msg['emit'] == last_time
+assert msg['qid'] == 4
+assert msg['bal'] == 16
+
+sendEr(time=ts(), vid=2, qid=5, xway=1, day=2)
+msg = consumer.recv()
+print msg
+assert isinstance(msg, ExpenditureReport)
+assert msg['time'] == last_time
+assert msg['emit'] == last_time
+assert msg['qid'] == 5
+assert msg['bal'] == 0
+
+sendEr(time=ts(), vid=3, qid=6, xway=1, day=2)
+msg = consumer.recv()
+assert isinstance(msg, ExpenditureReport)
+assert msg['time'] == last_time
+assert msg['emit'] == last_time
+assert msg['qid'] == 6
+assert msg['bal'] == 0
 
 assert not consumer.hasNewMsg()
 

@@ -643,6 +643,33 @@ table send_accnt_bal {
     }
 }
 
+
+action make_expenditure_report(bal) {
+    modify_field(lr_msg_type.msg_type, LR_MSG_EXPENDITURE_REPORT);
+
+    add_header(expenditure_report);
+    modify_field(expenditure_report.time, expenditure_req.time);
+    modify_field(expenditure_report.emit, expenditure_req.time);
+    modify_field(expenditure_report.qid, expenditure_req.qid);
+    modify_field(expenditure_report.bal, bal);
+
+    remove_header(expenditure_req);
+
+    modify_field(ipv4.totalLen, 37);
+    modify_field(udp.length_, 17);
+    modify_field(udp.checksum, 0);
+}
+
+table daily_expenditure {
+    reads {
+        expenditure_req.vid: exact;
+        expenditure_req.day: exact;
+        expenditure_req.xway: exact;
+    }
+    actions { make_expenditure_report; }
+    size: 1024;
+}
+
 control egress {
     if (valid(ipv4)) {
         if (valid(pos_report)) {
@@ -651,6 +678,9 @@ control egress {
         }
         else if (valid(accnt_bal_req)) {
             apply(send_accnt_bal);
+        }
+        else if (valid(expenditure_req)) {
+            apply(daily_expenditure);
         }
         apply(send_frame);
     }

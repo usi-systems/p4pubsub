@@ -17,7 +17,6 @@ class LRDataSource:
             self.fd = open(self.filename, 'r')
 
     def close(self):
-        print self.vid_map
         self.fd.close()
 
     def next(self):
@@ -53,4 +52,13 @@ class LRDataSource:
     def __exit__(self, t, v, tb): self.close()
 
 
+if __name__ == '__main__':
+    import sys
+    vid = None
+    with LRDataSource(sys.argv[1]) as ds:
+        for m in ds:
+            if not isinstance(m, PosReport): continue
+            if vid is None: vid = m['vid']
+            if m['vid'] != vid: continue
+            print m
 

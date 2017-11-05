@@ -69,6 +69,8 @@ header accnt_bal_req_t accnt_bal_req;
 header toll_notification_t toll_notification;
 header accident_alert_t accident_alert;
 header accnt_bal_t accnt_bal;
+header expenditure_req_t expenditure_req;
+header expenditure_report_t expenditure_report;
 
 parser parse_lr {
     extract(lr_msg_type);
@@ -78,6 +80,8 @@ parser parse_lr {
         LR_MSG_TOLL_NOTIFICATION: parse_toll_notification;
         LR_MSG_ACCIDENT_ALERT: parse_accident_alert;
         LR_MSG_ACCNT_BAL: parse_accnt_bal;
+        LR_MSG_EXPENDITURE_REQ: parse_expenditure_req;
+        LR_MSG_EXPENDITURE_REPORT: parse_expenditure_report;
         default: ingress;
     }
 }
@@ -107,3 +111,12 @@ parser parse_accnt_bal {
     return ingress;
 }
 
+parser parse_expenditure_req {
+    extract(expenditure_req);
+    return ingress;
+}
+
+parser parse_expenditure_report {
+    extract(expenditure_report);
+    return ingress;
+}

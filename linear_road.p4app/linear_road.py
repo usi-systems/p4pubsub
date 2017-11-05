@@ -8,9 +8,11 @@ LR_NUM_DIRS  = 2
 
 LR_MSG_POS_REPORT           = 0
 LR_MSG_ACCNT_BAL_REQ        = 2
+LR_MSG_EXPENDITURE_REQ      = 3
 LR_MSG_TOLL_NOTIFICATION    = 10
 LR_MSG_ACCIDENT_ALERT       = 11
 LR_MSG_ACCNT_BAL            = 12
+LR_MSG_EXPENDITURE_REPORT   = 13
 
 def locId(loc):
     return tuple(loc[k] for k in ['xway', 'seg', 'dir', 'lane'])
@@ -61,6 +63,14 @@ class AccntBalReq(LRMsg):
 
 class AccntBal(LRMsg):
     name = 'Bal'
+    pretty_exclude_keys = ['msg_type']
+
+class ExpenditureReq(LRMsg):
+    name = 'ExpReq'
+    pretty_exclude_keys = ['msg_type']
+
+class ExpenditureReport(LRMsg):
+    name = 'ExpRep'
     pretty_exclude_keys = ['msg_type']
 
 

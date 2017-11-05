@@ -54,10 +54,10 @@ class CustomAppController(AppController):
         return self.toll_settings
 
     def stop(self):
-        v_state = self.getVidState(vid=1)
-        stp_cnt = self.getStoppedCnt(**v_state.loc())
-        print v_state
-        print "stp_cnt:", stp_cnt
+        #v_state = self.getVidState(vid=1)
+        #stp_cnt = self.getStoppedCnt(**v_state.loc())
+        #print v_state
+        #print "stp_cnt:", stp_cnt
         self.rpc_server.stop()
         AppController.stop(self)
 

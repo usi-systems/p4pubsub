@@ -38,9 +38,11 @@ header_type udp_t {
 
 #define LR_MSG_POS_REPORT           0
 #define LR_MSG_ACCNT_BAL_REQ        2
+#define LR_MSG_EXPENDITURE_REQ      3
 #define LR_MSG_TOLL_NOTIFICATION    10
 #define LR_MSG_ACCIDENT_ALERT       11
 #define LR_MSG_ACCNT_BAL            12
+#define LR_MSG_EXPENDITURE_REPORT   13
 
 header_type lr_msg_type_t {
     fields {
@@ -55,7 +57,7 @@ header_type pos_report_t {
         spd: 8;
         xway: 8;
         lane: 8; // only uses 3 bits
-        dir: 8; // only uses 1 bit
+        dir: 8;
         seg: 8;
     }
 }
@@ -97,6 +99,23 @@ header_type accnt_bal_t {
     }
 }
 
+header_type expenditure_req_t {
+    fields {
+        time: 16;
+        vid: 32;
+        qid: 16;
+        xway: 8;
+        day: 8;
+    }
+}
 
+header_type expenditure_report_t {
+    fields {
+        time: 16;
+        emit: 16;
+        qid: 16;
+        bal: 16;
+    }
+}
 
 #endif // __HEADER_P4__
