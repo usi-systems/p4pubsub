@@ -39,10 +39,12 @@ header_type udp_t {
 #define LR_MSG_POS_REPORT           0
 #define LR_MSG_ACCNT_BAL_REQ        2
 #define LR_MSG_EXPENDITURE_REQ      3
+#define LR_MSG_TRAVEL_ESTIMATE_REQ  4
 #define LR_MSG_TOLL_NOTIFICATION    10
 #define LR_MSG_ACCIDENT_ALERT       11
 #define LR_MSG_ACCNT_BAL            12
 #define LR_MSG_EXPENDITURE_REPORT   13
+#define LR_MSG_TRAVEL_ESTIMATE      14
 
 header_type lr_msg_type_t {
     fields {
@@ -115,6 +117,26 @@ header_type expenditure_report_t {
         emit: 16;
         qid: 16;
         bal: 16;
+    }
+}
+
+header_type travel_estimate_req_t {
+    fields {
+        time: 16;
+        qid: 16;
+        xway: 8;
+        seg_init: 8;
+        seg_end: 8;
+        dow: 8;
+        tod: 8;
+    }
+}
+
+header_type travel_estimate_t {
+    fields {
+        qid: 16;
+        travel_time: 16;
+        toll: 16;
     }
 }
 

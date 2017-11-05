@@ -11,6 +11,8 @@ accnt_bal_req_struct = struct.Struct('!B H L H')
 accnt_bal_struct = struct.Struct('!B H L H H L')
 expenditure_req_struct = struct.Struct('!B H L H B B')
 expenditure_report_struct = struct.Struct('!B H H H H')
+travel_estimate_req_struct = struct.Struct("!B H H B B B B B")
+travel_estimate_struct = struct.Struct("!B H H H")
 
 def packPosReport(msg_type=LR_MSG_POS_REPORT, time=0, vid=0, spd=0,
                     xway=0, lane=0, dir=0, seg=0):
@@ -90,6 +92,28 @@ def unpackExpenditureReport(data):
     msg = ExpenditureReport(msg_type=msg_type, time=time, emit=emit, qid=qid, bal=bal)
     return msg
 
+def packTravelEstimateReq(msg_type=LR_MSG_TRAVEL_ESTIMATE_REQ, time=0, qid=0, xway=0,
+                        seg_init=0, seg_end=0, dow=0, tod=0):
+    data = travel_estimate_req_struct.pack(msg_type, time, qid, xway, seg_init, seg_end, dow, tod)
+    return data
+
+def unpackTravelEstimateReq(data):
+    msg_type, time, qid, xway, seg_init, seg_end, dow, tod = travel_estimate_req_struct.unpack(data)
+    assert msg_type == LR_MSG_TRAVEL_ESTIMATE_REQ
+    msg = TravelEstimateReq(msg_type=msg_type, time=time, qid=qid, xway=xway,
+                            seg_init=seg_init, seg_end=seg_end, dow=dow, tod=tod)
+    return msg
+
+def packTravelEstimate(msg_type=LR_MSG_TRAVEL_ESTIMATE, qid=0, travel_time=0, toll=0):
+    data = travel_estimate_struct.pack(msg_type, qid, travel_time, toll)
+    return data
+
+def unpackTravelEstimate(data):
+    msg_type, qid, travel_time, toll = travel_estimate_struct.unpack(data)
+    assert msg_type == LR_MSG_TRAVEL_ESTIMATE
+    msg = TravelEstimate(msg_type=msg_type, qid=qid, travel_time=travel_time, toll=toll)
+    return msg
+
 
 def unpackLRMsg(data):
     msg_type, = msg_type_struct.unpack(data[0])
@@ -107,6 +131,10 @@ def unpackLRMsg(data):
         return unpackExpenditureReq(data)
     elif msg_type == LR_MSG_EXPENDITURE_REPORT:
         return unpackExpenditureReport(data)
+    elif msg_type == LR_MSG_TRAVEL_ESTIMATE_REQ:
+        return unpackTravelEstimateReq(data)
+    elif msg_type == LR_MSG_TRAVEL_ESTIMATE:
+        return unpackTravelEstimate(data)
     else:
         raise Exception("Unrecognized msg type: %d" % msg_type)
 
@@ -125,6 +153,10 @@ def packLRMsg(msg):
         return packExpenditureReq(**msg)
     elif isinstance(msg, ExpenditureReport):
         return packExpenditureReport(**msg)
+    elif isinstance(msg, TravelEstimateReq):
+        return packTravelEstimateReq(**msg)
+    elif isinstance(msg, TravelEstimate):
+        return packTravelEstimate(**msg)
     else:
         raise Exception("Packing this msg type isn't supported yet")
 

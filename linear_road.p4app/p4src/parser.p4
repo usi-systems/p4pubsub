@@ -71,6 +71,8 @@ header accident_alert_t accident_alert;
 header accnt_bal_t accnt_bal;
 header expenditure_req_t expenditure_req;
 header expenditure_report_t expenditure_report;
+header travel_estimate_req_t travel_estimate_req;
+header travel_estimate_t travel_estimate;
 
 parser parse_lr {
     extract(lr_msg_type);
@@ -82,6 +84,8 @@ parser parse_lr {
         LR_MSG_ACCNT_BAL: parse_accnt_bal;
         LR_MSG_EXPENDITURE_REQ: parse_expenditure_req;
         LR_MSG_EXPENDITURE_REPORT: parse_expenditure_report;
+        LR_MSG_TRAVEL_ESTIMATE_REQ: parse_travel_estimate_req;
+        LR_MSG_TRAVEL_ESTIMATE: parse_travel_estimate;
         default: ingress;
     }
 }
@@ -118,5 +122,15 @@ parser parse_expenditure_req {
 
 parser parse_expenditure_report {
     extract(expenditure_report);
+    return ingress;
+}
+
+parser parse_travel_estimate_req {
+    extract(travel_estimate_req);
+    return ingress;
+}
+
+parser parse_travel_estimate {
+    extract(travel_estimate);
     return ingress;
 }

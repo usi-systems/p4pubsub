@@ -3,7 +3,7 @@ import sys
 import argparse
 from time import sleep
 from linear_road import PosReport, AccidentAlert, TollNotification, AccntBalReq, AccntBal, Loc
-from linear_road import ExpenditureReq, ExpenditureReport
+from linear_road import ExpenditureReq, ExpenditureReport, TravelEstimateReq, TravelEstimate
 from controller_rpc import RPCClient
 from lr_proto import LRProducer, LRConsumer, parseHostAndPort
 
@@ -40,9 +40,10 @@ def sendPr(**pr):
     producer.send(PosReport(**pr))
 def sendBr(**br):
     producer.send(AccntBalReq(**br))
-
 def sendEr(**er):
     producer.send(ExpenditureReq(**er))
+def sendTer(**ter):
+    producer.send(TravelEstimateReq(**ter))
 
 
 
@@ -190,6 +191,8 @@ for _ in xrange(4):
     assert msg['qid'] == 3
     assert msg['bal'] == 0
 
+assert not consumer.hasNewMsg()
+
 # Test historical queries
 sendEr(time=ts(), vid=1, qid=1, xway=1, day=1)
 msg = consumer.recv()
@@ -239,6 +242,42 @@ assert msg['time'] == last_time
 assert msg['emit'] == last_time
 assert msg['qid'] == 6
 assert msg['bal'] == 0
+
+assert not consumer.hasNewMsg()
+
+# Test travel estimates
+
+# Forwards 2 segs
+sendTer(time=ts(), qid=1, xway=0, seg_init=0, seg_end=1, dow=0, tod=0)
+msg = consumer.recv()
+assert isinstance(msg, TravelEstimate)
+assert msg['qid'] == 1
+assert msg['travel_time'] == 10
+assert msg['toll'] == 3
+
+# Forwards 4 segs
+sendTer(time=ts(), qid=2, xway=0, seg_init=0, seg_end=3, dow=0, tod=0)
+msg = consumer.recv()
+assert isinstance(msg, TravelEstimate)
+assert msg['qid'] == 2
+assert msg['travel_time'] == 20
+assert msg['toll'] == 10
+
+# Backwards
+sendTer(time=ts(), qid=3, xway=1, seg_init=3, seg_end=1, dow=0, tod=0)
+msg = consumer.recv()
+assert isinstance(msg, TravelEstimate)
+assert msg['qid'] == 3
+assert msg['travel_time'] == 12
+assert msg['toll'] == 6
+
+# Different xway, dow and tod
+sendTer(time=ts(), qid=4, xway=2, seg_init=5, seg_end=9, dow=2, tod=3)
+msg = consumer.recv()
+assert isinstance(msg, TravelEstimate)
+assert msg['qid'] == 4
+assert msg['travel_time'] == 10
+assert msg['toll'] == 15
 
 assert not consumer.hasNewMsg()
 

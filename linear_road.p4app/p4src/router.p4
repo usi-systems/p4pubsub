@@ -670,6 +670,93 @@ table daily_expenditure {
     size: 1024;
 }
 
+header_type travel_estimate_metadata_t {
+    fields {
+        recirculated: 1;
+        dir: 1;
+        seg_cur: 8;
+        seg_end: 8;
+        toll_sum: 16;
+        time_sum: 16;
+    }
+}
+metadata travel_estimate_metadata_t te_md;
+
+action do_travel_estimate_init() {
+    modify_field(te_md.dir, 0);
+    modify_field(te_md.seg_cur, travel_estimate_req.seg_init);
+    modify_field(te_md.seg_end, travel_estimate_req.seg_end);
+}
+table travel_estimate_init {
+    actions { do_travel_estimate_init; }
+    default_action: do_travel_estimate_init;
+    size: 1;
+}
+
+action do_travel_estimate_init_rev() {
+    modify_field(te_md.dir, 1);
+    modify_field(te_md.seg_cur, travel_estimate_req.seg_end);
+    modify_field(te_md.seg_end, travel_estimate_req.seg_init);
+}
+table travel_estimate_init_rev {
+    actions { do_travel_estimate_init_rev; }
+    default_action: do_travel_estimate_init_rev;
+    size: 1;
+}
+
+action update_travel_estimate(time, toll) {
+    add_to_field(te_md.time_sum, time);
+    add_to_field(te_md.toll_sum, toll);
+}
+table travel_estimate_history {
+    reads {
+        travel_estimate_req.dow: exact;
+        travel_estimate_req.tod: exact;
+        travel_estimate_req.xway: exact;
+        te_md.dir: exact;
+        te_md.seg_cur: exact;
+    }
+    actions {
+        update_travel_estimate;
+    }
+    size: 1024;
+}
+
+field_list te_e2e_fl {
+    te_md;
+}
+
+action travel_estimate_e2e(mir_ses) {
+    add_to_field(te_md.seg_cur, 1);
+    modify_field(te_md.recirculated, 1);
+    clone_egress_pkt_to_egress(mir_ses, te_e2e_fl);
+    drop();
+}
+table travel_estimate_recirc {
+    actions { travel_estimate_e2e; }
+    size: 1;
+}
+
+action do_travel_estimate_send() {
+    modify_field(lr_msg_type.msg_type, LR_MSG_TRAVEL_ESTIMATE);
+
+    add_header(travel_estimate);
+    modify_field(travel_estimate.qid, travel_estimate_req.qid);
+    modify_field(travel_estimate.travel_time, te_md.time_sum);
+    modify_field(travel_estimate.toll, te_md.toll_sum);
+
+    remove_header(travel_estimate_req);
+
+    modify_field(ipv4.totalLen, 35);
+    modify_field(udp.length_, 15);
+    modify_field(udp.checksum, 0);
+}
+table travel_estimate_send {
+    actions { do_travel_estimate_send; }
+    default_action: do_travel_estimate_send;
+    size: 1;
+}
+
 control egress {
     if (valid(ipv4)) {
         if (valid(pos_report)) {
@@ -681,6 +768,21 @@ control egress {
         }
         else if (valid(expenditure_req)) {
             apply(daily_expenditure);
+        }
+        else if (valid(travel_estimate_req)) {
+            if (te_md.recirculated == 0) {
+                if (travel_estimate_req.seg_init < travel_estimate_req.seg_end)
+                    apply(travel_estimate_init);
+                else
+                    apply(travel_estimate_init_rev);
+            }
+
+            apply(travel_estimate_history);
+
+            if (te_md.seg_cur == te_md.seg_end)
+                apply(travel_estimate_send);
+            else
+                apply(travel_estimate_recirc);
         }
         apply(send_frame);
     }
