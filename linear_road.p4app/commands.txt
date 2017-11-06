@@ -10,8 +10,7 @@ table_add update_vol_state load_vol 0 0 =>
 table_add update_vol_state load_and_inc_vol 1 1 =>
 table_add update_vol_state load_and_inc_and_dec_vol 0 1 =>
 
-table_add update_ewma_spd set_ewma_spd 1 =>
-table_add update_ewma_spd calc_ewma_spd 0 =>
+table_add update_ewma_spd set_spd 1 =>
 
 table_add check_accidents set_accident_meta 2->0xff 0->0xff 0->0xff 0->0xff 0->0xff => 0 1
 table_add check_accidents set_accident_meta 0->0xff 2->0xff 0->0xff 0->0xff 0->0xff => 1 1

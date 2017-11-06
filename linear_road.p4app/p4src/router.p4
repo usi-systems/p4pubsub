@@ -90,11 +90,6 @@ register v_dir_reg {
   instance_count: MAX_VID;
 }
 
-register v_ewma_spd_reg { // EWMA of spd for the whole simulation (no windowing)
-  width: 8;
-  instance_count: MAX_VID;
-}
-
 register v_accnt_bal_reg { // sum of tolls
   width: 32;
   instance_count: MAX_VID;
@@ -143,6 +138,12 @@ register seg_vol_reg {
   instance_count: NUM_DIRSEG;
 }
 
+register seg_ewma_spd_reg { // EWMA of spd for the whole simulation (no windowing)
+  width: 16;
+  instance_count: NUM_DIRSEG;
+}
+
+
 
 header_type accident_meta_t {
     fields {
@@ -165,7 +166,6 @@ header_type v_state_metadata_t {
         prev_dir: 1;
         prev_nomove_cnt: 3;
         nomove_cnt: 3;
-        ewma_spd: 8;
     }
 }
 metadata v_state_metadata_t v_state;
@@ -174,6 +174,7 @@ header_type seg_metadata_t {
     fields {
         vol: 8;
         prev_vol: 8; // vol in the previous seg
+        ewma_spd: 16;
     }
 }
 metadata seg_metadata_t seg_meta;
@@ -231,29 +232,6 @@ action set_new_seg() {
 }
 table update_new_seg {
     actions { set_new_seg; }
-}
-
-action set_ewma_spd() {
-    modify_field(v_state.ewma_spd, pos_report.spd);
-    register_write(v_ewma_spd_reg, pos_report.vid, v_state.ewma_spd);
-}
-
-#define EWMA_A 32
-#define EWMA(avg, x) ((avg * (128 - EWMA_A)) + (x * EWMA_A)) >> 7
-
-action calc_ewma_spd() {
-    register_read(v_state.ewma_spd, v_ewma_spd_reg, pos_report.vid);
-    modify_field(v_state.ewma_spd, EWMA(v_state.ewma_spd, pos_report.spd));
-    register_write(v_ewma_spd_reg, pos_report.vid, v_state.ewma_spd);
-}
-
-table update_ewma_spd {
-    reads { v_state.new: exact; }
-    actions {
-        set_ewma_spd;           // 1
-        calc_ewma_spd;          // 0
-    }
-    size: 2;
 }
 
 action do_loc_not_changed() {
@@ -314,6 +292,33 @@ table update_vol_state {
         load_and_inc_and_dec_vol;   // 0 1
     }
     size: 4;
+}
+
+action set_spd() {
+    modify_field(seg_meta.ewma_spd, pos_report.spd);
+    register_write(seg_ewma_spd_reg,
+                DIRSEG_IDX(pos_report.xway, pos_report.seg, pos_report.dir),
+                seg_meta.ewma_spd);
+}
+
+action calc_ewma_spd() {
+    register_read(seg_meta.ewma_spd, seg_ewma_spd_reg,
+                DIRSEG_IDX(pos_report.xway, pos_report.seg, pos_report.dir));
+    modify_field(seg_meta.ewma_spd,
+                ((seg_meta.ewma_spd * (32'128 - 32)) + (pos_report.spd * 16'32)) >> 7);
+    register_write(seg_ewma_spd_reg,
+                DIRSEG_IDX(pos_report.xway, pos_report.seg, pos_report.dir),
+                seg_meta.ewma_spd);
+}
+
+table update_ewma_spd {
+    reads { seg_meta.vol: exact; }
+    actions {
+        set_spd;         // 1 (this is the only car in the seg)
+        calc_ewma_spd;   // *
+    }
+    default_action: calc_ewma_spd;
+    size: 2;
 }
 
 action do_load_stopped_ahead() {
@@ -456,7 +461,7 @@ action issue_toll(base_toll) {
 table check_toll {
     reads {
         v_state.new_seg: exact;                     // if the car entered a new seg
-        v_state.ewma_spd: range;                    // and its spd < 40
+        seg_meta.ewma_spd: range;                   // and its spd < 40
         seg_meta.vol: range;                        // and the |cars| in seg > 50
         accident_meta.has_accident_ahead: exact;    // and no accident ahead
     }
@@ -572,7 +577,7 @@ table send_accident_alert {
 field_list toll_e2e_fl {
     toll_meta;
     toll_egress_meta;
-    v_state;
+    seg_meta;
 }
 
 action toll_notification_e2e(mir_ses) {
@@ -586,7 +591,7 @@ action make_toll_notification() {
     add_header(toll_notification);
     modify_field(toll_notification.time, pos_report.time);
     modify_field(toll_notification.vid, pos_report.vid);
-    modify_field(toll_notification.spd, v_state.ewma_spd);
+    modify_field(toll_notification.spd, seg_meta.ewma_spd);
     modify_field(toll_notification.toll, toll_meta.toll);
 
     remove_header(pos_report);

@@ -29,14 +29,16 @@ class CustomAppController(AppController):
 
     def getVidState(self, vid=None):
         state = LRMsg(dir=0)
-        for k in ['spd', 'valid', 'seg', 'xway', 'lane', 'ewma_spd', 'nomove_cnt']:
+        for k in ['spd', 'valid', 'seg', 'xway', 'lane', 'nomove_cnt']:
             v = self.readRegister('v_%s_reg' % k, vid)
             state[k] = int(v)
         return state
 
     def getSegState(self, xway=None, seg=None, dir=None):
         state = {}
-        state['vol'] = self.readRegister('seg_vol_reg', dirsegIdx(xway, seg, dir))
+        for k in ['vol', 'ewma_spd']:
+            v = self.readRegister('seg_%s_reg'%k, dirsegIdx(xway, seg, dir))
+            state[k] = int(v)
         return state
 
     def getBal(self, vid=None):

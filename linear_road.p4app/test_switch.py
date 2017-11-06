@@ -10,7 +10,7 @@ from lr_proto import LRProducer, LRConsumer, parseHostAndPort
 def log(x): sys.stderr.write(str(x) + ' ')
 def ewma(avg, x):
     a = 32
-    return int((avg * (128 - a)) + (x * a)) >> 128
+    return int((avg * (128 - a)) + (x * a)) >> 7
 
 toll_settings = dict(min_spd=40, min_cars=5, base_toll=1)
 def calc_toll(cars_in_seg=None):
@@ -119,47 +119,47 @@ assert cont.getSegState(**Loc(loc2, lane=None))['vol'] == 1
 
 
 # Test EWMA
-sendPr(time=ts(), vid=5, spd=10, xway=0, lane=1, dir=0, seg=1)
-avg1 = cont.getVidState(vid=5)['ewma_spd']
+sendPr(time=ts(), vid=20, spd=10, xway=0, lane=0, dir=0, seg=20)
+avg1 = cont.getSegState(xway=0, dir=0, seg=20)['ewma_spd']
 assert avg1 == 10
 
-sendPr(time=ts(), vid=5, spd=20, xway=0, lane=1, dir=0, seg=1)
-avg2 = cont.getVidState(vid=5)['ewma_spd']
+sendPr(time=ts(), vid=21, spd=20, xway=0, lane=0, dir=0, seg=20)
+avg2 = cont.getSegState(xway=0, dir=0, seg=20)['ewma_spd']
 assert avg2 == ewma(avg1, 20)
 
-sendPr(time=ts(), vid=5, spd=40, xway=0, lane=1, dir=0, seg=1)
-avg3 = cont.getVidState(vid=5)['ewma_spd']
+sendPr(time=ts(), vid=22, spd=40, xway=0, lane=1, dir=0, seg=20)
+avg3 = cont.getSegState(xway=0, dir=0, seg=20)['ewma_spd']
 assert avg3 == ewma(avg2, 40)
 
 # Test toll notification
-for vid in [6, 7, 8, 9]:
-    sendPr(time=ts(), vid=vid, spd=30, xway=0, lane=1, dir=0, seg=2)
+for vid in [21, 22, 23, 24]:
+    sendPr(time=ts(), vid=vid, spd=15, xway=0, lane=0, dir=0, seg=21)
 
-sendPr(time=ts(), vid=5, spd=40, xway=0, lane=1, dir=0, seg=2)
-avg4 = cont.getVidState(vid=5)['ewma_spd']
-assert avg4 == ewma(avg3, 40)
+sendPr(time=ts(), vid=20, spd=40, xway=0, lane=1, dir=0, seg=21)
+avg4 = cont.getSegState(xway=0, dir=0, seg=21)['ewma_spd']
+assert avg4 == ewma(15, 40)
 
-vol = cont.getSegState(xway=0, dir=0, seg=2)['vol']
+vol = cont.getSegState(xway=0, dir=0, seg=21)['vol']
 assert vol == 5
 toll1 = calc_toll(cars_in_seg=vol)
 
 msg = consumer.recv()
 assert isinstance(msg, TollNotification)
 assert msg['time'] == last_time
-assert msg['vid'] == 5
+assert msg['vid'] == 20
 assert msg['toll'] == toll1
 assert msg['spd'] == avg4
 
 
 # Move all the cars ahead, and check the next toll
-for vid in [6, 7, 8, 9]:
-    sendPr(time=ts(), vid=vid, spd=30, xway=0, lane=1, dir=0, seg=3)
+for vid in [21, 22, 23, 24]:
+    sendPr(time=ts(), vid=vid, spd=30, xway=0, lane=1, dir=0, seg=22)
 
-sendPr(time=ts(), vid=5, spd=40, xway=0, lane=1, dir=0, seg=3)
-avg5 = cont.getVidState(vid=5)['ewma_spd']
-assert avg5 == ewma(avg4, 40)
+sendPr(time=ts(), vid=20, spd=40, xway=0, lane=1, dir=0, seg=22)
+avg5 = cont.getSegState(xway=0, dir=0, seg=22)['ewma_spd']
+assert avg5 == ewma(30, 40)
 
-ss = cont.getSegState(xway=0, dir=0, seg=2)
+ss = cont.getSegState(xway=0, dir=0, seg=21)
 assert ss['vol'] == 0
 
 toll2 = calc_toll(cars_in_seg=vol)
@@ -167,22 +167,22 @@ toll2 = calc_toll(cars_in_seg=vol)
 msg = consumer.recv()
 assert isinstance(msg, TollNotification)
 assert msg['time'] == last_time
-assert msg['vid'] == 5
+assert msg['vid'] == 20
 assert msg['toll'] == toll2
 assert msg['spd'] == avg5
 
 # Check accnt bal
-sendBr(time=ts(), vid=5, qid=2)
+sendBr(time=ts(), vid=20, qid=2)
 
 msg = consumer.recv()
 assert isinstance(msg, AccntBal)
 assert msg['time'] == last_time
-assert msg['vid'] == 5
+assert msg['vid'] == 20
 assert msg['qid'] == 2
 assert msg['bal'] == toll1 + toll2
 
 # Other cars should have zero ballance
-for vid in [6, 7, 8, 9]:
+for vid in [21, 22, 23, 24]:
     sendBr(time=ts(), vid=vid, qid=3)
 
 for _ in xrange(4):
@@ -228,7 +228,6 @@ assert msg['bal'] == 16
 
 sendEr(time=ts(), vid=2, qid=5, xway=1, day=2)
 msg = consumer.recv()
-print msg
 assert isinstance(msg, ExpenditureReport)
 assert msg['time'] == last_time
 assert msg['emit'] == last_time
