@@ -1,3 +1,7 @@
+import struct
+import socket
+import errno
+
 LR_ENTRY_LANE   = 0
 LR_EXIT_LANE    = 4
 
@@ -84,160 +88,233 @@ class TravelEstimateReq(LRMsg):
     pretty_exclude_keys = ['msg_type']
 
 
-class LRException(Exception):
-    pass
+msg_type_struct = struct.Struct('!B')
+position_report_struct = struct.Struct('!B H L B B B B B')
+toll_notification_struct = struct.Struct('!B H L H B H')
+accident_alert_struct = struct.Struct('!B H L H B')
+accnt_bal_req_struct = struct.Struct('!B H L L')
+accnt_bal_struct = struct.Struct('!B H L H L L')
+expenditure_req_struct = struct.Struct('!B H L L B B')
+expenditure_report_struct = struct.Struct('!B H H L H')
+travel_estimate_req_struct = struct.Struct("!B H L B B B B B")
+travel_estimate_struct = struct.Struct("!B L H H")
 
-class LRModel:
+def packPosReport(msg_type=LR_MSG_POS_REPORT, time=0, vid=0, spd=0,
+                    xway=0, lane=0, dir=0, seg=0):
+    assert 0 <= time and time <= 10799
+    assert 0 <= spd and spd <= 100
+    assert 0 <= lane and lane <= 4
+    assert 0 <= dir and dir <= 1
+    assert 0 <= seg and seg <= 99
+    data = position_report_struct.pack(msg_type, time, vid, spd, xway, lane, dir, seg)
+    return data
 
-    def __init__(self, num_xway=LR_NUM_XWAY, num_seg=LR_NUM_SEG):
-        self.num_xway = num_xway
-        self.num_seg = num_seg
+def unpackPosReport(data):
+    msg_type, time, vid, spd, xway, lane, dir, seg = position_report_struct.unpack(data)
+    assert msg_type == LR_MSG_POS_REPORT
+    msg = PosReport(msg_type=msg_type, time=time, vid=vid, spd=spd,
+                xway=xway, lane=lane, dir=dir, seg=seg)
+    return msg
 
-        self.seg_volume = {}
-        self.position_reports = {}
-        self.stopped_state = {}
-        self.last_time = None
+def packTollNotification(msg_type=LR_MSG_TOLL_NOTIFICATION, time=0, vid=0,
+                            emit=0, spd=0, toll=0):
+    data = toll_notification_struct.pack(msg_type, time, vid, emit, spd, toll)
+    return data
 
-    def newMsg(self, msg):
-        if isinstance(msg, PosReport):
-            self._newPos(msg)
-        elif isinstance(msg, AccidentAlert):
-            self._newAccidentAlert(msg)
-        elif isinstance(msg, TollNotification):
-            self._newTollNotification(msg)
+def unpackTollNotification(data):
+    msg_type, time, vid, emit, spd, toll = toll_notification_struct.unpack(data)
+    assert msg_type == LR_MSG_TOLL_NOTIFICATION
+    msg = TollNotification(msg_type=msg_type, time=time, vid=vid, emit=emit, spd=spd, toll=toll)
+    return msg
+
+def packAccidentAlert(msg_type=LR_MSG_ACCIDENT_ALERT, time=0, vid=0, emit=0, seg=0):
+    data = accident_alert_struct.pack(msg_type, time, vid, emit, seg)
+    return data
+
+def unpackAccidentAlert(data):
+    msg_type, time, vid, emit, seg = accident_alert_struct.unpack(data)
+    assert msg_type == LR_MSG_ACCIDENT_ALERT
+    msg = AccidentAlert(msg_type=msg_type, time=time, vid=vid, emit=emit, seg=seg)
+    return msg
+
+def packAccntBalReq(msg_type=LR_MSG_ACCNT_BAL_REQ, time=0, vid=0, qid=0):
+    data = accnt_bal_req_struct.pack(msg_type, time, vid, qid)
+    return data
+
+def unpackAccntBalReq(data):
+    msg_type, time, vid, qid = accnt_bal_req_struct.unpack(data)
+    assert msg_type == LR_MSG_ACCNT_BAL_REQ
+    msg = AccntBalReq(msg_type=msg_type, time=time, vid=vid, qid=qid)
+    return msg
+
+def packAccntBal(msg_type=LR_MSG_ACCNT_BAL, time=0, vid=0, emit=0, qid=0, bal=0):
+    data = accnt_bal_struct.pack(msg_type, time, vid, emit, qid, bal)
+    return data
+
+def unpackAccntBal(data):
+    print len(data), accnt_bal_struct.size
+    msg_type, time, vid, emit, qid, bal = accnt_bal_struct.unpack(data)
+    assert msg_type == LR_MSG_ACCNT_BAL
+    msg = AccntBal(msg_type=msg_type, time=time, vid=vid, emit=emit, qid=qid, bal=bal)
+    return msg
+
+def packExpenditureReq(msg_type=LR_MSG_EXPENDITURE_REQ, time=0, vid=0, qid=0, xway=0, day=0):
+    data = expenditure_req_struct.pack(msg_type, time, vid, qid, xway, day)
+    return data
+
+def unpackExpenditureReq(data):
+    msg_type, time, vid, qid, xway, day = expenditure_req_struct.unpack(data)
+    assert msg_type == LR_MSG_EXPENDITURE_REQ
+    msg = ExpenditureReq(msg_type=msg_type, time=time, vid=vid, qid=qid, xway=xway, day=day)
+    return msg
+
+def packExpenditureReport(msg_type=LR_MSG_EXPENDITURE_REPORT, time=0, emit=0, qid=0, bal=0):
+    data = expenditure_report_struct.pack(msg_type, time, emit, qid, bal)
+    return data
+
+def unpackExpenditureReport(data):
+    msg_type, time, emit, qid, bal = expenditure_report_struct.unpack(data)
+    assert msg_type == LR_MSG_EXPENDITURE_REPORT
+    msg = ExpenditureReport(msg_type=msg_type, time=time, emit=emit, qid=qid, bal=bal)
+    return msg
+
+def packTravelEstimateReq(msg_type=LR_MSG_TRAVEL_ESTIMATE_REQ, time=0, qid=0, xway=0,
+                        seg_init=0, seg_end=0, dow=0, tod=0):
+    data = travel_estimate_req_struct.pack(msg_type, time, qid, xway, seg_init, seg_end, dow, tod)
+    return data
+
+def unpackTravelEstimateReq(data):
+    msg_type, time, qid, xway, seg_init, seg_end, dow, tod = travel_estimate_req_struct.unpack(data)
+    assert msg_type == LR_MSG_TRAVEL_ESTIMATE_REQ
+    msg = TravelEstimateReq(msg_type=msg_type, time=time, qid=qid, xway=xway,
+                            seg_init=seg_init, seg_end=seg_end, dow=dow, tod=tod)
+    return msg
+
+def packTravelEstimate(msg_type=LR_MSG_TRAVEL_ESTIMATE, qid=0, travel_time=0, toll=0):
+    data = travel_estimate_struct.pack(msg_type, qid, travel_time, toll)
+    return data
+
+def unpackTravelEstimate(data):
+    msg_type, qid, travel_time, toll = travel_estimate_struct.unpack(data)
+    assert msg_type == LR_MSG_TRAVEL_ESTIMATE
+    msg = TravelEstimate(msg_type=msg_type, qid=qid, travel_time=travel_time, toll=toll)
+    return msg
+
+
+def unpackLRMsg(data):
+    msg_type, = msg_type_struct.unpack(data[0])
+    if msg_type == LR_MSG_POS_REPORT:
+        return unpackPosReport(data)
+    elif msg_type == LR_MSG_ACCIDENT_ALERT:
+        return unpackAccidentAlert(data)
+    elif msg_type == LR_MSG_TOLL_NOTIFICATION:
+        return unpackTollNotification(data)
+    elif msg_type == LR_MSG_ACCNT_BAL_REQ:
+        return unpackAccntBalReq(data)
+    elif msg_type == LR_MSG_ACCNT_BAL:
+        return unpackAccntBal(data)
+    elif msg_type == LR_MSG_EXPENDITURE_REQ:
+        return unpackExpenditureReq(data)
+    elif msg_type == LR_MSG_EXPENDITURE_REPORT:
+        return unpackExpenditureReport(data)
+    elif msg_type == LR_MSG_TRAVEL_ESTIMATE_REQ:
+        return unpackTravelEstimateReq(data)
+    elif msg_type == LR_MSG_TRAVEL_ESTIMATE:
+        return unpackTravelEstimate(data)
+    else:
+        raise Exception("Unrecognized msg type: %d" % msg_type)
+
+def packLRMsg(msg):
+    if isinstance(msg, PosReport):
+        return packPosReport(**msg)
+    elif isinstance(msg, AccidentAlert):
+        return packAccidentAlert(**msg)
+    elif isinstance(msg, TollNotification):
+        return packTollNotification(**msg)
+    elif isinstance(msg, AccntBalReq):
+        return packAccntBalReq(**msg)
+    elif isinstance(msg, AccntBal):
+        return packAccntBal(**msg)
+    elif isinstance(msg, ExpenditureReq):
+        return packExpenditureReq(**msg)
+    elif isinstance(msg, ExpenditureReport):
+        return packExpenditureReport(**msg)
+    elif isinstance(msg, TravelEstimateReq):
+        return packTravelEstimateReq(**msg)
+    elif isinstance(msg, TravelEstimate):
+        return packTravelEstimate(**msg)
+    else:
+        raise Exception("Packing this msg type isn't supported yet")
+
+
+def parseHostAndPort(host_and_port, default_port=1234):
+    parts = host_and_port.split(':')
+    assert len(parts) >= 1
+    if len(parts) == 1:
+        return (parts[0], default_port)
+    else:
+        return (parts[0], int(parts[1]))
+
+
+class LRConsumer:
+
+    def __init__(self, port, timeout=None):
+        self.port = port
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(('', self.port))
+        self.sock.settimeout(timeout)
+        self.recv_queue = []
+
+    def recv(self):
+        if len(self.recv_queue) > 0:
+            data = self.recv_queue.pop()
         else:
-            raise LRException("Unrecognized message type")
+            data, addr = self.sock.recvfrom(2048)
+            if not data: return None
 
-        self.last_time = msg['time']
+        msg = unpackLRMsg(data)
+        return msg
 
-    def _newPos(self, pr):
-        if pr['vid'] not in self.position_reports:
-            self.position_reports[pr['vid']] = []
-
-        # TODO: check that a toll is received after entering new seg
-
-        if pr['spd'] == 0:
-            self._addStopped(pr)
-        elif pr['spd'] > 0:
-            self._rmStopped(pr)
-
-        self._updateVol(pr)
-
-        self.position_reports[pr['vid']].append(pr)
-
-
-    def _newAccidentAlert(self, al):
-        vid, seg = al['vid'], al['seg']
-        if vid not in self.position_reports:
-            raise LRException("PosReports not yet received for VID")
-
-        latest_pr = self.position_reports[vid][-1]
-
-        stopped_seg = self._accidentAhead(latest_pr)
-
-        if stopped_seg is None:
-            raise LRException("Unwarranted AccidentAlert")
-
-        if seg != stopped_seg:
-            raise LRException("Wrong AccidentAlert seg")
-
-    def _newTollNotification(self, tn):
-        vid = tn['vid']
-        if vid not in self.position_reports:
-            raise LRException("PosReports not yet received for VID")
-
-        latest_pr = self.position_reports[vid][-1]
-
-        if len(self.position_reports[vid]) > 1:
-            latest_pr2 = self.position_reports[vid][-2]
-            # Should only be emitted on entering a new segment
-            if latest_pr['seg'] == latest_pr2['seg']:
-                raise LRException("Unwarranted TollNotification: already in seg")
-
-        # Should not be emitted if in exit lane
-        if latest_pr['lane'] == LR_EXIT_LANE:
-            raise LRException("Unwarranted TollNotification: in exit lane")
-
-        # Should not be emitted if there's an accident
-        if self.hasAccident(latest_pr):
-            raise LRException("Unwarranted TollNotification: accident in seg")
-
-    def _updateVol(self, pr):
-        time, vid = pr['time'], pr['vid']
-
-        if len(self.position_reports[vid]) > 0:
-            prev_pr = self.position_reports[vid][-1]
-            if prev_pr['seg'] != pr['seg']: # entered new seg
-                self._incVol(time, prev_pr['seg'], -1)
-                self._incVol(time, pr['seg'],      +1)
-        else:
-            self._incVol(time, pr['seg'],      +1)
+    def hasNewMsg(self):
+        if len(self.recv_queue) > 0: return True
+        try:
+            self.sock.setblocking(0)
+            data, addr = self.sock.recvfrom(2048)
+            self.recv_queue.insert(0, data)
+            return True
+        except socket.error as e:
+            err = e.args[0]
+            if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
+                return False
+            raise e
+        finally:
+            self.sock.setblocking(1)
 
 
-    def _incVol(self, time, seg, inc):
-        if seg not in self.seg_volume:
-            self.seg_volume[seg] = []
+    def recvMany(self, count, ignoretype=None):
+        msgs = []
+        while len(msgs) < count:
+            msg = self.recv()
+            if ignoretype is not None:
+                if isinstance(msg, ignoretype):
+                    continue
+            msgs.append(msg)
 
-        prev_vol = 0
-        if len(self.seg_volume[seg]) > 0:
-            prev_vol = self.seg_volume[seg][-1][1]
+        return msgs
 
-        new_vol = prev_vol + inc
-        assert new_vol >= 0
-        self.seg_volume[seg].append((time, new_vol))
 
-    def _rmStopped(self, pr):
-        lid = locId(pr)
-        if lid not in self.stopped_state: return
-        if pr['vid'] not in self.stopped_state[lid]: return
-        _, prev_set = self.stopped_state[lid][-1]
-        new_set = prev_set.difference(set([pr['vid']]))
-        self.stopped_state[lid].append((pr['time'], new_set))
+    def close(self):
+        self.sock.close()
 
-    def _addStopped(self, pr):
-        lid = locId(pr)
-        if lid not in self.stopped_state:
-            self.stopped_state[lid] = [(pr['time'], set([pr['vid']]))]
-        else:
-            _, prev_set = self.stopped_state[lid][-1]
-            new_set = prev_set.union(set([pr['vid']]))
-            self.stopped_state[lid].append((pr['time'], new_set))
 
-    def _accidentAhead(self, pr):
-        """ Return an upcoming seg with an accident, or None """
-        time = pr['time']
-        xway, start_seg, dir, lane = locId(pr)
-        end_seg = min(start_seg+4, self.num_seg)
-        for seg in range(start_seg, end_seg+1):
-            lid = (xway, seg, dir, lane)
-            if self.hasAccident(lid):
-                return seg
-        return None
+class LRProducer:
+    def __init__(self, dst_host, dst_port):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.dst_addr = (dst_host, dst_port)
 
-    def hasAccident(self, loc_or_lid):
-        stopped_sets = self.getStopped(loc_or_lid)
-        for ss in stopped_sets:
-            if len(ss) > 1:
-                return True
-        return False
+    def send(self, msg):
+        data = packLRMsg(msg)
+        self.sock.sendto(data, self.dst_addr)
 
-    def getStopped(self, loc_or_lid):
-        """ Returns a list of VID sets for the latest time in this seg"""
-        if type(loc_or_lid) == tuple:
-            lid = loc_or_lid
-        else:
-            lid = locId(loc_or_lid)
-
-        stopped_sets = []
-        for lane in range(1, 4):
-            lid = (lid[0], lid[1], lid[2], lane)
-            if lid not in self.stopped_state: continue
-            latest_time = self.stopped_state[lid][-1][0]
-            for time, vid_set in self.stopped_state[lid]:
-                if time == latest_time: stopped_sets.append(vid_set)
-        return stopped_sets
-
-    def getStoppedUnion(self, loc_or_lid):
-        """ Returns the set off all VIDs for the latest time """
-        return set.union(*self.getStopped(loc_or_lid))
-
+    def close(self):
+        self.sock.close()

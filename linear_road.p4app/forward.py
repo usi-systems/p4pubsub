@@ -2,8 +2,7 @@
 import sys
 import signal
 import argparse
-from linear_road import PosReport
-from lr_proto import LRProducer, LRConsumer, AccntBalReq, parseHostAndPort
+from linear_road import *
 
 parser = argparse.ArgumentParser(description='Forward stream of LR messages')
 parser.add_argument('dst', help='host:port to forward messages to', type=str)

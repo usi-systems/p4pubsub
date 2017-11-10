@@ -4,8 +4,6 @@ from linear_road import *
 class LRDataSource:
 
     def __init__(self, filename=None, fd=None):
-        self.vid_map = {}
-        self.last_vid = 0
         if fd:
             self.filename = None
             self.fd = fd
@@ -23,11 +21,8 @@ class LRDataSource:
         l = next(self.fd)
         m = map(int, l.strip().split(','))
         if m[0] == LR_MSG_POS_REPORT:
-            if m[2] not in self.vid_map:
-                self.last_vid += 1
-                self.vid_map[m[2]] = self.last_vid
             return PosReport(time=m[1],
-                             vid=self.vid_map[m[2]],
+                             vid=m[2],
                              spd=m[3],
                              xway=m[4],
                              lane=m[5],
@@ -35,11 +30,22 @@ class LRDataSource:
                              seg=m[7])
         elif m[0] == LR_MSG_ACCNT_BAL_REQ:
             return AccntBalReq(time=m[1],
-                             vid=self.vid_map[m[2]],
-                             qid=m[9])
-        # we don't handle daily expenditure or travel time estimate
-        elif m[0] in [3, 4]:
-            return next(self)
+                               vid=m[2],
+                               qid=m[9])
+        elif m[0] == LR_MSG_EXPENDITURE_REQ:
+            return ExpenditureReq(time=m[1],
+                                  vid=m[2],
+                                  qid=m[9],
+                                  xway=m[4],
+                                  day=m[14])
+        elif m[0] == LR_MSG_TRAVEL_ESTIMATE_REQ:
+            return TravelEstimateReq(time=m[1],
+                                     qid=m[9],
+                                     xway=m[4],
+                                     seg_init=m[10],
+                                     seg_end=m[11],
+                                     dow=m[12],
+                                     tod=m[13])
         else:
             raise Exception("Unsupported message type: %d" % m[0])
 
@@ -53,6 +59,7 @@ class LRDataSource:
 
 
 if __name__ == '__main__':
+    # follow the first vehicle
     import sys
     vid = None
     with LRDataSource(sys.argv[1]) as ds:

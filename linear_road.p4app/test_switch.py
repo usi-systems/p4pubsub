@@ -2,10 +2,8 @@
 import sys
 import argparse
 from time import sleep
-from linear_road import PosReport, AccidentAlert, TollNotification, AccntBalReq, AccntBal, Loc
-from linear_road import ExpenditureReq, ExpenditureReport, TravelEstimateReq, TravelEstimate
+from linear_road import *
 from controller_rpc import RPCClient
-from lr_proto import LRProducer, LRConsumer, parseHostAndPort
 
 def log(x): sys.stderr.write(str(x) + ' ')
 def ewma(avg, x):

@@ -3,7 +3,7 @@ import sys
 import argparse
 from controller_rpc import RPCClient
 from datasource import LRDataSource
-from lr_proto import LRProducer, LRConsumer, AccntBalReq, parseHostAndPort
+from lr_proto import LRProducer, AccntBalReq, parseHostAndPort
 from time import sleep
 
 parser = argparse.ArgumentParser(description='Send stream from a file')
@@ -21,4 +21,4 @@ cont.setToll(**toll_settings)
 with LRDataSource(args.filename) as ds:
     for msg in ds:
         producer.send(msg)
-        sleep(0.005)
+        #sleep(0.005)

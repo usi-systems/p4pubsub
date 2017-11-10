@@ -2,19 +2,16 @@
 import sys
 import signal
 import argparse
-from linear_road import PosReport, LRModel
-from lr_proto import LRConsumer, AccntBalReq
+from linear_road import LRConsumer
 
 parser = argparse.ArgumentParser(description='Receive a stream of messages')
 parser.add_argument('--port', '-p', help='Listen port', type=int, default=1234)
 args = parser.parse_args()
 
 consumer = LRConsumer(args.port)
-lrm = LRModel()
 
 def handleMsg(msg):
     print msg
-    lrm.newMsg(msg)
 
 def signalHandler(signal, frame):
     while consumer.hasNewMsg():
