@@ -68,7 +68,7 @@ header_type accnt_bal_req_t {
     fields {
         time: 16;
         vid: 32;
-        qid: 16;
+        qid: 32;
     }
 }
 
@@ -96,7 +96,7 @@ header_type accnt_bal_t {
         time: 16;
         vid: 32;
         emit: 16;
-        qid: 16;
+        qid: 32;
         bal: 32;
     }
 }
@@ -105,7 +105,7 @@ header_type expenditure_req_t {
     fields {
         time: 16;
         vid: 32;
-        qid: 16;
+        qid: 32;
         xway: 8;
         day: 8;
     }
@@ -115,7 +115,7 @@ header_type expenditure_report_t {
     fields {
         time: 16;
         emit: 16;
-        qid: 16;
+        qid: 32;
         bal: 16;
     }
 }
@@ -123,7 +123,7 @@ header_type expenditure_report_t {
 header_type travel_estimate_req_t {
     fields {
         time: 16;
-        qid: 16;
+        qid: 32;
         xway: 8;
         seg_init: 8;
         seg_end: 8;
@@ -134,7 +134,7 @@ header_type travel_estimate_req_t {
 
 header_type travel_estimate_t {
     fields {
-        qid: 16;
+        qid: 32;
         travel_time: 16;
         toll: 16;
     }

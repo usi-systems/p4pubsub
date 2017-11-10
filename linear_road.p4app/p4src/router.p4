@@ -633,8 +633,8 @@ action make_accnt_bal() {
 
     remove_header(accnt_bal_req);
 
-    modify_field(ipv4.totalLen, 43);
-    modify_field(udp.length_, 23);
+    modify_field(ipv4.totalLen, 45);
+    modify_field(udp.length_, 25);
     modify_field(udp.checksum, 0);
 }
 
@@ -660,8 +660,8 @@ action make_expenditure_report(bal) {
 
     remove_header(expenditure_req);
 
-    modify_field(ipv4.totalLen, 37);
-    modify_field(udp.length_, 17);
+    modify_field(ipv4.totalLen, 39);
+    modify_field(udp.length_, 19);
     modify_field(udp.checksum, 0);
 }
 
@@ -752,8 +752,8 @@ action do_travel_estimate_send() {
 
     remove_header(travel_estimate_req);
 
-    modify_field(ipv4.totalLen, 35);
-    modify_field(udp.length_, 15);
+    modify_field(ipv4.totalLen, 37);
+    modify_field(udp.length_, 17);
     modify_field(udp.checksum, 0);
 }
 table travel_estimate_send {
