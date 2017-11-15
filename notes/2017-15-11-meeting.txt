@@ -1,0 +1,24 @@
+Date: 15th November 2017
+Attendees: Theo, Antonio, Robert, Masoud
+
+SUMMARY:
+
+Debriefing after LR submission and shifting gears to talk about a Kafka
+replacement system.
+
+NEXT STEPS:
+
+- Implement a kafka shim for Spark, so that we can test our pub/sub system in
+  the monitor team's pipeline.
+
+
+Some reactions:
+
+- what we learned from LR submission:
+    - what we can can/can't say about HW
+    - what kind of stateful queries we can implement
+
+- What should our next steps be? Robert has two suggestions:
+    1. Implement a pub/sub system with John Ousterhout for granular computing
+    2. Implement a kafka shim that can be tested in the monitor team's pipeline
+
