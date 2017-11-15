@@ -1,0 +1,35 @@
+{
+  "program": "p4src/router.p4",
+  "language": "p4-14",
+  "targets": {
+    "multiswitch": {
+      "model": "bmv2",
+      "bmv2_log": true,
+      "pcap_dump": false,
+      "auto-control-plane": true,
+      "controller_module": "controller",
+      "_cli": true,
+      "links": [["h1", "s1"], ["h2", "s1"], ["h3", "s1"]],
+      "hosts": {
+        "h1": {
+            "cmd": "./recv.py -p 1234 h3 4321",
+            "wait": false
+        },
+        "h2": {
+            "cmd": "./recv.py -p 1234 h3 4321",
+            "wait": false
+        },
+        "h3": {
+            "cmd": "./send.py -p 4321 255.255.255.255 1234",
+            "wait": true
+        }
+      },
+      "switches": {
+          "s1": {
+              "commands": "commands.txt",
+              "mcast_groups": "mcast_groups.txt"
+          }
+      }
+    }
+  }
+}

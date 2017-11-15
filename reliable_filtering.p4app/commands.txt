@@ -1,0 +1,8 @@
+table_add forward set_dmac 255.255.255.255 => ff:ff:ff:ff:ff:ff
+
+table_set_default bcast_to_egress set_mgid 1
+table_add label_prune _nop 1 1 =>
+table_add label_prune _nop 2 2 =>
+
+table_set_default drop_ingr _nop
+table_set_default drop_egr  _nop
