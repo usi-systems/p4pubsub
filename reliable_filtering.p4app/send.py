@@ -11,6 +11,8 @@ from controller_rpc import RPCClient
 parser = argparse.ArgumentParser(description='Send topics')
 #parser.add_argument('--topic', help='topic to send', type=int, default=1)
 #parser.add_argument('--payload', help='payload to send', type=str, default=None)
+parser.add_argument('--no-contr', '-n', help='disable connecting to the controller',
+                     action="store_true", default=False)
 parser.add_argument('--port', '-p', help='listen for retrans reqs on this port', type=int, default=4321)
 parser.add_argument('dst_host', help='send to this host', type=str)
 parser.add_argument('dst_port', help='send to this UDP port', type=int)
@@ -32,9 +34,10 @@ class ReliableSender(threading.Thread):
         class MyUDPHandler(SocketServer.BaseRequestHandler):
             def handle(self2):
                 data = self2.request[0]
-                seq_from, seq_to = retrans_hdr_struct.unpack(data)
-                print "Received a retransmit request:", seq_from, "to", seq_to
-                self.retransmit(seq_from, seq_to)
+                msg_type, seq1, seq2, x = hdr_struct.unpack(data)
+                assert msg_type == MSG_TYPE_RETRANS_REQ
+                print "-> %s{seq1: %d, seq2: %d, topic: %d}" % (msgName(msg_type), seq1, seq2, x),
+                self.retransmit(seq1, seq2)
 
         self.retrans_server = SocketServer.UDPServer(('', listen_port), MyUDPHandler)
 
@@ -42,6 +45,7 @@ class ReliableSender(threading.Thread):
         self.retrans_server.serve_forever()
 
     def retransmit(self, seq_from, seq_to):
+        print "    retransmitting seqs", seq_from, "to", seq_to
         assert seq_from in self.send_history
         assert seq_to in self.send_history
         for seq in range(seq_from, seq_to+1):
@@ -53,13 +57,16 @@ class ReliableSender(threading.Thread):
 
     def send(self, topic, payload):
         self.seq += 1
-        hdr = hdr_struct.pack(topic, self.seq, 0)
+        hdr = hdr_struct.pack(MSG_TYPE_DATA, self.seq, self.seq, topic)
         data = hdr + payload
         self.send_history[self.seq] = data
         self.sock.sendto(data, self.dst_addr)
 
+class FakeCont:
+    def runCmd(self, **kw): pass
 
-cont = RPCClient()
+if args.no_contr: cont = FakeCont()
+else:             cont = RPCClient()
 
 sender = ReliableSender(args.port, args.dst_host, args.dst_port)
 sender.start()
@@ -72,17 +79,15 @@ signal.signal(signal.SIGINT, signalHandler)
 
 sender.send(1, 'a')
 cont.runCmd(cmd='table_set_default drop_ingr _drop')
-sender.send(1, 'b')
+sender.send(2, 'A')
 cont.runCmd(cmd='table_set_default drop_ingr _nop')
-sender.send(1, 'c')
+sender.send(1, 'b')
 
-time.sleep(0.01)
-
-sender.send(1, 'd')
 cont.runCmd(cmd='table_set_default drop_egr _drop')
-sender.send(1, 'e')
+sender.send(2, 'B')
+sender.send(1, 'c')
 cont.runCmd(cmd='table_set_default drop_egr _nop')
-sender.send(1, 'f')
+sender.send(2, 'C')
 
 time.sleep(0.2) # wait for some last retransmits
 sender.stop()

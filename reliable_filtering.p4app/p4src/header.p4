@@ -74,13 +74,18 @@ header_type udp_t {
     }
 }
 
+#define MSG_TYPE_DATA           1
+#define MSG_TYPE_MISSING        2
+#define MSG_TYPE_RETRANS_REQ    3
+
 header_type label_t {
     fields {
-        topic: 32;
-        seq: 32;
-        last_seq: 32;
+        msg_type: 8;
+        // depending on msg_type, these fields have different significance:
+        seq1: 32;
+        seq2: 32;
+        topic: 32; // or last global_seq
     }
 }
-
 
 #endif // __HEADER_P4__

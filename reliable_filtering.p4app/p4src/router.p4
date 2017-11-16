@@ -58,7 +58,10 @@ table drop_ingr {
 
 control ingress {
     if (valid(label)) {
-        apply(bcast_to_egress);
+        if (label.msg_type == MSG_TYPE_DATA) {
+            apply(bcast_to_egress);
+        }
+
         apply(drop_ingr);
     }
 
@@ -81,7 +84,6 @@ header_type seq_metadata_t {
         global_seq: 32;
         expect_global_seq: 32;
         dont_prune: 1;
-        bad_seq: 1;
         was_pruned: 1;
     }
 }
@@ -118,15 +120,9 @@ table label_prune {
 }
 
 action inc_seq() {
-    register_read(label.last_seq, port_seq_reg, standard_metadata.egress_port);
-    add_to_field(label.last_seq, 1);
-
-    // If we detected a missing seq, we send a wrong last_seq to the client, to
-    // trigger it to send a retransmit request. We do this by
-    // double-incrementing the last_seq:
-    add_to_field(label.last_seq, md.bad_seq);
-
-    register_write(port_seq_reg, standard_metadata.egress_port, label.last_seq);
+    register_read(label.seq2, port_seq_reg, standard_metadata.egress_port);
+    add_to_field(label.seq2, 1);
+    register_write(port_seq_reg, standard_metadata.egress_port, label.seq2);
     modify_field(udp.checksum, 0);
 }
 table seq {
@@ -177,7 +173,10 @@ table update_global_seq {
 }
 
 action do_wrong_global_seq() {
-    modify_field(md.bad_seq, 1);
+    modify_field(label.msg_type, MSG_TYPE_MISSING);
+    modify_field(label.topic, label.seq1);
+    modify_field(label.seq1, md.expect_global_seq);
+    modify_field(md.dont_prune, 1);
 }
 table wrong_global_seq {
     actions { do_wrong_global_seq; }
@@ -187,21 +186,24 @@ table wrong_global_seq {
 
 control egress {
     if (valid(label)) {
+        if (label.msg_type == MSG_TYPE_DATA) {
 
-        apply(load_global_seq);
+            apply(load_global_seq);
 
-        if (label.seq > md.expect_global_seq) {
-            apply(wrong_global_seq);
-        }
-        else if (label.seq == md.expect_global_seq) {
-            apply(update_global_seq);
-        }
+            if (label.seq1 > md.expect_global_seq) {
+                apply(wrong_global_seq);
+            }
+            else if (label.seq1 == md.expect_global_seq) {
+                apply(update_global_seq);
+            }
 
-        if (md.dont_prune == 0)
-            apply(label_prune);
+            if (md.dont_prune == 0)
+                apply(label_prune);
 
-        if (md.was_pruned == 0) {
-            apply(seq);
+            if (md.was_pruned == 0) {
+                apply(seq);
+            }
+
         }
 
         apply(drop_egr);
