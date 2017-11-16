@@ -1,0 +1,4 @@
+*.o
+*.so
+rdkafka_performance
+librdkafka_install/

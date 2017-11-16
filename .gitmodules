@@ -8,3 +8,6 @@
 	path = itch_tools/third-party/liblfds
 	url = https://github.com/liblfds/liblfds
 	ignore = dirty
+[submodule "third-party/librdkafka"]
+	path = third-party/librdkafka
+	url = https://github.com/edenhill/librdkafka
