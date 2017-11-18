@@ -11,11 +11,13 @@
       "links": [["h1", "s1"], ["h2", "s1"], ["h3", "s1"]],
       "parameters": {
           "LD_PRELOAD": "./netkafka_hooks.so",
-          "LD_LIBRARY_PATH": "./librdkafka_install/lib"
+          "LD_LIBRARY_PATH": "./librdkafka_install/lib",
+          "SEND_RATE": 500,
+          "SEND_CNT": 1000
       },
       "hosts": {
         "h1": {
-            "cmd": "./rdkafka_performance -C -t 01 -p 0 -o end -c 100",
+            "cmd": "./rdkafka_performance -C -t 01 -p 0 -o end -c $SEND_CNT",
             "startup_sleep": 0.2,
             "wait": false
         },
@@ -25,7 +27,7 @@
             "wait": false
         },
         "h3": {
-            "cmd": "./rdkafka_performance -P -s 512 -t 01 -r 500 -x 100 -S 0; sleep 0.1",
+            "cmd": "./rdkafka_performance -P -s 512 -t 01 -r $SEND_RATE -x $SEND_CNT -S 0; sleep 0.1",
             "wait": true
         }
       },
