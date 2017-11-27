@@ -34,10 +34,10 @@ class ReliableSender(threading.Thread):
         class MyUDPHandler(SocketServer.BaseRequestHandler):
             def handle(self2):
                 data = self2.request[0]
-                msg_type, seq1, seq2, x = hdr_struct.unpack(data)
+                msg_type, seq_to, _, seq_from, topic = hdr_struct.unpack(data)
+                print "-> %s{seq1: %d, seq2: %d}" % (msgName(msg_type), seq_from, seq_to),
                 assert msg_type == MSG_TYPE_RETRANS_REQ
-                print "-> %s{seq1: %d, seq2: %d, topic: %d}" % (msgName(msg_type), seq1, seq2, x),
-                self.retransmit(seq1, seq2)
+                self.retransmit(seq_from, seq_to)
 
         self.retrans_server = SocketServer.UDPServer(('', listen_port), MyUDPHandler)
 
@@ -57,7 +57,7 @@ class ReliableSender(threading.Thread):
 
     def send(self, topic, payload):
         self.seq += 1
-        hdr = hdr_struct.pack(MSG_TYPE_DATA, self.seq, self.seq, topic)
+        hdr = hdr_struct.pack(MSG_TYPE_DATA, self.seq, self.seq, 0, topic)
         data = hdr + payload
         self.send_history[self.seq] = data
         self.sock.sendto(data, self.dst_addr)

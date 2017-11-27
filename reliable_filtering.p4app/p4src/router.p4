@@ -120,9 +120,9 @@ table label_prune {
 }
 
 action inc_seq() {
-    register_read(label.seq2, port_seq_reg, standard_metadata.egress_port);
-    add_to_field(label.seq2, 1);
-    register_write(port_seq_reg, standard_metadata.egress_port, label.seq2);
+    register_read(label.port_seq, port_seq_reg, standard_metadata.egress_port);
+    add_to_field(label.port_seq, 1);
+    register_write(port_seq_reg, standard_metadata.egress_port, label.port_seq);
     modify_field(udp.checksum, 0);
 }
 table seq {
@@ -174,8 +174,7 @@ table update_global_seq {
 
 action do_wrong_global_seq() {
     modify_field(label.msg_type, MSG_TYPE_MISSING);
-    modify_field(label.topic, label.seq1);
-    modify_field(label.seq1, md.expect_global_seq);
+    modify_field(label.global_seq2, md.expect_global_seq);
     modify_field(md.dont_prune, 1);
 }
 table wrong_global_seq {
@@ -190,10 +189,10 @@ control egress {
 
             apply(load_global_seq);
 
-            if (label.seq1 > md.expect_global_seq) {
+            if (label.global_seq > md.expect_global_seq) {
                 apply(wrong_global_seq);
             }
-            else if (label.seq1 == md.expect_global_seq) {
+            else if (label.global_seq == md.expect_global_seq) {
                 apply(update_global_seq);
             }
 

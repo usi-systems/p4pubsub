@@ -21,25 +21,39 @@ class ReliableReceiver:
         self.seq = None
         self.delivered_seq = None
 
+        self.msg_queue = {}
+
+    def _queueAdd(self, seq1, seq2, topic, payload):
+        if seq1 not in self.msg_queue:
+            self.msg_queue[seq1] = [seq2, topic, payload]
+        else:
+            old_seq2 = self.msg_queue[seq1][0]
+            if old_seq2 < seq2:
+                self.msg_queue[seq1][0] = seq2
+
+
     def close(self):
         self.sock.close()
 
     def _recv(self):
         data, addr = self.sock.recvfrom(2048)
         hdr, payload = data[:hdr_struct.size], data[hdr_struct.size:]
-        msg_type, seq1, seq2, x = hdr_struct.unpack(hdr)
+        msg_type, seq1, seq2, prev_global_seq, topic = hdr_struct.unpack(hdr)
         assert msg_type in [MSG_TYPE_DATA, MSG_TYPE_MISSING]
-        return msg_type, seq1, seq2, x, payload
+        return msg_type, seq1, seq2, prev_global_seq, topic, payload
 
     def recv(self):
         while True:
-            msg_type, seq1, seq2, x, payload = self._recv()
+            msg_type, seq1, seq2, prev_global_seq, topic, payload = self._recv()
 
-            print "-> %s{seq1: %d, seq2: %d, topic: %d}" % (msgName(msg_type), seq1, seq2, x)
+            print "-> %s{seq1: %d, seq2: %d, topic: %d}" % (msgName(msg_type), seq1, seq2, topic)
 
             if self.seq is None or seq2 == self.last_seq+1:
                 self.seq = seq1
                 self.last_seq = seq2
+
+            if msg_type == MSG_TYPE_DATA:
+                self._queueAdd(seq1, seq2, topic, payload)
 
             if seq2 > self.last_seq:
                 self.last_seq = seq2
@@ -50,14 +64,14 @@ class ReliableReceiver:
             if msg_type == MSG_TYPE_DATA:
                 if self.delivered_seq is None or self.delivered_seq < self.seq:
                     self.delivered_seq = seq1
-                    print "        Deliver {Topic: %d, seq: %d, last_seq: %d, payload: %s}" % (x, seq1, seq2, payload)
-                    return x, payload, seq1, seq2
+                    print "        Deliver {Topic: %d, seq: %d, last_seq: %d, payload: %s}" % (topic, seq1, seq2, payload)
+                    return topic, payload, seq1, seq2
             elif msg_type == MSG_TYPE_MISSING:
-                self.retransmitReq(seq1, x)
+                self.retransmitReq(prev_global_seq, seq1)
 
     def retransmitReq(self, seq_from, seq_to):
         print "        <- RETRREQ{seq1: %d, seq2: %d}" % (seq_from, seq_to)
-        hdr = hdr_struct.pack(MSG_TYPE_RETRANS_REQ, seq_from, seq_to, 0)
+        hdr = hdr_struct.pack(MSG_TYPE_RETRANS_REQ, seq_to, 0, seq_from, 0)
         self.sock.sendto(hdr, self.retrans_addr)
 
 
