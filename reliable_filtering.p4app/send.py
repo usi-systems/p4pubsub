@@ -46,11 +46,12 @@ class ReliableSender(threading.Thread):
 
     def retransmit(self, seq_from, seq_to):
         print "    retransmitting seqs", seq_from, "to", seq_to
-        assert seq_from in self.send_history
-        assert seq_to in self.send_history
+        assert seq_from in self.send_history, "%d not in send_history" % seq_from
+        assert seq_to in self.send_history, "%d not in send_history" % seq_to
         for seq in range(seq_from, seq_to+1):
-            data = self.send_history[seq]
-            self.sock.sendto(data, self.dst_addr)
+            topic, payload = self.send_history[seq]
+            hdr = hdr_struct.pack(MSG_TYPE_RETRANS, seq, seq, self.seq, topic)
+            self.sock.sendto(hdr + payload, self.dst_addr)
 
     def stop(self):
         self.retrans_server.shutdown()
@@ -58,9 +59,8 @@ class ReliableSender(threading.Thread):
     def send(self, topic, payload):
         self.seq += 1
         hdr = hdr_struct.pack(MSG_TYPE_DATA, self.seq, self.seq, 0, topic)
-        data = hdr + payload
-        self.send_history[self.seq] = data
-        self.sock.sendto(data, self.dst_addr)
+        self.send_history[self.seq] = (topic, payload)
+        self.sock.sendto(hdr + payload, self.dst_addr)
 
 class FakeCont:
     def runCmd(self, **kw): pass

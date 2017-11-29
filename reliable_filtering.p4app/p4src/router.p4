@@ -58,7 +58,8 @@ table drop_ingr {
 
 control ingress {
     if (valid(label)) {
-        if (label.msg_type == MSG_TYPE_DATA) {
+        if (label.msg_type == MSG_TYPE_DATA or
+            label.msg_type == MSG_TYPE_RETRANS) {
             apply(bcast_to_egress);
         }
 
@@ -89,12 +90,13 @@ header_type seq_metadata_t {
 }
 metadata seq_metadata_t md;
 
+#define NUM_PORTS 64
+
 register global_seq_reg {
   width: 32;
-  instance_count: 1;
+  instance_count: NUM_PORTS;
 }
 
-#define NUM_PORTS 64
 register port_seq_reg {
   width: 32;
   instance_count: NUM_PORTS;
@@ -152,8 +154,8 @@ table drop_egr {
 }
 
 action do_load_global_seq() {
-    register_read(md.global_seq, global_seq_reg, 0);
-    register_read(md.expect_global_seq, global_seq_reg, 0);
+    register_read(md.global_seq, global_seq_reg, standard_metadata.egress_port);
+    register_read(md.expect_global_seq, global_seq_reg, standard_metadata.egress_port);
     add_to_field(md.expect_global_seq, 1);
 }
 table load_global_seq {
@@ -164,7 +166,7 @@ table load_global_seq {
 
 action do_update_global_seq() {
     add_to_field(md.global_seq, 1);
-    register_write(global_seq_reg, 0, md.global_seq);
+    register_write(global_seq_reg, standard_metadata.egress_port, md.global_seq);
 }
 table update_global_seq {
     actions { do_update_global_seq; }
@@ -185,7 +187,8 @@ table wrong_global_seq {
 
 control egress {
     if (valid(label)) {
-        if (label.msg_type == MSG_TYPE_DATA) {
+        if (label.msg_type == MSG_TYPE_DATA or
+            label.msg_type == MSG_TYPE_RETRANS) {
 
             apply(load_global_seq);
 
@@ -196,7 +199,7 @@ control egress {
                 apply(update_global_seq);
             }
 
-            if (md.dont_prune == 0)
+            if (md.dont_prune == 0 and label.msg_type != MSG_TYPE_RETRANS)
                 apply(label_prune);
 
             if (md.was_pruned == 0) {

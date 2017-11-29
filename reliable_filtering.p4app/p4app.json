@@ -12,11 +12,11 @@
       "links": [["h1", "s1"], ["h2", "s1"], ["h3", "s1"]],
       "hosts": {
         "h1": {
-            "cmd": "./recv.py -p 1234 h3 4321",
+            "cmd": "./recv.py -p 1234 -t 1 h3 4321",
             "wait": false
         },
         "h2": {
-            "cmd": "./recv.py -p 1234 h3 4321",
+            "cmd": "./recv.py -p 1234 -t 2 h3 4321",
             "wait": false
         },
         "h3": {
