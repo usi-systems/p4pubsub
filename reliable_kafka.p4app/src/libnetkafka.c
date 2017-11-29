@@ -137,6 +137,7 @@ struct netkafka_client* netkafka_producer_new(char *hostname, int port) {
     cl->ring_buf_items = 10000;
     cl->ring_buf = (char *)malloc(NETKAFKA_BUFSIZE * cl->ring_buf_items);
     cl->ring_buf_sizes = (size_t *)malloc(sizeof(size_t) * cl->ring_buf_items);
+    bzero(cl->ring_buf_sizes, sizeof(size_t) * cl->ring_buf_items);
 
     cl->retr_port = 4321;
     if (pthread_create(&cl->retr_thread, NULL, netkafka_retransmitter, cl)) {
@@ -211,7 +212,10 @@ struct netkafka_client* netkafka_consumer_new(int port) {
 
     cl->seq = 0; cl->last_seq = 0;
     cl->delivered_seq = 0;
-    cl->ring_buf = (char *)malloc(NETKAFKA_BUFSIZE);
+    cl->ring_buf_items = 1000;
+    cl->ring_buf = (char *)malloc(NETKAFKA_BUFSIZE * cl->ring_buf_items);
+    cl->ring_buf_sizes = (size_t *)malloc(sizeof(size_t) * cl->ring_buf_items);
+    bzero(cl->ring_buf_sizes, sizeof(size_t) * cl->ring_buf_items);
 
     return cl;
 }
@@ -219,7 +223,20 @@ struct netkafka_client* netkafka_consumer_new(int port) {
 int netkafka_consume(struct netkafka_client *cl, char *payload, size_t *payload_len) {
     int n;
 
-    struct netkafka_hdr *hdr = (struct netkafka_hdr *)cl->ring_buf;
+    int idx = cl->delivered_seq % cl->ring_buf_items;
+    if (cl->ring_buf_sizes[idx+1] > 0) {
+        char *buf = cl->ring_buf + (idx * NETKAFKA_BUFSIZE);
+        *payload_len = cl->ring_buf_sizes[idx+1] - sizeof(struct netkafka_hdr);
+        memcpy(payload, cl->ring_buf+sizeof(struct netkafka_hdr), *payload_len);
+
+        cl->ring_buf_sizes[idx+1] = 0; // remove item from ring buf
+        // TODO: how do we have a re-order queue?
+        cl->delivered_seq;
+
+        return 1;
+    }
+
+    struct netkafka_hdr *hdr = (struct netkafka_hdr *)cl->buf;
 
     while (1) {
         n = recvfrom(cl->sockfd, hdr, NETKAFKA_BUFSIZE, 0,
@@ -245,6 +262,11 @@ int netkafka_consume(struct netkafka_client *cl, char *payload, size_t *payload_
             int from = cl->seq+1 < seq1 ? cl->seq+1 : seq1;
             int to = cl->seq+1 > seq1 ? cl->seq+1 : seq1;
             netkafka_retransmit_req(cl, from, to);
+
+            idx = seq1 % cl->ring_buf_items;
+            char *buf = cl->ring_buf + (idx * NETKAFKA_BUFSIZE);
+            memcpy(buf, hdr, n);
+            cl->ring_buf_sizes[idx] = n;
             continue;
         }
 

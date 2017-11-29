@@ -28,6 +28,12 @@ struct netkafka_client {
     struct sockaddr_in localaddr;
     struct sockaddr_in remoteaddr;
     int remoteaddr_len;
+
+    int retr_sockfd;
+    int retr_port;
+    struct sockaddr_in retraddr;
+    pthread_t retr_thread;
+
     uint32_t seq;
     uint32_t last_seq;
     uint32_t delivered_seq;
@@ -36,10 +42,8 @@ struct netkafka_client {
     short ring_buf_items;
     size_t *ring_buf_sizes;
 
-    int retr_sockfd;
-    int retr_port;
-    pthread_t retr_thread;
-    struct sockaddr_in retraddr;
+    char buf[NETKAFKA_BUFSIZE];
+
 } netkafka_client;
 
 struct netkafka_client* netkafka_producer_new(char *hostname, int port);
