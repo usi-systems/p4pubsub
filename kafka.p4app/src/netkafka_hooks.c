@@ -6,6 +6,7 @@
 #include <time.h>
 #include <librdkafka/rdkafka.h>
 #include "netkafka.h"
+#include <assert.h>
 
 
 rd_kafka_t* (*o_rd_kafka_new)(rd_kafka_type_t, rd_kafka_conf_t*, char*, size_t) = NULL;
@@ -25,8 +26,8 @@ rd_kafka_message_t tmp_msg;
 rd_kafka_t *nk_rk;
 char tmp_payload[1024];
 unsigned tmp_offset = 0;
-struct netkafka_client *nk_cl;
-unsigned long nk_topic_tag;
+struct netkafka_client *nk_cl = NULL;
+uint32_t nk_topic_tag;
 void (*nk_dr_msg_cb)(rd_kafka_t*, const rd_kafka_message_t*, void*) = NULL;
 
 // we need to know whether our hooks are for consumer or producer mode
@@ -43,6 +44,7 @@ int rd_kafka_produce(rd_kafka_topic_t *rkt, int32_t partition, int msgflags, voi
         }
     }
 
+    assert(nk_cl != NULL);
     netkafka_produce(nk_cl, nk_topic_tag, payload, len);
 
     nk_dr_msg_cb(nk_rk, &tmp_msg, NULL);
@@ -79,6 +81,7 @@ int rd_kafka_consume_callback_queue(rd_kafka_queue_t *rkqu, int timeout_ms,
     //printf("rd_kafka_consume_callback_queue() call intercepted\n");
     //return o_rd_kafka_consume_callback_queue(rkqu, timeout_ms, consume_cb, opaque);
 
+    assert(nk_cl != NULL);
     if (netkafka_consume(nk_cl, tmp_msg.payload, &tmp_msg.len) < 0) {
         printf("Error consuming\n");
         return 0;
@@ -175,7 +178,7 @@ rd_kafka_topic_t *rd_kafka_topic_new(rd_kafka_t *rk, const char *topic,
     }
     //printf("rd_kafka_topic_new() call intercepted\n");
 
-    sscanf(topic, "%lx", &nk_topic_tag);
+    sscanf(topic, "%x", &nk_topic_tag);
 
     return o_rd_kafka_topic_new(rk, topic, conf);
 }
@@ -197,6 +200,7 @@ rd_kafka_t *rd_kafka_new(rd_kafka_type_t type, rd_kafka_conf_t *conf,
     tmp_msg.payload = tmp_payload;
     tmp_msg.len = 32;
 
+    assert(nk_cl == NULL);
     //if (type == RD_KAFKA_PRODUCER)
     //    nk_cl = netkafka_producer_new("127.0.0.1", 40001);
     //else

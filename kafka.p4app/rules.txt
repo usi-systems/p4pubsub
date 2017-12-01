@@ -1,0 +1,2 @@
+label.topic = 1: fwd(1);
+label.topic = 2: fwd(2);

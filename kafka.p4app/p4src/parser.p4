@@ -58,14 +58,14 @@ header udp_t udp;
 parser parse_udp {
     extract(udp);
     return select(udp.dstPort) {
-        1234: parse_tag;
+        1234: parse_label;
         default : ingress;
     }
 }
 
-header tag_t tag;
+header label_t label;
 
-parser parse_tag {
-    extract(tag);
+parser parse_label {
+    extract(label);
     return ingress;
 }

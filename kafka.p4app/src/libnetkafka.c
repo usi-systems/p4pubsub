@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "netkafka.h"
 
@@ -11,6 +12,7 @@ void error(char *msg) {
 
 struct netkafka_client* netkafka_producer_new(char *hostname, int port) {
     struct netkafka_client *cl = (struct netkafka_client*)malloc(sizeof netkafka_client);
+    assert(cl != NULL);
 
     cl->sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (cl->sockfd < 0)
@@ -33,22 +35,27 @@ struct netkafka_client* netkafka_producer_new(char *hostname, int port) {
     bcopy((char *)server->h_addr,
             (char *)&cl->remoteaddr.sin_addr.s_addr, server->h_length);
     cl->remoteaddr.sin_port = htons(port);
+
+    return cl;
 }
 
 
-int netkafka_produce(struct netkafka_client *cl, unsigned long tag,
+int netkafka_produce(struct netkafka_client *cl, uint32_t topic,
         char *payload, size_t payload_len) {
     int n;
+
     bzero(cl->buf, NETKAFKA_BUFSIZE);
 
-    // TODO: add support for 32-byte tags
     struct netkafka_hdr *hdr = (struct netkafka_hdr *)cl->buf;
-    *(unsigned long *)(&hdr->tag[28]) = htonl(tag);
+    hdr->msg_type = MSG_TYPE_DATA;
+    hdr->topic = htonl(topic);
+
+    size_t msg_len = sizeof(struct netkafka_hdr) + payload_len;
+    assert(msg_len <= NETKAFKA_BUFSIZE);
 
     memcpy(cl->buf + sizeof(struct netkafka_hdr), payload, payload_len);
-    unsigned pkt_len = sizeof(struct netkafka_hdr) + payload_len;
 
-    n = sendto(cl->sockfd, cl->buf, pkt_len, 0,
+    n = sendto(cl->sockfd, cl->buf, msg_len, 0,
             (struct sockaddr *)&cl->remoteaddr, sizeof(cl->remoteaddr));
     if (n < 0)
       error("sendto()");
@@ -63,7 +70,6 @@ struct netkafka_client* netkafka_consumer_new(int port) {
     if (cl->sockfd < 0)
         error("socket()");
 
-
     int optval = 1;
     setsockopt(cl->sockfd, SOL_SOCKET, SO_REUSEADDR,
             (const void *)&optval , sizeof(int));
@@ -73,8 +79,20 @@ struct netkafka_client* netkafka_consumer_new(int port) {
     cl->localaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     cl->localaddr.sin_port = htons(port);
 
+    char *hostname = "10.0.3.101";
+    struct hostent *server = gethostbyname(hostname);
+    if (server == NULL) {
+        fprintf(stderr, "bad hostname: %s\n", hostname);
+        exit(0);
+    }
+
     if (bind(cl->sockfd, (struct sockaddr *)&cl->localaddr, sizeof(cl->localaddr)) < 0)
         error("bind()");
+
+    //int rcvbuf = 67108864;
+    int rcvbuf = 16777216;
+    if (setsockopt(cl->sockfd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
+        error("setsockopt()");
 
     return cl;
 }
@@ -82,12 +100,14 @@ struct netkafka_client* netkafka_consumer_new(int port) {
 int netkafka_consume(struct netkafka_client *cl, char *payload, size_t *payload_len) {
     int n;
 
-    cl->remoteaddr_len = sizeof(cl->remoteaddr);
+    struct netkafka_hdr *hdr = (struct netkafka_hdr *)cl->buf;
 
-    n = recvfrom(cl->sockfd, cl->buf, NETKAFKA_BUFSIZE, 0,
+    n = recvfrom(cl->sockfd, hdr, NETKAFKA_BUFSIZE, 0,
             (struct sockaddr *)&cl->remoteaddr, &cl->remoteaddr_len);
     if (n < 0)
-      error("recvfrom()");
+        error("recvfrom()");
+
+    assert(hdr->msg_type == MSG_TYPE_DATA);
 
     *payload_len = n - sizeof(struct netkafka_hdr);
 
