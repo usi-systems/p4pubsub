@@ -16,6 +16,7 @@ const char *netkafka_msg_name(uint8_t msg_type);
 struct __attribute__((__packed__)) netkafka_hdr {
     uint8_t msg_type;
     uint32_t topic;
+    uint64_t timestamp;
 } netkafka_hdr;
 
 struct netkafka_client {

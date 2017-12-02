@@ -82,6 +82,7 @@ header_type label_t {
     fields {
         msg_type: 8;
         topic: 32;
+        timestamp: 64;
     }
 }
 

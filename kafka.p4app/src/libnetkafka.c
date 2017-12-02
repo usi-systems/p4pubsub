@@ -2,12 +2,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <time.h>
 
 #include "netkafka.h"
 
 void error(char *msg) {
     perror(msg);
     exit(0);
+}
+
+unsigned long long ns_since_midnight() {
+    struct timespec ts;
+    if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
+        error("clock_gettime()");
+    return ((ts.tv_sec % 86400) * 1e9) + ts.tv_nsec;
 }
 
 struct netkafka_client* netkafka_producer_new(char *hostname, int port) {
@@ -49,6 +57,7 @@ int netkafka_produce(struct netkafka_client *cl, uint32_t topic,
     struct netkafka_hdr *hdr = (struct netkafka_hdr *)cl->buf;
     hdr->msg_type = MSG_TYPE_DATA;
     hdr->topic = htonl(topic);
+    //hdr->timestamp = ns_since_midnight();
 
     size_t msg_len = sizeof(struct netkafka_hdr) + payload_len;
     assert(msg_len <= NETKAFKA_BUFSIZE);
@@ -108,6 +117,9 @@ int netkafka_consume(struct netkafka_client *cl, char *payload, size_t *payload_
         error("recvfrom()");
 
     assert(hdr->msg_type == MSG_TYPE_DATA);
+
+    //unsigned latency = ns_since_midnight() - hdr->timestamp;
+    //printf("latency %u\n", latency);
 
     *payload_len = n - sizeof(struct netkafka_hdr);
 
