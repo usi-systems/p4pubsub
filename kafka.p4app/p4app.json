@@ -12,6 +12,8 @@
       "parameters": {
           "LD_PRELOAD": "./netkafka_hooks.so",
           "LD_LIBRARY_PATH": "./librdkafka_install/lib",
+          "KAFKA_BROKER": "255.255.255.255",
+          "KAFKA_PORT": 1234,
           "SEND_RATE": 300,
           "SEND_CNT": 1000
       },

@@ -1,6 +1,7 @@
 
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <dlfcn.h>
 #include <time.h>
@@ -200,15 +201,25 @@ rd_kafka_t *rd_kafka_new(rd_kafka_type_t type, rd_kafka_conf_t *conf,
     tmp_msg.payload = tmp_payload;
     tmp_msg.len = 32;
 
+    int port;
+    char *port_str = getenv("KAFKA_PORT");
+    if (port_str == NULL) port = 1234;
+    else port = atoi(port_str);
+    printf("rd_kafka_new() broker port: %d\n", port);
+
     assert(nk_cl == NULL);
-    //if (type == RD_KAFKA_PRODUCER)
-    //    nk_cl = netkafka_producer_new("127.0.0.1", 40001);
-    //else
-    //    nk_cl = netkafka_consumer_new(30002);
-    if (type == RD_KAFKA_PRODUCER)
-        nk_cl = netkafka_producer_new("255.255.255.255", 1234);
-    else
-        nk_cl = netkafka_consumer_new(1234);
+
+    if (type == RD_KAFKA_PRODUCER) {
+        char *hostname = getenv("KAFKA_BROKER");
+        if (hostname == NULL) hostname = "255.255.255.255";
+
+        printf("rd_kafka_new() broker host: %s\n", hostname);
+
+        nk_cl = netkafka_producer_new(hostname, port);
+    }
+    else {
+        nk_cl = netkafka_consumer_new(port);
+    }
 
     nk_rk = o_rd_kafka_new(type, conf, errstr, errstr_size);
     return nk_rk;
