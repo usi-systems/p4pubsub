@@ -12,6 +12,8 @@
       "parameters": {
           "LD_PRELOAD": "./netkafka_hooks.so",
           "LD_LIBRARY_PATH": "./librdkafka_install/lib",
+          "_uncomment_for_sw_broker_KAFKA_BROKER": "10.0.2.101",
+          "_uncomment_for_sw_broker_KAFKA_PORT": 1235,
           "KAFKA_BROKER": "255.255.255.255",
           "KAFKA_PORT": 1234,
           "SEND_RATE": 300,
@@ -24,7 +26,7 @@
             "wait": false
         },
         "h2": {
-            "cmd": "./rdkafka_performance -C -t 02 -p 0 -o end",
+            "cmd": "./broker.py",
             "startup_sleep": 0.2,
             "wait": false
         },
