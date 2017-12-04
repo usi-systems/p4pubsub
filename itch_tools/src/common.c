@@ -11,7 +11,7 @@
 
 #define STOCK_SIZE 8
 
-void error(char *msg) {
+void error(const char *msg) {
     perror(msg);
     exit(0);
 }
