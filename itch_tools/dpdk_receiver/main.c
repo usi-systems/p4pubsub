@@ -30,7 +30,7 @@
 
 #define PKT_BURST               32
 #define MAX_PKT_BURST           32
-#define RX_RING_SIZE            256
+#define RX_RING_SIZE            512
 #define TX_RING_SIZE            512
 #define MEMPOOL_CACHE_SIZE      256
 #define MBUF_SIZE               (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
