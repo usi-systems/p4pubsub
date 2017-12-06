@@ -281,6 +281,7 @@ static INLINE void make_pkt(struct rte_mbuf *pkt, int port) {
     struct omx_moldudp64_message *mm;
     short msg_len, msg_num;
     struct itch50_msg_add_order *ao;
+    uint64_t timestamp;
 
     udp_payload = (char *)udp_h + sizeof(*udp_h);
 
@@ -295,6 +296,8 @@ static INLINE void make_pkt(struct rte_mbuf *pkt, int port) {
         ao = (struct itch50_msg_add_order *) (udp_payload + payload_offset + 2);
 
         ao->MessageType = ITCH50_MSG_ADD_ORDER;
+        timestamp = htonll(ns_since_midnight());
+        memcpy(ao->Timestamp, (void*)&timestamp + 2, 6);
         memcpy(ao->Stock, filter_stock, STOCK_SIZE);
 
         payload_offset += msg_len + 2;
@@ -746,7 +749,7 @@ static int parse_args(int argc, char **argv)
         case 'h':
             print_usage(prgname);
             return -1;
-        case 'n':
+        case 'N':
             numa_on = true;
             break;
         case 'l':
