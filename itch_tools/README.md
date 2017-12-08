@@ -124,3 +124,23 @@ Finding the correlation between two timeseries:
 Save the first message with MessageType `D`:
 
     ./replay -t D -c 1 -O D.bin ~/Downloads/08302017.NASDAQ_ITCH50
+
+# Sending/receiving with DPDK
+Assuming that eth0 and eth1 are connected to each other, you can send and
+receive from the same machine.
+
+Start the receiver:
+
+    cd dpdk_receiver
+    make
+    sudo ITCH_STOCK="AAPL    " ./build/main -l 0 -n 4 --vdev=net_pcap0,iface=eth0 -- -p 1 -l out.bin
+
+Send 10M ITCH packets:
+
+    cd dpdk_sender
+    make
+    sudo ITCH_STOCK="AAPL    " ./build/main -l 1 -n 4 --vdev=net_pcap0,iface=eth1 --no-huge --no-shconf -- -p 1 -C "(0,0,1)" -N -c 10000000
+
+Then, stop the receiver, and parse the log to get latencies:
+
+    ./parse_log dpdk_receiver/out.bin | cut -f2 > lats.tsv

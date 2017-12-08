@@ -208,9 +208,13 @@ static void print_pkt(int src_ip, int dst_ip, uint16_t src_port, uint16_t dst_po
 }
 
 static INLINE int matches_filter(struct itch50_msg_add_order *ao) {
+#if 0
+    return 1;
+#else
     if (memcmp(filter_stock, ao->Stock, STOCK_SIZE) == 0)
         return 1;
     return 0;
+#endif
 }
 
 void flush_log() {
