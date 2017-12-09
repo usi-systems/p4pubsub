@@ -133,6 +133,7 @@ int only_sender = 0;
 int itch_port = 1234;
 
 int send_cnt = 32;
+int send_sleep = 0;
 
 const char dst_mac[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
 unsigned dst_addr = 0x0a000002;
@@ -166,6 +167,8 @@ void flush_log() {
 }
 
 void log_add_order(struct itch50_msg_add_order *ao) {
+    double time_scale_ns = 1e9 / rte_get_tsc_hz();
+    recv_timestamp = rte_rdtsc() * time_scale_ns;
     struct log_record *rec = log_buffer + (log_entries_count % log_buffer_max_entries);
     memcpy(rec->sent_ns_since_midnight, ao->Timestamp, 6);
     memcpy(rec->received_ns_since_midnight, &recv_timestamp, 6);
@@ -283,6 +286,8 @@ receiver(void)
 	printf("\nCore %u receiving packets on port %d.\n", rte_lcore_id(), receiver_port);
 
     struct rte_mbuf *pkt;
+    int total_rx = 0;
+    struct rte_eth_stats stats;
     int i;
 	for (;;) {
 
@@ -293,13 +298,17 @@ receiver(void)
         if (unlikely(nb_rx == 0))
             continue;
 
-        recv_timestamp = rte_rdtsc();
-        //recv_timestamp = ns_since_midnight();
         for (i = 0; i < nb_rx; i++) {
             pkt = bufs[i];
             handle_pkt(pkt);
             rte_pktmbuf_free(pkt);
+            total_rx++;
+            if (total_rx % 100000 == 0) {
+                rte_eth_stats_get(receiver_port, &stats);
+                printf("ipackets: %u, imissed: %u, ierrors: %u, q_errors: %u\n", stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors);
+            }
         }
+
 	}
 }
 
@@ -384,13 +393,15 @@ sender(void)
 
     struct rte_mbuf *pkt;
     struct rte_mbuf *pkts[BURST_SIZE];
-    int n;
     int burst = 0;
+    unsigned i = 0;
+    unsigned total_tx = 0;
     send_timestamp = 0;
-    for (n = 0; n < send_cnt; n++) {
+    while (total_tx < send_cnt) {
         if (burst == 0) {
-            send_timestamp = htonll(rte_rdtsc());
-            //send_timestamp = htonll(ns_since_midnight());
+            double time_scale_ns = 1e9 / rte_get_tsc_hz();
+            send_timestamp = rte_rdtsc() * time_scale_ns;
+            send_timestamp = htonll(send_timestamp);
         }
 
         // TODO: allocate only once
@@ -403,11 +414,13 @@ sender(void)
 
         burst++;
 
-        if (burst == BURST_SIZE || n+1 == send_cnt) {
+        if (burst == BURST_SIZE) {
             assert(burst >= 4);
             const uint16_t nb_tx = rte_eth_tx_burst(sender_port, 0, pkts, burst);
-            //if (n > 60 * 1000  * 1000)
-            //    usleep(10);
+            if (send_sleep > 0) {
+                //if (n > 60 * 1000  * 1000)
+                    usleep(send_sleep);
+            }
 
             /* Free any unsent packets. */
             if (unlikely(nb_tx < burst)) {
@@ -416,12 +429,16 @@ sender(void)
                     rte_pktmbuf_free(pkts[buf]);
             }
             burst = 0;
+            total_tx += nb_tx;
         }
 
-
-        if ((n+1) % 100000 == 0) {
-            printf("Sent %d\n", n+1);
+        if (i % 100000 == 0) {
+            printf("Sent %d\n", total_tx);
+            struct rte_eth_stats stats;
+            rte_eth_stats_get(sender_port, &stats);
+            printf("opackets: %u, oerrors: %u, q_opackets: %u\n", stats.opackets, stats.oerrors, stats.q_opackets);
         }
+        i++;
     }
 
     printf("Sender exiting.\n");
@@ -434,10 +451,11 @@ static void print_usage(const char *prgname)
 {
     fprintf(stderr,
             "%s [EAL options] --"
-            " [-r]      receiver only"
-            " [-s]      sender only"
-            " [-c]      send count"
-            " [-h]      help"
+            " [-R]          receiver only"
+            " [-S]          sender only"
+            " [-s us]       sleep before sending"
+            " [-c int]      send count"
+            " [-h]          help"
             "\n",
             prgname);
 }
@@ -461,13 +479,16 @@ static int parse_args(int argc, char **argv)
     else
         strcpy(filter_stock, "GOOGL   ");
 
-    while ((opt = getopt(argc, argv, "hc:l:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:l:s:")) != -1) {
         switch (opt) {
         case 'h':
             print_usage(prgname);
             return -1;
         case 'c':
             send_cnt = atoi(optarg);
+            break;
+        case 's':
+            send_sleep = atoi(optarg);
             break;
         case 'l':
             log_filename = optarg;
