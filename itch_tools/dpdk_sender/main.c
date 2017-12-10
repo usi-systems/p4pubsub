@@ -132,7 +132,7 @@ int only_sender = 0;
 
 int itch_port = 1234;
 
-int send_cnt = 32;
+int send_cnt = 0;
 int send_sleep = 0;
 
 const char dst_mac[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
@@ -140,12 +140,36 @@ unsigned dst_addr = 0x0a000002;
 uint64_t send_timestamp;
 uint64_t recv_timestamp;
 
+int total_rx = 0;
+
 char *log_filename = 0;
 FILE *fh_log = 0;
 int log_buffer_max_entries = 20 * 1000 * 1000;
 int log_entries_count = 0;
 int log_flushed_count = 0;
 struct log_record *log_buffer;
+
+char *in_filename = NULL;
+size_t in_file_size;
+char *in_buf = NULL;
+char *in_buf_cur = NULL;
+
+void load_send_file() {
+    FILE *fh = fopen(in_filename, "rb");
+    if (!fh)
+        error("fopen()");
+    fseek(fh, 0, SEEK_END);
+    in_file_size = ftell(fh);
+    fseek(fh, 0, SEEK_SET);
+
+    in_buf =  (char *)malloc(in_file_size);
+    if (!fread(in_buf, in_file_size, 1, fh))
+        error("fread()");
+    fclose(fh);
+
+    in_buf_cur = in_buf;
+}
+
 
 char filter_stock[9];
 
@@ -180,7 +204,8 @@ void log_add_order(struct itch50_msg_add_order *ao) {
 
 void cleanup_and_exit() {
     if (fh_log) {
-        printf("\nFlushing timestamp log... ");
+        printf("\ntotal_rx: %u\n", total_rx);
+        printf("Flushing timestamp log... ");
         fflush(stdout);
         flush_log();
         fclose(fh_log);
@@ -286,7 +311,6 @@ receiver(void)
 	printf("\nCore %u receiving packets on port %d.\n", rte_lcore_id(), receiver_port);
 
     struct rte_mbuf *pkt;
-    int total_rx = 0;
     struct rte_eth_stats stats;
     int i;
 	for (;;) {
@@ -312,45 +336,52 @@ receiver(void)
 	}
 }
 
-/*
- * Create a single MoldUDP message
- */
-void make_pkt(struct rte_mbuf *pkt, int port) {
-    struct udp_hdr    *udp_h;
-    struct ipv4_hdr   *ip_h;
-    struct ether_hdr  *eth_h;
-    size_t pkt_size, payload_size;
-    size_t ip_total_len;
-    short msg_count = 1;
+size_t load_itch_msg(char *payload_buf) {
+    char *buf = in_buf_cur;
 
-    payload_size = sizeof(struct omx_moldudp64_header) + msg_count * (sizeof(struct omx_moldudp_message) + sizeof(struct itch50_msg_add_order));
-    pkt_size = sizeof(*eth_h) + sizeof(*ip_h) + sizeof(*udp_h) + payload_size;
-    pkt->data_len = pkt_size;
-    pkt->pkt_len = pkt_size;
+    // If we've reached the end of the file
+    if (in_buf_cur >= in_buf + in_file_size)
+        return 0;
 
-    eth_h = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
-    rte_eth_macaddr_get(port, &eth_h->s_addr);
-    memcpy(&eth_h->d_addr, dst_mac, 6);
-    eth_h->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+    struct omx_moldudp64_header *h = (struct omx_moldudp64_header *)(buf);
+    struct omx_moldudp64_message *mm;
+    size_t msg_len;
+    struct itch50_message *m;
+    struct itch50_msg_add_order *ao;
+    short msg_num;
+    short msg_count = ntohs(h->MessageCount);
+    size_t pkt_offset = sizeof(struct omx_moldudp64_header);
 
-    ip_h = (struct ipv4_hdr *) ((char *) eth_h + sizeof(*eth_h));
-    ip_h->version_ihl = 0x45;
-    ip_h->next_proto_id = IPPROTO_UDP;
-    ip_h->src_addr = 0x09090909;
-    ip_h->dst_addr = dst_addr;
-    ip_total_len = pkt_size - sizeof(*eth_h);
-    ip_h->total_length = rte_cpu_to_be_16(ip_total_len);
-    udp_h = (struct udp_hdr *) ((char *) ip_h + sizeof(*ip_h));
-    udp_h->dst_port = rte_cpu_to_be_16(itch_port);
-    udp_h->dgram_len= rte_cpu_to_be_16(payload_size);
+    for (msg_num = 0; msg_num < msg_count; msg_num++) {
+        mm = (struct omx_moldudp64_message *) (buf + pkt_offset);
+        msg_len = ntohs(mm->MessageLength);
 
-    char *udp_payload;
+        m = (struct itch50_message *)(buf + pkt_offset + 2);
+        int expected_size = itch50_message_size(m->MessageType);
+        if (expected_size != msg_len)
+            fprintf(stderr, "MessageType %c should have size %d, found %d\n", m->MessageType, expected_size, msg_len);
+
+        if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
+            ao = (struct itch50_msg_add_order *)m;
+            memcpy(ao->Timestamp, (void*)&send_timestamp + 2, 6);
+        }
+
+        pkt_offset += msg_len + 2;
+    }
+
+    in_buf_cur += pkt_offset;
+
+    memcpy(payload_buf, buf, pkt_offset);
+
+    return pkt_offset;
+}
+
+size_t make_itch_msg(char *udp_payload) {
     struct omx_moldudp64_header *h;
     struct omx_moldudp64_message *mm;
     short msg_len, msg_num;
     struct itch50_msg_add_order *ao;
-
-    udp_payload = (char *)udp_h + sizeof(*udp_h);
+    short msg_count = 1;
 
     h = (struct omx_moldudp64_header *)udp_payload;
     h->MessageCount = rte_cpu_to_be_16(msg_count);
@@ -369,6 +400,51 @@ void make_pkt(struct rte_mbuf *pkt, int port) {
         payload_offset += msg_len + 2;
     }
 
+    return payload_offset;
+}
+
+/*
+ * Create a single MoldUDP message
+ */
+int make_pkt(struct rte_mbuf *pkt, int port) {
+    struct udp_hdr    *udp_h;
+    struct ipv4_hdr   *ip_h;
+    struct ether_hdr  *eth_h;
+    size_t pkt_size, payload_size;
+    size_t ip_total_len;
+    char *udp_payload;
+
+    eth_h = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+    ip_h = (struct ipv4_hdr *) ((char *) eth_h + sizeof(*eth_h));
+    udp_h = (struct udp_hdr *) ((char *) ip_h + sizeof(*ip_h));
+    udp_payload = (char *)udp_h + sizeof(*udp_h);
+
+    if (in_buf != NULL)
+        payload_size = load_itch_msg(udp_payload);
+    else
+        payload_size = make_itch_msg(udp_payload);
+
+    if (payload_size == 0)
+        return 0;
+
+    pkt_size = sizeof(*eth_h) + sizeof(*ip_h) + sizeof(*udp_h) + payload_size;
+    pkt->data_len = pkt_size;
+    pkt->pkt_len = pkt_size;
+
+    rte_eth_macaddr_get(port, &eth_h->s_addr);
+    memcpy(&eth_h->d_addr, dst_mac, 6);
+    eth_h->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+
+    ip_h->version_ihl = 0x45;
+    ip_h->next_proto_id = IPPROTO_UDP;
+    ip_h->src_addr = 0x09090909;
+    ip_h->dst_addr = dst_addr;
+    ip_total_len = pkt_size - sizeof(*eth_h);
+    ip_h->total_length = rte_cpu_to_be_16(ip_total_len);
+    udp_h->dst_port = rte_cpu_to_be_16(itch_port);
+    udp_h->dgram_len= rte_cpu_to_be_16(payload_size);
+
+    return pkt_size;
 }
 
 
@@ -391,54 +467,55 @@ sender(void)
 
 	printf("\nCore %u sending packets on port %d.\n", rte_lcore_id(), sender_port);
 
+    // Wait 1 sec for the receiver to be ready
+    sleep(1);
+
     struct rte_mbuf *pkt;
     struct rte_mbuf *pkts[BURST_SIZE];
-    int burst = 0;
     unsigned i = 0;
     unsigned total_tx = 0;
     send_timestamp = 0;
-    while (total_tx < send_cnt) {
-        if (burst == 0) {
-            double time_scale_ns = 1e9 / rte_get_tsc_hz();
-            send_timestamp = rte_rdtsc() * time_scale_ns;
-            send_timestamp = htonll(send_timestamp);
+    unsigned last_print = 0;
+    unsigned nb_burst;
+    while (total_tx < send_cnt || !send_cnt) {
+
+        // Create the timestamp for all the pkts in the burst
+        double time_scale_ns = 1e9 / rte_get_tsc_hz();
+        send_timestamp = rte_rdtsc() * time_scale_ns;
+        send_timestamp = htonll(send_timestamp);
+
+        // Make each packet in the burst
+        for (nb_burst = 0; nb_burst < BURST_SIZE; nb_burst++) {
+            if ((pkts[nb_burst] = rte_pktmbuf_alloc(mbuf_pool)) == NULL)
+                rte_exit(EXIT_FAILURE, "rte_pktmbuf_alloc()");
+            int size = make_pkt(pkts[nb_burst], sender_port);
+            if (size == 0) break;
         }
 
-        // TODO: allocate only once
-        pkts[burst] = rte_pktmbuf_alloc(mbuf_pool);
+        if (nb_burst == 0)
+            break;
 
-        if (pkts[burst] == NULL)
-            rte_exit(EXIT_FAILURE, "rte_pktmbuf_alloc()");
-
-        make_pkt(pkts[burst], sender_port);
-
-        burst++;
-
-        if (burst == BURST_SIZE) {
-            assert(burst >= 4);
-            const uint16_t nb_tx = rte_eth_tx_burst(sender_port, 0, pkts, burst);
-            if (send_sleep > 0) {
-                //if (n > 60 * 1000  * 1000)
-                    usleep(send_sleep);
-            }
-
-            /* Free any unsent packets. */
-            if (unlikely(nb_tx < burst)) {
-                uint16_t buf;
-                for (buf = nb_tx; buf < burst; buf++)
-                    rte_pktmbuf_free(pkts[buf]);
-            }
-            burst = 0;
-            total_tx += nb_tx;
+        const uint16_t nb_tx = rte_eth_tx_burst(sender_port, 0, pkts, nb_burst);
+        if (send_sleep > 0) {
+            usleep(send_sleep);
         }
 
-        if (i % 100000 == 0) {
+        /* Free any unsent packets. */
+        if (unlikely(nb_tx < nb_burst)) {
+            uint16_t buf;
+            for (buf = nb_tx; buf < nb_burst; buf++)
+                rte_pktmbuf_free(pkts[buf]);
+        }
+
+        total_tx += nb_tx;
+
+        if ((total_tx - last_print) >= 100000) {
             printf("Sent %d\n", total_tx);
             struct rte_eth_stats stats;
             rte_eth_stats_get(sender_port, &stats);
             printf("opackets: %u, oerrors: %u, q_opackets: %u\n", stats.opackets, stats.oerrors, stats.q_opackets);
+            last_print = total_tx;
         }
-        i++;
     }
 
     printf("Sender exiting.\n");
@@ -455,6 +532,7 @@ static void print_usage(const char *prgname)
             " [-S]          sender only"
             " [-s us]       sleep before sending"
             " [-c int]      send count"
+            " [-f file]     raw stream of ITCH messages to send"
             " [-h]          help"
             "\n",
             prgname);
@@ -479,7 +557,7 @@ static int parse_args(int argc, char **argv)
     else
         strcpy(filter_stock, "GOOGL   ");
 
-    while ((opt = getopt(argc, argv, "hc:l:s:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:f:l:s:")) != -1) {
         switch (opt) {
         case 'h':
             print_usage(prgname);
@@ -487,11 +565,14 @@ static int parse_args(int argc, char **argv)
         case 'c':
             send_cnt = atoi(optarg);
             break;
-        case 's':
-            send_sleep = atoi(optarg);
+        case 'f':
+            in_filename = optarg;
             break;
         case 'l':
             log_filename = optarg;
+            break;
+        case 's':
+            send_sleep = atoi(optarg);
             break;
         default:
             fprintf(stderr, "error: bad opt: -%c\n", opt);
@@ -517,6 +598,9 @@ static int parse_args(int argc, char **argv)
         }
         log_buffer = (struct log_record *)malloc(sizeof(struct log_record) * log_buffer_max_entries);
     }
+
+    if (in_filename != NULL)
+        load_send_file();
 
     return rv;
 }
