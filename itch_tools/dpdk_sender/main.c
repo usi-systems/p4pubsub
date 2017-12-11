@@ -55,7 +55,8 @@
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 250
 #define BURST_SIZE 32
-#define MIN_BURST_SIZE 4  // Smallest burst size supported by this NIC
+// Smallest burst size supported by this NIC:
+#define MIN_BURST_SIZE 4
 
 static const struct rte_eth_conf port_conf_default = {
 	.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
@@ -517,7 +518,6 @@ sender(void)
         if (nb_burst < MIN_BURST_SIZE)
             // TODO: instead of dropping these packets, send them one at a time
             break;
-        }
 
         const uint16_t nb_tx = rte_eth_tx_burst(sender_port, 0, pkts, nb_burst);
         if (send_sleep > 0) {
