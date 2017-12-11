@@ -55,6 +55,7 @@
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 250
 #define BURST_SIZE 32
+#define MIN_BURST_SIZE 4  // Smallest burst size supported by this NIC
 
 static const struct rte_eth_conf port_conf_default = {
 	.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
@@ -347,21 +348,13 @@ size_t load_itch_msg(char *payload_buf) {
     struct omx_moldudp64_header *h = (struct omx_moldudp64_header *)(buf);
     struct omx_moldudp64_message *mm;
     size_t msg_len;
-    struct itch50_message *m;
-    struct itch50_msg_add_order *ao;
     short msg_num;
-    short msg_count = ntohs(h->MessageCount);
+    short msg_count = rte_be_to_cpu_16(h->MessageCount);
     size_t pkt_offset = sizeof(struct omx_moldudp64_header);
 
     for (msg_num = 0; msg_num < msg_count; msg_num++) {
         mm = (struct omx_moldudp64_message *) (buf + pkt_offset);
-        msg_len = ntohs(mm->MessageLength);
-        m = (struct itch50_message *)(buf + pkt_offset + 2);
-
-        if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
-            ao = (struct itch50_msg_add_order *)m;
-        }
-
+        msg_len = rte_be_to_cpu_16(mm->MessageLength);
         pkt_offset += msg_len + 2;
     }
 
@@ -520,6 +513,11 @@ sender(void)
 
         if (nb_burst == 0)
             break;
+
+        if (nb_burst < MIN_BURST_SIZE)
+            // TODO: instead of dropping these packets, send them one at a time
+            break;
+        }
 
         const uint16_t nb_tx = rte_eth_tx_burst(sender_port, 0, pkts, nb_burst);
         if (send_sleep > 0) {
