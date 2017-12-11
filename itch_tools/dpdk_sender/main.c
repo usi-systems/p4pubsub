@@ -140,7 +140,8 @@ unsigned dst_addr = 0x0a000002;
 uint64_t send_timestamp;
 uint64_t recv_timestamp;
 
-int total_rx = 0;
+unsigned total_rx = 0;
+unsigned total_unsent = 0;
 
 char *log_filename = 0;
 FILE *fh_log = 0;
@@ -204,7 +205,7 @@ void log_add_order(struct itch50_msg_add_order *ao) {
 
 void cleanup_and_exit() {
     if (fh_log) {
-        printf("\ntotal_rx: %u\n", total_rx);
+        printf("\ntotal_rx: %u, total_unsent: %u\n", total_rx, total_unsent);
         printf("Flushing timestamp log... ");
         fflush(stdout);
         flush_log();
@@ -355,15 +356,10 @@ size_t load_itch_msg(char *payload_buf) {
     for (msg_num = 0; msg_num < msg_count; msg_num++) {
         mm = (struct omx_moldudp64_message *) (buf + pkt_offset);
         msg_len = ntohs(mm->MessageLength);
-
         m = (struct itch50_message *)(buf + pkt_offset + 2);
-        int expected_size = itch50_message_size(m->MessageType);
-        if (expected_size != msg_len)
-            fprintf(stderr, "MessageType %c should have size %d, found %d\n", m->MessageType, expected_size, msg_len);
 
         if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
             ao = (struct itch50_msg_add_order *)m;
-            memcpy(ao->Timestamp, (void*)&send_timestamp + 2, 6);
         }
 
         pkt_offset += msg_len + 2;
@@ -394,7 +390,6 @@ size_t make_itch_msg(char *udp_payload) {
         ao = (struct itch50_msg_add_order *) (udp_payload + payload_offset + 2);
 
         ao->MessageType = ITCH50_MSG_ADD_ORDER;
-        memcpy(ao->Timestamp, (void*)&send_timestamp + 2, 6);
         memcpy(ao->Stock, filter_stock, STOCK_SIZE);
 
         payload_offset += msg_len + 2;
@@ -447,6 +442,31 @@ int make_pkt(struct rte_mbuf *pkt, int port) {
     return pkt_size;
 }
 
+void insert_timestamp(struct rte_mbuf *pkt) {
+    char *udp_payload = rte_pktmbuf_mtod(pkt, char *) + sizeof(struct ether_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr);
+    struct omx_moldudp64_header *h = (struct omx_moldudp64_header *)(udp_payload);
+    struct omx_moldudp64_message *mm;
+    size_t msg_len;
+    struct itch50_message *m;
+    struct itch50_msg_add_order *ao;
+    short msg_num;
+    short msg_count = rte_be_to_cpu_16(h->MessageCount);
+    size_t offset = sizeof(struct omx_moldudp64_header);
+
+    for (msg_num = 0; msg_num < msg_count; msg_num++) {
+        mm = (struct omx_moldudp64_message *) (udp_payload + offset);
+        msg_len = ntohs(mm->MessageLength);
+
+        m = (struct itch50_message *)(udp_payload + offset + 2);
+        if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
+            ao = (struct itch50_msg_add_order *)m;
+            memcpy(ao->Timestamp, (void*)&send_timestamp + 2, 6);
+        }
+
+        offset += msg_len + 2;
+    }
+}
+
 
 /*
  * The lcore main. This is the main thread that does the work, reading from
@@ -474,23 +494,29 @@ sender(void)
     struct rte_mbuf *pkts[BURST_SIZE];
     unsigned i = 0;
     unsigned total_tx = 0;
-    send_timestamp = 0;
     unsigned last_print = 0;
+    unsigned nb_unsent = 0;
     unsigned nb_burst;
     while (total_tx < send_cnt || !send_cnt) {
+
+        // Make each packet in the burst
+        for (nb_burst = nb_unsent; nb_burst < BURST_SIZE; nb_burst++) {
+            if ((pkts[nb_burst] = rte_pktmbuf_alloc(mbuf_pool)) == NULL)
+                rte_exit(EXIT_FAILURE, "rte_pktmbuf_alloc()");
+            int size = make_pkt(pkts[nb_burst], sender_port);
+            if (size == 0) {
+                nb_burst++;
+                break;
+            }
+        }
 
         // Create the timestamp for all the pkts in the burst
         double time_scale_ns = 1e9 / rte_get_tsc_hz();
         send_timestamp = rte_rdtsc() * time_scale_ns;
         send_timestamp = htonll(send_timestamp);
+        for (uint16_t buf = 0; buf < nb_burst; buf++)
+            insert_timestamp(pkts[buf]);
 
-        // Make each packet in the burst
-        for (nb_burst = 0; nb_burst < BURST_SIZE; nb_burst++) {
-            if ((pkts[nb_burst] = rte_pktmbuf_alloc(mbuf_pool)) == NULL)
-                rte_exit(EXIT_FAILURE, "rte_pktmbuf_alloc()");
-            int size = make_pkt(pkts[nb_burst], sender_port);
-            if (size == 0) break;
-        }
 
         if (nb_burst == 0)
             break;
@@ -500,11 +526,14 @@ sender(void)
             usleep(send_sleep);
         }
 
-        /* Free any unsent packets. */
-        if (unlikely(nb_tx < nb_burst)) {
+        nb_unsent = nb_burst - nb_tx;
+
+        if (unlikely(nb_unsent > 0)) {
+            total_unsent += nb_unsent;
+            // Shift unsent pkts to the front of the next burst
             uint16_t buf;
             for (buf = nb_tx; buf < nb_burst; buf++)
-                rte_pktmbuf_free(pkts[buf]);
+                pkts[buf-nb_tx] = pkts[buf];
         }
 
         total_tx += nb_tx;
