@@ -144,6 +144,7 @@ uint64_t recv_timestamp;
 
 unsigned total_rx = 0;
 unsigned total_unsent = 0;
+unsigned total_matches = 0;
 
 char *log_filename = 0;
 FILE *fh_log = 0;
@@ -175,6 +176,7 @@ void load_send_file() {
 
 
 char filter_stock[9];
+char *default_stock = "ABC123  ";
 
 int matches_filter(struct itch50_msg_add_order *ao) {
 #if 0
@@ -207,7 +209,7 @@ void log_add_order(struct itch50_msg_add_order *ao) {
 
 void cleanup_and_exit() {
     if (fh_log) {
-        printf("\ntotal_rx: %u, total_unsent: %u\n", total_rx, total_unsent);
+        printf("\ntotal_rx: %u, total_matches: %u, total_unsent: %u\n", total_rx, total_matches, total_unsent);
         printf("Flushing timestamp log... ");
         fflush(stdout);
         flush_log();
@@ -273,6 +275,7 @@ int handle_pkt(struct rte_mbuf *pkt) {
         if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
             ao = (struct itch50_msg_add_order *)m;
             if (matches_filter(ao)) {
+                total_matches++;
                 if (do_print_ao)
                     print_add_order(ao);
                 if (log_filename)
@@ -366,6 +369,8 @@ size_t load_itch_msg(char *payload_buf) {
     return pkt_offset;
 }
 
+unsigned stock_prob_thresh = RAND_MAX;
+
 size_t make_itch_msg(char *udp_payload) {
     struct omx_moldudp64_header *h;
     struct omx_moldudp64_message *mm;
@@ -382,9 +387,13 @@ size_t make_itch_msg(char *udp_payload) {
         msg_len = sizeof(struct itch50_msg_add_order);
         mm->MessageLength = rte_be_to_cpu_16(msg_len);
         ao = (struct itch50_msg_add_order *) (udp_payload + payload_offset + 2);
-
         ao->MessageType = ITCH50_MSG_ADD_ORDER;
-        memcpy(ao->Stock, filter_stock, STOCK_SIZE);
+
+        char *stock = default_stock;
+        if (rand() <= stock_prob_thresh)
+            stock = filter_stock;
+
+        memcpy(ao->Stock, stock, STOCK_SIZE);
 
         payload_offset += msg_len + 2;
     }
@@ -560,6 +569,7 @@ static void print_usage(const char *prgname)
             " [-s us]       sleep before sending"
             " [-c int]      send count"
             " [-f file]     raw stream of ITCH messages to send"
+            " [-p float]    probability (0.0->1.0) of sending specified stock symbol (default: 1.0)"
             " [-h]          help"
             "\n",
             prgname);
@@ -574,6 +584,7 @@ static int parse_args(int argc, char **argv)
            opt,
            optidx;
     char  *prgname = argv[0];
+    float prob;
 
     if (getenv("ITCH_PORT") != NULL)
         itch_port = atoi(getenv("ITCH_PORT"));
@@ -584,7 +595,7 @@ static int parse_args(int argc, char **argv)
     else
         strcpy(filter_stock, "GOOGL   ");
 
-    while ((opt = getopt(argc, argv, "hc:f:l:s:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:f:l:s:p:")) != -1) {
         switch (opt) {
         case 'h':
             print_usage(prgname);
@@ -600,6 +611,11 @@ static int parse_args(int argc, char **argv)
             break;
         case 's':
             send_sleep = atoi(optarg);
+            break;
+        case 'p':
+            prob = atof(optarg);
+            assert(0.0 <= prob && prob <= 1.0);
+            stock_prob_thresh = prob * RAND_MAX;
             break;
         default:
             fprintf(stderr, "error: bad opt: -%c\n", opt);
