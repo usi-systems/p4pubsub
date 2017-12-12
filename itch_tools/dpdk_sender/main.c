@@ -49,8 +49,8 @@
 #include "libtrading/proto/omx_moldudp_message.h"
 #include "../third-party/libtrading/lib/proto/nasdaq_itch50_message.c"
 
-#define RX_RING_SIZE 1024
-#define TX_RING_SIZE 512
+#define RX_RING_SIZE 4096
+#define TX_RING_SIZE 64
 
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 250
@@ -136,6 +136,7 @@ int itch_port = 1234;
 
 int send_cnt = 0;
 int send_sleep = 0;
+int print_interval_pkts = 1 * 1000 * 1000;
 
 const char dst_mac[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
 unsigned dst_addr = 0x0a000002;
@@ -308,15 +309,15 @@ receiver(void)
 	 * Check that the port is on the same NUMA node as the polling thread
 	 * for best performance.
 	 */
+    printf("receiver using socket: %d\n", rte_eth_dev_socket_id(receiver_port));
 	if (rte_eth_dev_socket_id(receiver_port) > 0 &&
 			rte_eth_dev_socket_id(receiver_port) != (int)rte_socket_id())
 			printf("WARNING, port %u is on remote NUMA node to "
-					"polling thread.\n\tPerformance will "
-					"not be optimal.\n", receiver_port);
+					"polling thread (core %u).\n\tPerformance will "
+					"not be optimal.\n", receiver_port, rte_lcore_id());
 
 	printf("\nCore %u receiving packets on port %d.\n", rte_lcore_id(), receiver_port);
 
-    struct rte_mbuf *pkt;
     struct rte_eth_stats stats;
     int i;
 	for (;;) {
@@ -329,11 +330,10 @@ receiver(void)
             continue;
 
         for (i = 0; i < nb_rx; i++) {
-            pkt = bufs[i];
-            handle_pkt(pkt);
-            rte_pktmbuf_free(pkt);
+            handle_pkt(bufs[i]);
+            rte_pktmbuf_free(bufs[i]);
             total_rx++;
-            if (total_rx % 100000 == 0) {
+            if (unlikely(total_rx % print_interval_pkts == 0)) {
                 rte_eth_stats_get(receiver_port, &stats);
                 printf("ipackets: %u, imissed: %u, ierrors: %u, q_errors: %u\n", stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors);
             }
@@ -485,14 +485,17 @@ sender(void)
 	if (rte_eth_dev_socket_id(sender_port) > 0 &&
 			rte_eth_dev_socket_id(sender_port) != (int)rte_socket_id())
 			printf("WARNING, port %u is on remote NUMA node to "
-					"polling thread.\n\tPerformance will "
-					"not be optimal.\n", sender_port);
+					"polling thread (core %u).\n\tPerformance will "
+					"not be optimal.\n", sender_port, rte_lcore_id());
 
 	printf("\nCore %u sending packets on port %d.\n", rte_lcore_id(), sender_port);
 
     // Wait 1 sec for the receiver to be ready
     sleep(1);
 
+    uint64_t send_start_ns = ns_since_midnight();
+
+    struct rte_eth_stats stats;
     struct rte_mbuf *pkt;
     struct rte_mbuf *pkts[BURST_SIZE];
     unsigned i = 0;
@@ -500,14 +503,19 @@ sender(void)
     unsigned last_print = 0;
     unsigned nb_unsent = 0;
     unsigned nb_burst;
+
+    rte_eth_stats_get(sender_port, &stats);
+    assert(stats.obytes == 0);
+
     while (total_tx < send_cnt || !send_cnt) {
 
         // Make each packet in the burst
         for (nb_burst = nb_unsent; nb_burst < BURST_SIZE; nb_burst++) {
-            if ((pkts[nb_burst] = rte_pktmbuf_alloc(mbuf_pool)) == NULL)
+            pkts[nb_burst] = rte_pktmbuf_alloc(mbuf_pool);
+            if (unlikely(pkts[nb_burst] == NULL))
                 rte_exit(EXIT_FAILURE, "rte_pktmbuf_alloc()");
             int size = make_pkt(pkts[nb_burst], sender_port);
-            if (size == 0) {
+            if (unlikely(size == 0)) {
                 nb_burst++;
                 break;
             }
@@ -545,16 +553,19 @@ sender(void)
 
         total_tx += nb_tx;
 
-        if ((total_tx - last_print) >= 100000) {
-            printf("Sent %d\n", total_tx);
-            struct rte_eth_stats stats;
-            rte_eth_stats_get(sender_port, &stats);
-            printf("opackets: %u, oerrors: %u, q_opackets: %u\n", stats.opackets, stats.oerrors, stats.q_opackets);
+        if (unlikely((total_tx - last_print) >= print_interval_pkts)) {
             last_print = total_tx;
+            rte_eth_stats_get(sender_port, &stats);
+            printf("Sent %d\n", total_tx);
+            printf("opackets: %u, oerrors: %u, q_opackets: %u\n", stats.opackets, stats.oerrors, stats.q_opackets);
         }
     }
 
-    printf("Sender exiting.\n");
+    float elapsed_s = (ns_since_midnight() - send_start_ns) / 1e9;
+    rte_eth_stats_get(sender_port, &stats);
+    float send_rate_mbps = (stats.obytes * (1.0 / (1024 * 1024))) / elapsed_s;
+
+    printf("Sender exiting. Average rate: %.2f MB/s\n", send_rate_mbps);
 }
 
 /*
