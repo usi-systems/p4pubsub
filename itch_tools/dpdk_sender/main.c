@@ -59,7 +59,25 @@
 #define MIN_BURST_SIZE 4
 
 static const struct rte_eth_conf port_conf_default = {
-	.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
+    .link_speeds = ETH_LINK_SPEED_25G,
+    .rxmode = {
+        .mq_mode        = ETH_MQ_RX_RSS,
+        .max_rx_pkt_len = ETHER_MAX_LEN,
+        .split_hdr_size = 0,
+        .header_split   = 0,
+        .hw_ip_checksum = 0,
+        .hw_vlan_filter = 0,
+        .jumbo_frame    = 0,
+        .hw_strip_crc   = 0,
+    },
+    .rx_adv_conf = {
+        .rss_conf = {
+            .rss_key = NULL,
+            .rss_hf  = ETH_RSS_IP,
+        }
+    },
+    .txmode = {
+    },
 };
 
 struct rte_mempool *mbuf_pool;
@@ -138,7 +156,7 @@ int send_cnt = 0;
 int send_sleep = 0;
 int print_interval_pkts = 1 * 1000 * 1000;
 
-const char dst_mac[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
+const char dst_mac[] = {0x3c, 0xfd, 0xfe, 0xa6, 0x7e, 0x5d};
 unsigned dst_addr = 0x0a000002;
 uint64_t send_timestamp;
 uint64_t recv_timestamp;
@@ -507,7 +525,7 @@ sender(void)
     rte_eth_stats_get(sender_port, &stats);
     assert(stats.obytes == 0);
 
-    while (total_tx < send_cnt || !send_cnt) {
+    while (unlikely(total_tx < send_cnt || !send_cnt)) {
 
         // Make each packet in the burst
         for (nb_burst = nb_unsent; nb_burst < BURST_SIZE; nb_burst++) {
@@ -532,8 +550,8 @@ sender(void)
         if (nb_burst == 0)
             break;
 
-        if (nb_burst < MIN_BURST_SIZE)
-            // TODO: instead of dropping these packets, send them one at a time
+        if (unlikely(nb_burst < MIN_BURST_SIZE))
+            // TODO: instead of dropping the last packets, send them one at a time
             break;
 
         const uint16_t nb_tx = rte_eth_tx_burst(sender_port, 0, pkts, nb_burst);
@@ -564,8 +582,9 @@ sender(void)
     float elapsed_s = (ns_since_midnight() - send_start_ns) / 1e9;
     rte_eth_stats_get(sender_port, &stats);
     float send_rate_mbps = (stats.obytes * (1.0 / (1024 * 1024))) / elapsed_s;
+    float send_rate_pps = stats.opackets / elapsed_s;
 
-    printf("Sender exiting. Average rate: %.2f MB/s\n", send_rate_mbps);
+    printf("Sender exiting. Average rate: %.2f pps (%.2f MB/s)\n", send_rate_pps, send_rate_mbps);
 }
 
 /*
@@ -581,6 +600,7 @@ static void print_usage(const char *prgname)
             " [-c int]      send count"
             " [-f file]     raw stream of ITCH messages to send"
             " [-p float]    probability (0.0->1.0) of sending specified stock symbol (default: 1.0)"
+            " [-P int]      UDP port for ITCH messages (default: 1234)"
             " [-h]          help"
             "\n",
             prgname);
@@ -606,7 +626,7 @@ static int parse_args(int argc, char **argv)
     else
         strcpy(filter_stock, "GOOGL   ");
 
-    while ((opt = getopt(argc, argv, "hc:f:l:s:p:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:f:l:s:p:P:")) != -1) {
         switch (opt) {
         case 'h':
             print_usage(prgname);
@@ -627,6 +647,9 @@ static int parse_args(int argc, char **argv)
             prob = atof(optarg);
             assert(0.0 <= prob && prob <= 1.0);
             stock_prob_thresh = prob * RAND_MAX;
+            break;
+        case 'P':
+            itch_port = atoi(optarg);
             break;
         default:
             fprintf(stderr, "error: bad opt: -%c\n", opt);
@@ -698,8 +721,13 @@ main(int argc, char *argv[])
 			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16 "\n",
 					portid);
 
+#if 1
     receiver_port = 0;
     sender_port = nb_ports-1;
+#else
+    sender_port = 0;
+    receiver_port = nb_ports-1;
+#endif
 
 	if (rte_lcore_count() > 2)
 		printf("\nWARNING: Too many lcores enabled. At most 2 used.\n");
