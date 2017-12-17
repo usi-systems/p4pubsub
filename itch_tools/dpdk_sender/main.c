@@ -185,10 +185,13 @@ void load_send_file() {
     in_file_size = ftell(fh);
     fseek(fh, 0, SEEK_SET);
 
+    printf("Loading %s into memory... ", in_filename);
+    fflush(stdout);
     in_buf =  (char *)malloc(in_file_size);
     if (!fread(in_buf, in_file_size, 1, fh))
         error("fread()");
     fclose(fh);
+    printf("done.\n");
 
     in_buf_cur = in_buf;
 }
@@ -361,11 +364,16 @@ receiver(void)
 }
 
 size_t load_itch_msg(char *payload_buf) {
-    char *buf = in_buf_cur;
 
     // If we've reached the end of the file
-    if (in_buf_cur >= in_buf + in_file_size)
-        return 0;
+    if (unlikely(in_buf_cur >= in_buf + in_file_size)) {
+        if (send_cnt == 0)
+            return 0;
+        else
+            in_buf_cur = in_buf; // continue from beginning of file
+    }
+
+    char *buf = in_buf_cur;
 
     struct omx_moldudp64_header *h = (struct omx_moldudp64_header *)(buf);
     struct omx_moldudp64_message *mm;
@@ -525,7 +533,7 @@ sender(void)
     rte_eth_stats_get(sender_port, &stats);
     assert(stats.obytes == 0);
 
-    while (unlikely(total_tx < send_cnt || !send_cnt)) {
+    while (likely(total_tx < send_cnt || !send_cnt)) {
 
         // Make each packet in the burst
         for (nb_burst = nb_unsent; nb_burst < BURST_SIZE; nb_burst++) {
