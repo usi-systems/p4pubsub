@@ -26,16 +26,19 @@ struct netkafka_client* netkafka_producer_new(char *hostname, int port) {
     if (cl->sockfd < 0)
         error("socket()");
 
-    if (strcmp(hostname, "255.255.255.255") == 0) {
-        int enable_bcast = 1;
-        if (setsockopt(cl->sockfd, SOL_SOCKET, SO_BROADCAST, &enable_bcast, sizeof(int)) < 0)
-            error("setsockopt() SO_BROADCAST");
-    }
-
     struct hostent *server = gethostbyname(hostname);
     if (server == NULL) {
         fprintf(stderr, "bad hostname: %s\n", hostname);
         exit(0);
+    }
+
+    // Check if the remote address is bcast
+    uint8_t *last_oct = (uint8_t*)server->h_addr + server->h_length-1;
+    //if (strcmp(hostname, "255.255.255.255") == 0) {
+    if (*last_oct == 255) {
+        int enable_bcast = 1;
+        if (setsockopt(cl->sockfd, SOL_SOCKET, SO_BROADCAST, &enable_bcast, sizeof(int)) < 0)
+            error("setsockopt() SO_BROADCAST");
     }
 
     bzero((char *) &cl->remoteaddr, sizeof(cl->remoteaddr));
@@ -87,13 +90,6 @@ struct netkafka_client* netkafka_consumer_new(int port) {
     cl->localaddr.sin_family = AF_INET;
     cl->localaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     cl->localaddr.sin_port = htons(port);
-
-    char *hostname = "10.0.3.101";
-    struct hostent *server = gethostbyname(hostname);
-    if (server == NULL) {
-        fprintf(stderr, "bad hostname: %s\n", hostname);
-        exit(0);
-    }
 
     if (bind(cl->sockfd, (struct sockaddr *)&cl->localaddr, sizeof(cl->localaddr)) < 0)
         error("bind()");
