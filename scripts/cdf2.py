@@ -31,7 +31,7 @@ threads = [Thread(target=mk_cdf, args=(lbl, fn)) for lbl,fn in zip(labels, filen
 for t in threads: t.start()
 for t in threads: t.join()
 
-color = cycle(['r', 'g', 'b', 'c', 'o'])
+color = cycle(['r', 'g', 'b', 'c', 'y', 'k', 'm'])
 
 for lbl in cdfs:
     xs, ys = cdfs[lbl]
@@ -56,4 +56,8 @@ plt.savefig('cdf.png', transparent=transparent_png)
 
 # Zoom in
 plt.xlim([0,150000])
-plt.savefig('cdf_zoomed.png', transparent=transparent_png)
+plt.savefig('cdf_zoomed1.png', transparent=transparent_png)
+plt.xlim([0,100000])
+plt.savefig('cdf_zoomed2.png', transparent=transparent_png)
+plt.xlim([0,10000])
+plt.savefig('cdf_zoomed3.png', transparent=transparent_png)

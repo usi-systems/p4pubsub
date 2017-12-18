@@ -21,11 +21,16 @@ char buf[BUFSIZE];
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-    "Usage: %s [-m MIN_MSG_CNT] [-M MAX_MSG_CNT] [-c PKT_COUNT] [-r ITCH_FILE] [-o OUT_FILENAME]\n\
+    "Usage: %s [-m MIN_MSG_CNT] [-M MAX_MSG_CNT] [-c PKT_COUNT] [-r ITCH_FILE] [-o OPTIONS] [-O OUT_FILENAME]\n\
+\n\
+OPTIONS is a string of chars, which can include:\n\
+    a - only include Add Order messages\n\
 \n\
 ", progname);
     exit(rc);
 }
+
+short only_add_order = 0;
 
 int random_int(int min, int max) {
     if (min == max) return min;
@@ -54,18 +59,28 @@ int make_ao_msg(void *out_buf, int shares, int price) {
 
 int read_next_msg(FILE *fh, void *out_buf) {
 
-    if (!fread(out_buf, sizeof(uint16_t), 1, fh)) {
-        if (feof(fh))
-            return 0;
-        else
+    char *msg_buf = out_buf + sizeof(uint16_t);
+
+    while (1) {
+
+        if (!fread(out_buf, sizeof(uint16_t), 1, fh)) {
+            if (feof(fh)) return 0;
+            else          error("fread()");
+        }
+
+        const uint16_t msg_len = ntohs(*(uint16_t *)(out_buf));
+
+        if (!fread(msg_buf, msg_len, 1, fh))
             error("fread()");
+
+        if (only_add_order) {
+            struct itch50_message *m = (struct itch50_message *)msg_buf;
+            if (m->MessageType != ITCH50_MSG_ADD_ORDER)
+                continue;
+        }
+
+        return msg_len;
     }
-
-    const uint16_t msg_len = ntohs(*(uint16_t *)(out_buf));
-    if (!fread(out_buf + sizeof(uint16_t), msg_len, 1, fh))
-        error("fread()");
-
-    return msg_len;
 }
 
 
@@ -89,12 +104,12 @@ int main(int argc, char *argv[]) {
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "ha:r:o:c:m:M:")) != -1) {
+    while ((opt = getopt(argc, argv, "ho:r:O:c:m:M:")) != -1) {
         switch (opt) {
-            case 'a':
+            case 'o':
                 extra_options = optarg;
                 break;
-            case 'o':
+            case 'O':
                 out_filename = optarg;
                 break;
             case 'r':
@@ -129,6 +144,8 @@ int main(int argc, char *argv[]) {
 
 
     if (extra_options) {
+        if (strchr(extra_options, 'a'))
+            only_add_order = 1;
     }
 
     fd_out = 1;
