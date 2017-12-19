@@ -276,8 +276,6 @@ int handle_pkt(struct rte_mbuf *pkt) {
     short msg_len, msg_count, msg_num;
     struct itch50_message *m;
     struct itch50_msg_add_order *ao;
-    short do_print_msgs = 0;
-    short do_print_ao = 0;
 
     char *udp_payload = (char *) ip_h + sizeof(*ip_h) + sizeof(*udp_h);
     h = (struct omx_moldudp64_header *)udp_payload;
@@ -298,15 +296,9 @@ int handle_pkt(struct rte_mbuf *pkt) {
             ao = (struct itch50_msg_add_order *)m;
             if (matches_filter(ao)) {
                 total_matches++;
-                if (do_print_ao)
-                    print_add_order(ao);
                 if (log_filename)
                     log_add_order(ao);
             }
-        }
-        else {
-            if (do_print_msgs)
-                printf("MessageType: %c\n", m->MessageType);
         }
 
         pkt_offset += msg_len + 2;
@@ -582,7 +574,7 @@ sender(void)
         if (unlikely((total_tx - last_print) >= print_interval_pkts)) {
             last_print = total_tx;
             rte_eth_stats_get(sender_port, &stats);
-            printf("Sent %d\n", total_tx);
+            //printf("Sent %d\n", total_tx);
             printf("opackets: %u, oerrors: %u, q_opackets: %u\n", stats.opackets, stats.oerrors, stats.q_opackets);
         }
     }
