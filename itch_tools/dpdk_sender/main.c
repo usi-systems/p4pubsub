@@ -147,8 +147,13 @@ port_init(uint16_t port)
 	return 0;
 }
 
+uint16_t receiver_port;
+uint16_t sender_port;
+
 int only_receiver = 0;
 int only_sender = 0;
+
+uint64_t expected_matches = 0;
 
 int itch_port = 1234;
 
@@ -161,8 +166,9 @@ unsigned dst_addr = 0x0a000002;
 uint64_t send_timestamp;
 uint64_t recv_timestamp;
 
+unsigned total_tx = 0;
 unsigned total_rx = 0;
-unsigned total_unsent = 0;
+unsigned total_resent = 0;
 unsigned total_matches = 0;
 
 char *log_filename = 0;
@@ -230,8 +236,17 @@ void log_add_order(struct itch50_msg_add_order *ao) {
 }
 
 void cleanup_and_exit() {
+    struct rte_eth_stats stats;
+
+    rte_eth_stats_get(receiver_port, &stats);
+    printf("\ntotal_rx: %u, ipackets: %lu, imissed: %lu, ierrors: %lu, q_errors: %lu, matches: %u\n", total_rx, stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors[0], total_matches);
+
+    rte_eth_stats_get(sender_port, &stats);
+    printf("total_tx: %u, opackets: %lu, oerrors: %lu, q_opackets: %lu, total_resent: %u\n", total_tx, stats.opackets, stats.oerrors, stats.q_opackets[0], total_resent);
+
+    printf("expected_matches: %lu\n", expected_matches);
+
     if (fh_log) {
-        printf("\ntotal_rx: %u, total_matches: %u, total_unsent: %u\n", total_rx, total_matches, total_unsent);
         printf("Flushing timestamp log... ");
         fflush(stdout);
         flush_log();
@@ -259,17 +274,21 @@ int handle_pkt(struct rte_mbuf *pkt) {
     eth_type = rte_be_to_cpu_16(eth_h->ether_type);
     l2_len = sizeof(*eth_h);
     if (eth_type != ETHER_TYPE_IPv4) {
+        assert(0 && "Unexpected ether_type");
         return 0;
     }
     ip_h = (struct ipv4_hdr *) ((char *) eth_h + l2_len);
     if (ip_h->next_proto_id != IPPROTO_UDP) {
+        assert(0 && "Unexpected ip proto");
         return 0;
     }
     udp_h = (struct udp_hdr *) ((char *) ip_h + sizeof(*ip_h));
 
     short dst_port = rte_be_to_cpu_16(udp_h->dst_port);
-    if (dst_port != itch_port)
+    if (dst_port != itch_port) {
+        assert(0 && "Unexpected UDP port");
         return 0;
+    }
 
     struct omx_moldudp64_header *h;
     struct omx_moldudp64_message *mm;
@@ -289,7 +308,7 @@ int handle_pkt(struct rte_mbuf *pkt) {
         m = (struct itch50_message *) (udp_payload + pkt_offset + 2);
 
         int expected_size = itch50_message_size(m->MessageType);
-        if (expected_size != msg_len)
+        if (unlikely(expected_size != msg_len))
             fprintf(stderr, "MessageType %c should have size %d, found %d\n", m->MessageType, expected_size, msg_len);
 
         if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
@@ -299,6 +318,12 @@ int handle_pkt(struct rte_mbuf *pkt) {
                 if (log_filename)
                     log_add_order(ao);
             }
+            else {
+                //assert(0 && "doesn't match filter");
+            }
+        }
+        else {
+            assert(0 && "not an add order");
         }
 
         pkt_offset += msg_len + 2;
@@ -306,10 +331,6 @@ int handle_pkt(struct rte_mbuf *pkt) {
 
     return 0;
 }
-
-uint16_t receiver_port;
-uint16_t sender_port;
-
 
 /*
  * The lcore main. This is the main thread that does the work, reading from
@@ -348,7 +369,7 @@ receiver(void)
             total_rx++;
             if (unlikely(total_rx % print_interval_pkts == 0)) {
                 rte_eth_stats_get(receiver_port, &stats);
-                printf("ipackets: %u, imissed: %u, ierrors: %u, q_errors: %u\n", stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors);
+                printf("total_rx: %u, ipackets: %lu, imissed: %lu, ierrors: %lu, q_errors: %lu, matches: %u\n", total_rx, stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors[0], total_matches);
             }
         }
 
@@ -378,6 +399,12 @@ size_t load_itch_msg(char *payload_buf) {
         mm = (struct omx_moldudp64_message *) (buf + pkt_offset);
         msg_len = rte_be_to_cpu_16(mm->MessageLength);
         pkt_offset += msg_len + 2;
+        struct itch50_message *m = (struct itch50_message *)((char*)mm + 2);
+        if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
+            struct itch50_msg_add_order *ao = (struct itch50_msg_add_order *)m;
+            if (matches_filter(ao))
+                expected_matches++;
+        }
     }
 
     in_buf_cur += pkt_offset;
@@ -407,9 +434,11 @@ size_t make_itch_msg(char *udp_payload) {
         ao = (struct itch50_msg_add_order *) (udp_payload + payload_offset + 2);
         ao->MessageType = ITCH50_MSG_ADD_ORDER;
 
-        char *stock = default_stock;
-        if (rand() <= stock_prob_thresh)
+        const char *stock = default_stock;
+        if (rand() <= stock_prob_thresh) {
+            expected_matches++;
             stock = filter_stock;
+        }
 
         memcpy(ao->Stock, stock, STOCK_SIZE);
 
@@ -481,7 +510,7 @@ void insert_timestamp(struct rte_mbuf *pkt) {
         m = (struct itch50_message *)(udp_payload + offset + 2);
         if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
             ao = (struct itch50_msg_add_order *)m;
-            memcpy(ao->Timestamp, (void*)&send_timestamp + 2, 6);
+            memcpy(ao->Timestamp, (char*)&send_timestamp + 2, 6);
         }
 
         offset += msg_len + 2;
@@ -514,10 +543,7 @@ sender(void)
     uint64_t send_start_ns = ns_since_midnight();
 
     struct rte_eth_stats stats;
-    struct rte_mbuf *pkt;
     struct rte_mbuf *pkts[BURST_SIZE];
-    unsigned i = 0;
-    unsigned total_tx = 0;
     unsigned last_print = 0;
     unsigned nb_unsent = 0;
     unsigned nb_burst;
@@ -562,11 +588,11 @@ sender(void)
         nb_unsent = nb_burst - nb_tx;
 
         if (unlikely(nb_unsent > 0)) {
-            total_unsent += nb_unsent;
             // Shift unsent pkts to the front of the next burst
             uint16_t buf;
             for (buf = nb_tx; buf < nb_burst; buf++)
                 pkts[buf-nb_tx] = pkts[buf];
+            total_resent += nb_unsent;
         }
 
         total_tx += nb_tx;
@@ -575,7 +601,7 @@ sender(void)
             last_print = total_tx;
             rte_eth_stats_get(sender_port, &stats);
             //printf("Sent %d\n", total_tx);
-            printf("opackets: %u, oerrors: %u, q_opackets: %u\n", stats.opackets, stats.oerrors, stats.q_opackets);
+            printf("total_tx: %u, opackets: %lu, oerrors: %lu, q_opackets: %lu, total_resent: %u\n", total_tx, stats.opackets, stats.oerrors, stats.q_opackets[0], total_resent);
         }
     }
 
@@ -612,8 +638,7 @@ static void print_usage(const char *prgname)
 static int parse_args(int argc, char **argv)
 {
     int    rv,
-           opt,
-           optidx;
+           opt;
     char  *prgname = argv[0];
     float prob;
 

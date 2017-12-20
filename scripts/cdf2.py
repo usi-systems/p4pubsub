@@ -33,7 +33,7 @@ for t in threads: t.join()
 
 color = cycle(['r', 'g', 'b', 'c', 'y', 'k', 'm'])
 
-for lbl in cdfs:
+for lbl in labels:
     xs, ys = cdfs[lbl]
     plt.plot(xs, ys, label=lbl, color=next(color), linewidth=3)
 
