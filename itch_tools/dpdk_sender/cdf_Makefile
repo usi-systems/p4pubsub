@@ -1,0 +1,32 @@
+SHELL=/bin/bash
+
+P4PUBSUB_ROOT=$(HOME)/itch/p4pubsub
+ITCH_TOOLS=$(P4PUBSUB_ROOT)/itch_tools
+PLOT_SCRIPTS=$(P4PUBSUB_ROOT)/scripts
+
+TARGET = cdf.png
+
+.PHONY: default all clean
+
+default: $(TARGET)
+all: default
+
+BINS = $(wildcard *.bin)
+TSVS = $(patsubst %.bin, %_lats.tsv, $(BINS))
+
+%_lats.tsv: %.bin
+	tail -c $$((20 * 10 * 1000 * 1000)) $< > $<.tmp && mv $<.tmp  $<
+	#$(ITCH_TOOLS)/parse_log $< | tail -n +1001 | cut -f2 > $@
+	$(ITCH_TOOLS)/parse_log $< | cut -f2 > $@
+
+.PRECIOUS: $(TARGET) $(TSVS)
+
+$(TARGET): $(TSVS)
+#	$(PLOT_SCRIPTS)/cdf2.py unfiltered_lats.tsv unfiltered filtered_lats.tsv filtered
+	$(PLOT_SCRIPTS)/cdf2.py unfiltered_lats.tsv 1Mmps filtered2_lats.tsv 8Mmps filtered_lats.tsv 10Mmps
+#	$(PLOT_SCRIPTS)/cdf2.py burst4_lats.tsv 4 burst8_lats.tsv 8 burst16_lats.tsv 16 burst32_lats.tsv 32
+#	$(PLOT_SCRIPTS)/cdf2.py unfiltered_lats.tsv unfiltered notruncate_lats.tsv notruncate
+
+clean:
+	rm -f *_lats.tsv
+	rm -f $(TARGET)
