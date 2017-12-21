@@ -157,8 +157,8 @@ uint64_t expected_matches = 0;
 
 int itch_port = 1234;
 
+unsigned send_rate_pps = 0;
 int send_cnt = 0;
-int send_sleep = 0;
 int print_interval_pkts = 1 * 1000 * 1000;
 
 const char dst_mac[] = {0x3c, 0xfd, 0xfe, 0xa6, 0x7e, 0x5d};
@@ -173,7 +173,7 @@ unsigned total_matches = 0;
 
 char *log_filename = 0;
 FILE *fh_log = 0;
-int log_buffer_max_entries = 20 * 1000 * 1000;
+int log_buffer_max_entries = 100 * 1000 * 1000;
 int log_entries_count = 0;
 int log_flushed_count = 0;
 struct log_record *log_buffer;
@@ -540,16 +540,34 @@ sender(void)
     // Wait 1 sec for the receiver to be ready
     sleep(1);
 
-    uint64_t send_start_ns = ns_since_midnight();
-
     struct rte_eth_stats stats;
+    rte_eth_stats_get(sender_port, &stats);
+    assert(stats.obytes == 0);
+
+    uint64_t send_start_ns = 0;
+    uint64_t send_start_opackets;
+    uint64_t send_start_obytes;
+
     struct rte_mbuf *pkts[BURST_SIZE];
     unsigned last_print = 0;
     unsigned nb_unsent = 0;
     unsigned nb_burst;
 
-    rte_eth_stats_get(sender_port, &stats);
-    assert(stats.obytes == 0);
+
+#define ENABLE_THROTTLE
+
+#ifdef ENABLE_THROTTLE
+    if (send_rate_pps != 0)
+        printf("Throttling send rate to %upps\n", send_rate_pps);
+#endif
+
+    uint64_t pkts_per_period = 100000;//send_rate_pps / 10;
+    if (pkts_per_period < 1) pkts_per_period = 1;
+    uint64_t period_duration = pkts_per_period / (send_rate_pps / 1e9);
+    double time_scale_ns = 1e9 / rte_get_tsc_hz();
+    unsigned period_tx = 0;
+    uint64_t period_start = 0;
+    period_start = rte_rdtsc() * time_scale_ns;
 
     while (likely(total_tx < send_cnt || !send_cnt)) {
 
@@ -566,14 +584,14 @@ sender(void)
         }
 
         // Create the timestamp for all the pkts in the burst
-        double time_scale_ns = 1e9 / rte_get_tsc_hz();
+        time_scale_ns = 1e9 / rte_get_tsc_hz();
         send_timestamp = rte_rdtsc() * time_scale_ns;
         send_timestamp = htonll(send_timestamp);
         for (uint16_t buf = 0; buf < nb_burst; buf++)
             insert_timestamp(pkts[buf]);
 
 
-        if (nb_burst == 0)
+        if (unlikely(nb_burst == 0))
             break;
 
         if (unlikely(nb_burst < MIN_BURST_SIZE))
@@ -581,9 +599,6 @@ sender(void)
             break;
 
         const uint16_t nb_tx = rte_eth_tx_burst(sender_port, 0, pkts, nb_burst);
-        if (send_sleep > 0) {
-            usleep(send_sleep);
-        }
 
         nb_unsent = nb_burst - nb_tx;
 
@@ -598,19 +613,35 @@ sender(void)
         total_tx += nb_tx;
 
         if (unlikely((total_tx - last_print) >= print_interval_pkts)) {
+            if (total_tx > 20 * 1000 * 1000 && send_start_ns == 0) {
+                send_start_opackets = stats.opackets;
+                send_start_obytes = stats.obytes;
+                send_start_ns = ns_since_midnight();
+            }
             last_print = total_tx;
             rte_eth_stats_get(sender_port, &stats);
-            //printf("Sent %d\n", total_tx);
             printf("total_tx: %u, opackets: %lu, oerrors: %lu, q_opackets: %lu, total_resent: %u\n", total_tx, stats.opackets, stats.oerrors, stats.q_opackets[0], total_resent);
         }
+
+#ifdef ENABLE_THROTTLE
+        period_tx += nb_tx;
+        if (unlikely(period_tx >= pkts_per_period && send_rate_pps != 0)) {
+            uint64_t now;
+            do {
+                now = rte_rdtsc() * time_scale_ns;
+            } while (now - period_start < period_duration);
+            period_tx = 0;
+            period_start = rte_rdtsc() * time_scale_ns;
+        }
+#endif
     }
 
     float elapsed_s = (ns_since_midnight() - send_start_ns) / 1e9;
     rte_eth_stats_get(sender_port, &stats);
-    float send_rate_mbps = (stats.obytes * (1.0 / (1024 * 1024))) / elapsed_s;
-    float send_rate_pps = stats.opackets / elapsed_s;
+    float sent_rate_mbps = ((stats.obytes - send_start_obytes) * (1.0 / (1024 * 1024))) / elapsed_s;
+    float sent_rate_pps = (stats.opackets - send_start_opackets) / elapsed_s;
 
-    printf("Sender exiting. Average rate: %.2f pps (%.2f MB/s)\n", send_rate_pps, send_rate_mbps);
+    printf("Sender exiting. Average rate: %.2f pps (%.2f MB/s)\n", sent_rate_pps, sent_rate_mbps);
 }
 
 /*
@@ -622,7 +653,7 @@ static void print_usage(const char *prgname)
             "%s [EAL options] --"
             " [-R]          receiver only"
             " [-S]          sender only"
-            " [-s us]       sleep before sending"
+            " [-r pps]      limit send rate"
             " [-c int]      send count"
             " [-f file]     raw stream of ITCH messages to send"
             " [-p float]    probability (0.0->1.0) of sending specified stock symbol (default: 1.0)"
@@ -651,7 +682,7 @@ static int parse_args(int argc, char **argv)
     else
         strcpy(filter_stock, "GOOGL   ");
 
-    while ((opt = getopt(argc, argv, "hc:f:l:s:p:P:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:f:l:r:p:P:")) != -1) {
         switch (opt) {
         case 'h':
             print_usage(prgname);
@@ -665,8 +696,8 @@ static int parse_args(int argc, char **argv)
         case 'l':
             log_filename = optarg;
             break;
-        case 's':
-            send_sleep = atoi(optarg);
+        case 'r':
+            send_rate_pps = atoi(optarg);
             break;
         case 'p':
             prob = atof(optarg);
