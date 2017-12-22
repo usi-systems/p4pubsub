@@ -68,6 +68,11 @@ which you can then send to the network with:
 
     ./send_mold_messages -v 3 -r out.bin 127.0.0.1:10001
 
+To create a stream of add orders, specifying the probability of each stock
+symbol (1% GOOGL and 99% AAPL):
+
+    ./mold_feed.py -c 1 -m 1 -s GOOGL,AAPL -S 0.01,0.99 > out.bin
+
 
 ## Sending MoldUDP64 messages
 The `./send_mold_messages` tool sends MoldUDP64 messages to the network.

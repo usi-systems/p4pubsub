@@ -38,7 +38,7 @@ if __name__ == '__main__':
     parser.add_argument('--stocks', '-s', help='Stock symbols to put in messages',
             type=lambda s: map(fmtStock, s.split(',')), default=None)
     parser.add_argument('--stock-dist', '-S', help='Distribution of stock symbols',
-            type=str, choices=['uniform', 'zipf', 'ordered'], default='ordered')
+            type=str, default='ordered')
     parser.add_argument('--msg-types', '-t', help='MessageTypes to generate. E.g. A,L,Y',
             type=lambda s: s.split(','), default=['A'])
     parser.add_argument('--msg-types-dist', '-T', help='Distribution of MessageTypes',
@@ -65,8 +65,13 @@ if __name__ == '__main__':
             stock_dist = Zipf(values=args.stocks)
         elif args.stock_dist == 'ordered':
             stock_dist = OrderedDist(args.stocks)
-        else:
+        elif args.stock_dist == 'uniform':
             stock_dist = Distribution(dict((s, 1) for s in args.stocks))
+        else:
+            probs = map(float, args.stock_dist.split(','))
+            assert sum(probs) == 1
+            assert len(probs) == len(args.stocks)
+            stock_dist = Distribution(dict(zip(args.stocks, probs)))
 
     msg_constructors = map(MessageForType, args.msg_types)
     if len(msg_constructors) == 0:
