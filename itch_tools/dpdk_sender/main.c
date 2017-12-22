@@ -161,6 +161,11 @@ unsigned send_rate_pps = 0;
 int send_cnt = 0;
 int print_interval_pkts = 1 * 1000 * 1000;
 
+uint64_t send_start_ns = 0;
+uint64_t send_start_opackets;
+uint64_t send_start_obytes;
+
+
 const char dst_mac[] = {0x3c, 0xfd, 0xfe, 0xa6, 0x7e, 0x5d};
 unsigned dst_addr = 0x0a000002;
 uint64_t send_timestamp;
@@ -239,11 +244,16 @@ void cleanup_and_exit() {
     struct rte_eth_stats stats;
 
     rte_eth_stats_get(receiver_port, &stats);
-    printf("\ntotal_rx: %u, ipackets: %lu, imissed: %lu, ierrors: %lu, q_errors: %lu, matches: %u\n", total_rx, stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors[0], total_matches);
+    printf("total_rx: %u, ipackets: %lu, imissed: %lu, ierrors: %lu, q_errors: %lu, matches: %u\n", total_rx, stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors[0], total_matches);
 
     rte_eth_stats_get(sender_port, &stats);
-    printf("total_tx: %u, opackets: %lu, oerrors: %lu, q_opackets: %lu, total_resent: %u\n", total_tx, stats.opackets, stats.oerrors, stats.q_opackets[0], total_resent);
 
+    float elapsed_s = (ns_since_midnight() - send_start_ns) / 1e9;
+    float avg_mbps = ((stats.obytes - send_start_obytes) * (1.0 / (1024 * 1024))) / elapsed_s;
+    float avg_pps = (stats.opackets - send_start_opackets) / elapsed_s;
+
+    printf("\nAverage TX rate: %.2f pps (%.2f MB/s)\n", avg_pps, avg_mbps);
+    printf("total_tx: %u, opackets: %lu, oerrors: %lu, q_opackets: %lu, total_resent: %u\n", total_tx, stats.opackets, stats.oerrors, stats.q_opackets[0], total_resent);
     printf("expected_matches: %lu\n", expected_matches);
 
     if (fh_log) {
@@ -544,10 +554,6 @@ sender(void)
     rte_eth_stats_get(sender_port, &stats);
     assert(stats.obytes == 0);
 
-    uint64_t send_start_ns = 0;
-    uint64_t send_start_opackets;
-    uint64_t send_start_obytes;
-
     struct rte_mbuf *pkts[BURST_SIZE];
     unsigned last_print = 0;
     unsigned nb_unsent = 0;
@@ -613,13 +619,13 @@ sender(void)
         total_tx += nb_tx;
 
         if (unlikely((total_tx - last_print) >= print_interval_pkts)) {
+            last_print = total_tx;
+            rte_eth_stats_get(sender_port, &stats);
             if (total_tx > 20 * 1000 * 1000 && send_start_ns == 0) {
                 send_start_opackets = stats.opackets;
                 send_start_obytes = stats.obytes;
                 send_start_ns = ns_since_midnight();
             }
-            last_print = total_tx;
-            rte_eth_stats_get(sender_port, &stats);
             printf("total_tx: %u, opackets: %lu, oerrors: %lu, q_opackets: %lu, total_resent: %u\n", total_tx, stats.opackets, stats.oerrors, stats.q_opackets[0], total_resent);
         }
 
@@ -635,13 +641,6 @@ sender(void)
         }
 #endif
     }
-
-    float elapsed_s = (ns_since_midnight() - send_start_ns) / 1e9;
-    rte_eth_stats_get(sender_port, &stats);
-    float sent_rate_mbps = ((stats.obytes - send_start_obytes) * (1.0 / (1024 * 1024))) / elapsed_s;
-    float sent_rate_pps = (stats.opackets - send_start_opackets) / elapsed_s;
-
-    printf("Sender exiting. Average rate: %.2f pps (%.2f MB/s)\n", sent_rate_pps, sent_rate_mbps);
 }
 
 /*

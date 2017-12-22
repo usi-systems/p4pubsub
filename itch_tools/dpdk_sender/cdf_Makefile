@@ -22,8 +22,8 @@ TSVS = $(patsubst %.bin, %_lats.tsv, $(BINS))
 .PRECIOUS: $(TARGET) $(TSVS)
 
 $(TARGET): $(TSVS)
-#	$(PLOT_SCRIPTS)/cdf2.py unfiltered_lats.tsv unfiltered filtered_lats.tsv filtered
-	$(PLOT_SCRIPTS)/cdf2.py unfiltered_lats.tsv 1Mmps filtered2_lats.tsv 8Mmps filtered_lats.tsv 10Mmps
+	$(PLOT_SCRIPTS)/cdf2.py unfiltered_lats.tsv unfiltered filtered_lats.tsv filtered
+#	$(PLOT_SCRIPTS)/cdf2.py unfiltered_lats.tsv 1Mmps filtered2_lats.tsv 8Mmps filtered_lats.tsv 10Mmps
 #	$(PLOT_SCRIPTS)/cdf2.py burst4_lats.tsv 4 burst8_lats.tsv 8 burst16_lats.tsv 16 burst32_lats.tsv 32
 #	$(PLOT_SCRIPTS)/cdf2.py unfiltered_lats.tsv unfiltered notruncate_lats.tsv notruncate
 
