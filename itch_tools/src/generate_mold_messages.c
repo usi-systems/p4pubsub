@@ -21,7 +21,9 @@ char buf[BUFSIZE];
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-    "Usage: %s [-m MIN_MSG_CNT] [-M MAX_MSG_CNT] [-c PKT_COUNT] [-r ITCH_FILE] [-o OPTIONS] [-O OUT_FILENAME]\n\
+    "Usage: %s [-m MIN_MSG_CNT] [-M MAX_MSG_CNT] [-c PKT_COUNT] [-r ITCH_FILE] [-o OPTIONS] [-p PROB] [-O OUT_FILENAME]\n\
+\n\
+    -p float        Probability of sending filtered stock.\n\
 \n\
 OPTIONS is a string of chars, which can include:\n\
     a - only include Add Order messages\n\
@@ -37,7 +39,11 @@ int random_int(int min, int max) {
     return min + rand() % (max+1 - min);
 }
 
-char *stocks[] = {"ABC     ", "XYZ     ", "1234    "};
+#define STOCK_SIZE 8
+
+char filter_stock[STOCK_SIZE + 1];
+const char *default_stock = "ABC     ";
+unsigned stock_prob_thresh = RAND_MAX;
 
 int make_ao_msg(void *out_buf, int shares, int price) {
     struct omx_moldudp64_message *mm;
@@ -53,7 +59,12 @@ int make_ao_msg(void *out_buf, int shares, int price) {
     ao->BuySellIndicator = 'S';
     ao->Price = htonl(price);
     ao->Shares = htonl(shares);
-    memcpy(ao->Stock, stocks[0], 8);
+
+    const char *stock = default_stock;
+    if (rand() <= stock_prob_thresh)
+        stock = filter_stock;
+
+    memcpy(ao->Stock, stock, STOCK_SIZE);
     return msg_len;
 }
 
@@ -101,19 +112,21 @@ int main(int argc, char *argv[]) {
     int msg_count;
     int msg_num;
     int msg_len;
+    float prob;
+
+    char *stock_env = getenv("ITCH_STOCK");
+    if (stock_env != NULL)
+        strcpy(filter_stock, stock_env);
+    else
+        strcpy(filter_stock, "GOOGL   ");
+
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "ho:r:O:c:m:M:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:m:M:o:O:p:r:")) != -1) {
         switch (opt) {
-            case 'o':
-                extra_options = optarg;
-                break;
-            case 'O':
-                out_filename = optarg;
-                break;
-            case 'r':
-                in_filename = optarg;
+            case 'c':
+                pkt_count = atoi(optarg);
                 break;
             case 'm':
                 min_msgs = atoi(optarg);
@@ -121,8 +134,19 @@ int main(int argc, char *argv[]) {
             case 'M':
                 max_msgs = atoi(optarg);
                 break;
-            case 'c':
-                pkt_count = atoi(optarg);
+            case 'o':
+                extra_options = optarg;
+                break;
+            case 'O':
+                out_filename = optarg;
+                break;
+            case 'p':
+                prob = atof(optarg);
+                assert(0.0 <= prob && prob <= 1.0);
+                stock_prob_thresh = prob * RAND_MAX;
+                break;
+            case 'r':
+                in_filename = optarg;
                 break;
             case 'h':
                 usage(0);
