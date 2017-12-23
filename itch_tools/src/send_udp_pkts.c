@@ -1,3 +1,5 @@
+#include "common.c"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,14 +11,12 @@
 #include <unistd.h>
 #include <libgen.h>
 
-#include "common.c"
-
 #define BUFSIZE 2048
 
 char *progname;
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-c COUNT] DST_HOST DST_PORT\n\
+            "Usage: %s [-c COUNT] [-s SIZE] DST_HOST DST_PORT\n\
 \n\
 ", progname);
     exit(rc);
@@ -25,14 +25,17 @@ void usage(int rc) {
 int main(int argc, char *argv[]) {
     int opt, i, sock_fd;
     struct sockaddr_in sock_addr;
-    char buf[1024];
+    unsigned short buf_size = 1024;
     int count = 8;
 
     progname = basename(argv[0]);
-    while ((opt = getopt(argc, argv, "hc:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:s:")) != -1) {
         switch (opt) {
             case 'c':
                 count = atoi(optarg);
+                break;
+            case 's':
+                buf_size = atoi(optarg);
                 break;
             case 'h':
                 usage(0);
@@ -40,6 +43,9 @@ int main(int argc, char *argv[]) {
                 usage(-1);
         }
     }
+
+    char buf[buf_size];
+    bzero(buf, buf_size);
 
 	if (argc - optind != 2) {
 		usage(-1);
@@ -61,7 +67,7 @@ int main(int argc, char *argv[]) {
 
     for (i = 0; i < count; i++) {
         sprintf(buf, "%d\n", i);
-        sendto(sock_fd, buf, strlen(buf)+1, 0, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
+        sendto(sock_fd, buf, buf_size, 0, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
 	}
 
     close(sock_fd);
