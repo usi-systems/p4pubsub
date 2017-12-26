@@ -162,6 +162,7 @@ int send_cnt = 0;
 int print_interval_pkts = 1 * 1000 * 1000;
 
 uint64_t send_start_ns = 0;
+uint64_t send_end_ns = 0;
 uint64_t send_start_opackets;
 uint64_t send_start_obytes;
 
@@ -248,7 +249,9 @@ void cleanup_and_exit() {
 
     rte_eth_stats_get(sender_port, &stats);
 
-    float elapsed_s = (ns_since_midnight() - send_start_ns) / 1e9;
+    if (send_end_ns == 0)
+        send_end_ns = ns_since_midnight();
+    float elapsed_s = (send_end_ns - send_start_ns) / 1e9;
     float avg_mbps = ((stats.obytes - send_start_obytes) * (1.0 / (1024 * 1024))) / elapsed_s;
     float avg_pps = (stats.opackets - send_start_opackets) / elapsed_s;
 
@@ -641,6 +644,9 @@ sender(void)
         }
 #endif
     }
+
+    send_end_ns = ns_since_midnight();
+    printf("Done.\n");
 }
 
 /*
