@@ -58,6 +58,8 @@
 // Smallest burst size supported by this NIC:
 #define MIN_BURST_SIZE 4
 
+#define WRAP_LOG
+
 static const struct rte_eth_conf port_conf_default = {
     .link_speeds = ETH_LINK_SPEED_25G,
     .rxmode = {
@@ -225,6 +227,8 @@ int matches_filter(struct itch50_msg_add_order *ao) {
 
 void flush_log() {
     size_t outstanding = log_entries_count - log_flushed_count;
+    if (outstanding > log_buffer_max_entries) // this can happen with WRAP_LOG
+        outstanding = log_buffer_max_entries;
     fwrite(log_buffer, outstanding*sizeof(struct log_record), 1, fh_log);
     log_flushed_count += outstanding;
 }
@@ -237,15 +241,18 @@ void log_add_order(struct itch50_msg_add_order *ao) {
     memcpy(rec->received_ns_since_midnight, &recv_timestamp, 6);
     memcpy(rec->stock, ao->Stock, 8);
     log_entries_count++;
-    if (log_entries_count % log_buffer_max_entries == 0)
+
+#ifndef WRAP_LOG
+    if (unlikely(log_entries_count % log_buffer_max_entries == 0))
         flush_log();
+#endif // ifdef WRAP_LOG
 }
 
 void cleanup_and_exit() {
     struct rte_eth_stats stats;
 
     rte_eth_stats_get(receiver_port, &stats);
-    printf("total_rx: %u, ipackets: %lu, imissed: %lu, ierrors: %lu, q_errors: %lu, matches: %u\n", total_rx, stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors[0], total_matches);
+    printf("\ntotal_rx: %u, ipackets: %lu, imissed: %lu, ierrors: %lu, q_errors: %lu, matches: %u\n", total_rx, stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors[0], total_matches);
 
     rte_eth_stats_get(sender_port, &stats);
 
