@@ -5,8 +5,7 @@ shift
 
 for i in $(seq $iterations)
 do
-    $BASEDIR/ssbg_camus2.py --zipf --attr-space-size $1 --filters $2 --disj-size $3 --conj-size $4 > queries_"$i".txt
-    $BASEDIR/main.native queries_"$i".txt > tables_"$i".dot
-    $BASEDIR/print_runtime_stats.py tables_"$i".dot > stats_"$i".txt
-    rm tables_"$i".dot
+    $BASEDIR/ssbg_camus.py --zipf --attr-space-size $1 --filters $2 --disj-size $3 --conj-size $4 > queries_"$i".txt
+    $BASEDIR/../main.native -o . queries_"$i".txt > /dev/null
+    $BASEDIR/print_runtime_stats.py generated_commands.txt > stats_"$i".txt
 done

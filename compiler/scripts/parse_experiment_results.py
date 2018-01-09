@@ -21,6 +21,8 @@ def parseRepeatStats(filename):
     stats = {}
     with open(filename, 'r') as f:
         for line in f:
+            if line.strip() == "": continue
+            if line[0] in ['[', '\t']: continue
             param, val = line.split(':', 2)
             stats[param.strip()] = float(val)
     return stats

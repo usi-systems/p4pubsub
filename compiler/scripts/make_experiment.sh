@@ -16,9 +16,9 @@ mkdir -p $TORUN_DIR
 
 num_queries=1
 disj_size=1
-for num_vars in 13 14 15 16 17 18 #$(seq 2 10)
+for num_vars in 8 #13 14 15 16 17 18 #$(seq 2 10)
 do
-    for conj_size in 4
+    for conj_size in 2 3 4 5 6 7 8 
     do
         for num_queries in 32
         do
