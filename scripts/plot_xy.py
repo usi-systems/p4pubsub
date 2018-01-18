@@ -10,25 +10,24 @@ if not havedisplay:
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
+import itertools
 
 filenames = sys.argv[1:]
 
-matplotlib.rcParams['ps.useafm'] = True
-matplotlib.rcParams['pdf.use14corefonts'] = True
-matplotlib.rcParams['text.usetex'] = True
+#matplotlib.rcParams['ps.useafm'] = True
+#matplotlib.rcParams['pdf.use14corefonts'] = True
+#matplotlib.rcParams['text.usetex'] = True
 #plt.rc('font',family='Times New Roman')
-#plt.style.use('ggplot')
+plt.style.use('ggplot')
 #matplotlib.rcParams.update({'font.size': 16})
 #matplotlib.rcParams.update({'font.weight': 'bold'})
 #matplotlib.rcParams.update({'axes.labelweight': 'bold'})
 matplotlib.rcParams.update({'text.color': 'black'})
 
-colors = ['r', 'g', 'b', 'c', 'k', 'm', 'y']
-color_idx = -1
-def nextColor():
-    global color_idx
-    color_idx = (color_idx + 1) % len(colors)
-    return colors[color_idx]
+markers = itertools.cycle(('o', '^', 'D', 's', '+', 'x', '*' ))
+linestyles = itertools.cycle(("-","-.","--",":"))
+colors = itertools.cycle(('r', 'g', 'b', 'c', 'm', 'y', 'k'))
+hatches = itertools.cycle(('x', '/', 'o', '\\', '*', 'o', 'O', '.'))
 
 formatLabel = lambda l: l.replace('_', '\\_') if matplotlib.rcParams['text.usetex'] else l
 
@@ -51,7 +50,9 @@ for i,filename in enumerate(filenames):
 
     data = np.loadtxt(filename, unpack=True)
 
-    h, = ax.plot(data[0], data[1], color=nextColor(), marker=None, label=filename)
+    h, = ax.plot(data[0], data[1], color=colors.next(),
+            marker=None, linestyle=linestyles.next(),
+            label=filename, linewidth=2)
     handles.append(h)
 
 
