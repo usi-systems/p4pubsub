@@ -15,13 +15,11 @@ states = set()
 
 with (sys.stdin if filename == '-' else open(filename, 'r')) as fd:
     for line in fd:
-        if not line.startswith("table_add tbl_"): continue
+        if not line.startswith("table_add "): continue
 
-        state = int(line.split('=>')[1].split()[0])
         full_tbl_name = line.split(' ', 2)[1]
 
         total_entries += 1
-        states.add(state)
         is_miss, is_range, is_exact = False, False, False
 
         if full_tbl_name.endswith('_miss'):
@@ -34,6 +32,11 @@ with (sys.stdin if filename == '-' else open(filename, 'r')) as fd:
             is_range = True
             tbl_name = full_tbl_name[:-6]
             range_match = line.split()[4]
+        else:
+            continue
+
+        state = int(line.split('=>')[1].split()[0])
+        states.add(state)
 
         if tbl_name not in tables:
             tables[tbl_name] = dict(exact=0,
