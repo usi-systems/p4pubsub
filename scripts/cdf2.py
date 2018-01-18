@@ -13,7 +13,8 @@ import matplotlib.ticker as ticker
 from threading import Thread
 from itertools import cycle
 
-plt.style.use('ggplot')
+#plt.style.use('ggplot')
+matplotlib.rcParams.update({'text.color': 'black'})
 
 filenames = sys.argv[1::2]
 labels = sys.argv[2::2]
@@ -32,10 +33,17 @@ for t in threads: t.start()
 for t in threads: t.join()
 
 color = cycle(['r', 'g', 'b', 'c', 'y', 'k', 'm'])
+#linestyles = cycle(("-","-.","--",":"))
+linestyles = cycle(("-"))
+
 
 for lbl in labels:
     xs, ys = cdfs[lbl]
-    plt.plot(xs, ys, label=lbl, color=next(color), linewidth=3)
+    plt.plot(xs, ys, label=lbl, linestyle=next(linestyles), color=next(color), linewidth=3)
+
+
+# Display grid
+plt.axes().grid()
 
 # change unit of x axis
 scale_x = 1000
@@ -43,8 +51,7 @@ ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x/scale_x))
 plt.axes().get_xaxis().set_major_formatter(ticks_x)
 
 plt.xlabel('Latency (us)')
-#plt.xlabel('Inter-Arrival Time (us)')
-plt.ylabel('CDF (%)')
+plt.ylabel('CDF')
 plt.tight_layout()
 
 #plt.legend(loc='upper left')
@@ -55,9 +62,21 @@ plt.show()
 plt.savefig('cdf.png', transparent=transparent_png)
 
 # Zoom in
-plt.xlim([0,150000])
+plt.xlim([0,500000])
+plt.savefig('cdf_zoomed0.png', transparent=transparent_png)
+plt.xlim([0,300000])
+plt.savefig('cdf_zoomed1.pdf')
 plt.savefig('cdf_zoomed1.png', transparent=transparent_png)
-plt.xlim([0,100000])
+plt.xlim([0,400000])
+plt.savefig('cdf_zoomed2.pdf')
+plt.xlim([0,150000])
 plt.savefig('cdf_zoomed2.png', transparent=transparent_png)
-plt.xlim([0,10000])
+plt.xlim([0,100000])
+plt.savefig('cdf_zoomed3.pdf')
 plt.savefig('cdf_zoomed3.png', transparent=transparent_png)
+plt.xlim([0,10000])
+plt.savefig('cdf_zoomed4.png', transparent=transparent_png)
+plt.xlim([0,700000])
+plt.ylim([0.8,1.0])
+plt.savefig('cdf_zoomed5.pdf')
+plt.savefig('cdf_zoomed5.png', transparent=transparent_png)
