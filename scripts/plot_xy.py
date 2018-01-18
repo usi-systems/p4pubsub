@@ -9,6 +9,7 @@ havedisplay = "DISPLAY" in os.environ
 if not havedisplay:
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import itertools
 
@@ -18,14 +19,15 @@ filenames = sys.argv[1:]
 #matplotlib.rcParams['pdf.use14corefonts'] = True
 #matplotlib.rcParams['text.usetex'] = True
 #plt.rc('font',family='Times New Roman')
-plt.style.use('ggplot')
-#matplotlib.rcParams.update({'font.size': 16})
-#matplotlib.rcParams.update({'font.weight': 'bold'})
-#matplotlib.rcParams.update({'axes.labelweight': 'bold'})
+#plt.style.use('ggplot')
+matplotlib.rcParams.update({'font.size': 16})
+matplotlib.rcParams.update({'font.weight': 'bold'})
+matplotlib.rcParams.update({'axes.labelweight': 'bold'})
 matplotlib.rcParams.update({'text.color': 'black'})
 
 markers = itertools.cycle(('o', '^', 'D', 's', '+', 'x', '*' ))
-linestyles = itertools.cycle(("-","-.","--",":"))
+#linestyles = itertools.cycle(("-","-.","--",":"))
+linestyles = itertools.cycle(("-"))
 colors = itertools.cycle(('r', 'g', 'b', 'c', 'm', 'y', 'k'))
 hatches = itertools.cycle(('x', '/', 'o', '\\', '*', 'o', 'O', '.'))
 
@@ -37,13 +39,7 @@ labels = ["Baseline", "Switch-Based Mitigation"]
 
 fig, ax = plt.subplots()
 
-xlabel = "Time (ms)"
-ylabel = "Throughput (pps)"
-
-ax.set_xlabel(formatLabel(xlabel))
-ax.set_ylabel(formatLabel(ylabel))
-ax.set_xlim([0, 600])
-ax.set_ylim([0, 360000])
+ax.grid()
 
 for i,filename in enumerate(filenames):
     #if i != 0: ax = ax.twinx() # For different y scales
@@ -56,7 +52,22 @@ for i,filename in enumerate(filenames):
     handles.append(h)
 
 
-plt.legend(handles, labels, loc='upper left')
+leg = plt.legend(handles, labels, loc='lower right')
+#leg.get_frame().set_alpha(0.0)
+#leg.get_frame().set_linewidth(0.0)
 
+xlabel = "Time (ms)"
+ylabel = "Throughput (Kpps)"
+
+ax.set_xlabel(formatLabel(xlabel))
+ax.set_ylabel(formatLabel(ylabel))
+ax.set_xlim([0, 600])
+ax.set_ylim([0, 360000])
+
+scale = 1/1000.
+ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
+ax.yaxis.set_major_formatter(ticks)
+
+plt.tight_layout()
 plt.savefig('out.pdf')
 plt.show()

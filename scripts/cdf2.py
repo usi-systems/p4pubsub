@@ -14,7 +14,11 @@ from threading import Thread
 from itertools import cycle
 
 #plt.style.use('ggplot')
+matplotlib.rcParams.update({'font.size': 16})
+matplotlib.rcParams.update({'font.weight': 'bold'})
+matplotlib.rcParams.update({'axes.labelweight': 'bold'})
 matplotlib.rcParams.update({'text.color': 'black'})
+
 
 filenames = sys.argv[1::2]
 labels = sys.argv[2::2]
@@ -54,8 +58,9 @@ plt.xlabel('Latency (us)')
 plt.ylabel('CDF')
 plt.tight_layout()
 
-#plt.legend(loc='upper left')
-plt.legend(loc='lower right')
+leg = plt.legend(loc='lower right')
+#leg.get_frame().set_alpha(0.0)
+#leg.get_frame().set_linewidth(0.0)
 
 transparent_png = False
 plt.show()
