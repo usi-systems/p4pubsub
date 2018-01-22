@@ -13,13 +13,13 @@ import argparse
 import itertools
 import math
 
-matplotlib.rcParams['ps.useafm'] = True
-matplotlib.rcParams['pdf.use14corefonts'] = True
+#matplotlib.rcParams['ps.useafm'] = True
+#matplotlib.rcParams['pdf.use14corefonts'] = True
 #plt.rc('font',family='Times New Roman')
 
 def formatLabel(l):
     if matplotlib.rcParams['text.usetex']:
-        return l.replace('_', '\\_')
+        return l.replace('_', '\\_').replace('%', '\\%')
     return l
 
 #plt.style.use('ggplot')
@@ -102,6 +102,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
         label_name = lbl
         if conf and 'labels' in conf:
             if lbl in conf['labels']: label_name = conf['labels'][lbl]
+        label_name = formatLabel(label_name)
         label_names.append(label_name)
 
         plot_handles.append(rects)
@@ -192,6 +193,8 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
         if conf and 'labels' in conf:
             if label in conf['labels']: label_name = conf['labels'][label]
 
+        label_name = formatLabel(label_name)
+
         (_, caps, _) = ax.errorbar(x, y, label=label_name, linewidth=linewidth, markersize=markersize,
                 elinewidth=1, yerr=yerr if show_error else None,
                 color=label_style_hist[label]['color'],
@@ -277,9 +280,6 @@ if __name__ == '__main__':
             action='store_true', default=False)
     args = parser.parse_args()
 
-    if args.format == 'pdf':
-        matplotlib.rcParams['text.usetex'] = True
-
     if args.filename == '-':
         title = '-'
         file_in = sys.stdin
@@ -293,14 +293,24 @@ if __name__ == '__main__':
 
     if args.title is not None: title = args.title if args.title else None
 
+    conf = load_conf(args.conf) if args.conf else {}
+
+    if args.format == 'pdf':
+        matplotlib.rcParams['text.usetex'] = True
+
+    if 'style' in conf and 'usetex' in conf['style']:
+        print conf
+        matplotlib.rcParams['text.usetex'] = conf['style']['usetex']
+        print matplotlib.rcParams['text.usetex']
+
     if args.bar:
         fig = plot_bar(data, title=title,
-            conf = load_conf(args.conf) if args.conf else None,
+            conf=conf,
             show_error=not args.no_error,
             ylabel=args.ylabel)
     else:
         fig = plot_lines(data, title=title,
-            conf = load_conf(args.conf) if args.conf else None,
+            conf=conf,
             linewidth=args.linewidth,
             show_error=not args.no_error,
             xlim=args.xlim, ylim=args.ylim, xtick=args.xtick,
