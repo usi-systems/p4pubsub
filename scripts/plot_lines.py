@@ -299,9 +299,7 @@ if __name__ == '__main__':
         matplotlib.rcParams['text.usetex'] = True
 
     if 'style' in conf and 'usetex' in conf['style']:
-        print conf
         matplotlib.rcParams['text.usetex'] = conf['style']['usetex']
-        print matplotlib.rcParams['text.usetex']
 
     if args.bar:
         fig = plot_bar(data, title=title,
