@@ -28,6 +28,7 @@ cdfs = {}
 
 def mk_cdf(label, filename):
     data = np.loadtxt(filename)
+    data = [x / 1000 for x in data] # change unit of x axis
     sorted_data = np.sort(data)
     yvals=np.arange(len(sorted_data))/float(len(sorted_data)-1)
     cdfs[label] = (sorted_data, yvals)
@@ -49,9 +50,9 @@ for lbl in labels:
 # Display grid
 plt.axes().grid()
 
-# change unit of x axis
-scale_x = 1000
-ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x/scale_x))
+plt.axes().set_xscale("log", nonposx='clip')
+
+ticks_x = ticker.FuncFormatter(lambda x, pos: '%g'%x if x<1e3 else '{0:1.0e}'.format(x).replace('+0', ''))
 plt.axes().get_xaxis().set_major_formatter(ticks_x)
 
 plt.xlabel('Latency (us)')
@@ -63,25 +64,27 @@ leg = plt.legend(loc='lower right')
 #leg.get_frame().set_linewidth(0.0)
 
 transparent_png = False
-plt.show()
+plt.savefig('cdf.pdf')
 plt.savefig('cdf.png', transparent=transparent_png)
 
+plt.show()
+
 # Zoom in
-plt.xlim([0,500000])
+plt.xlim([0,500])
 plt.savefig('cdf_zoomed0.png', transparent=transparent_png)
-plt.xlim([0,300000])
+plt.xlim([0,300])
 plt.savefig('cdf_zoomed1.pdf')
 plt.savefig('cdf_zoomed1.png', transparent=transparent_png)
-plt.xlim([0,400000])
+plt.xlim([0,400])
 plt.savefig('cdf_zoomed2.pdf')
-plt.xlim([0,150000])
+plt.xlim([0,150])
 plt.savefig('cdf_zoomed2.png', transparent=transparent_png)
-plt.xlim([0,100000])
+plt.xlim([0,100])
 plt.savefig('cdf_zoomed3.pdf')
 plt.savefig('cdf_zoomed3.png', transparent=transparent_png)
-plt.xlim([0,10000])
+plt.xlim([0,10])
 plt.savefig('cdf_zoomed4.png', transparent=transparent_png)
-plt.xlim([0,700000])
+plt.xlim([0,600])
 plt.ylim([0.8,1.0])
 plt.savefig('cdf_zoomed5.pdf')
 plt.savefig('cdf_zoomed5.png', transparent=transparent_png)
