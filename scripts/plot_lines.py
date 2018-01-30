@@ -144,7 +144,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     fig.tight_layout()
     return fig
 
-def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None, yscale='linear',
+def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None, xscale='linear', yscale='linear',
         title=None, label_order=None, show_error=True, conf=None, linewidth=2, markersize=2):
     """Plots a 2D array with the format: [[label, x, y, y-dev]]
     """
@@ -224,7 +224,14 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
         ax.grid()
     #if _should_use_log(all_x):
     #    ax.set_xscale('symlog', linthreshx=1)
-    if yscale: ax.set_yscale(yscale)
+    if not xscale and conf and 'style' in conf and 'xscale' in conf['style']:
+        xscale = conf['style']['xscale']
+    if xscale: ax.set_xscale(xscale, nonposx='clip')
+
+    if not yscale and conf and 'style' in conf and 'yscale' in conf['style']:
+        yscale = conf['style']['yscale']
+    if yscale: ax.set_yscale(yscale, nonposx='clip')
+
     ax.margins(x=0.1)
 
     showlegend = False
@@ -260,8 +267,10 @@ if __name__ == '__main__':
             type=get_lim, default=None, required=False)
     parser.add_argument('--ylabel', '-y', help='y-axis label',
             type=str, action="store", default=None, required=False)
+    parser.add_argument('--xscale', help='x-axis scale',
+            type=str, action="store", choices=['linear', 'log', 'symlog'], default=None, required=False)
     parser.add_argument('--yscale', help='y-axis scale',
-            type=str, action="store", choices=['linear', 'log', 'symlog'], default='linear', required=False)
+            type=str, action="store", choices=['linear', 'log', 'symlog'], default=None, required=False)
     parser.add_argument('--title', '-t', help='title',
             type=str, action="store", default=None, required=False)
     parser.add_argument('--linewidth', '-w', help='line width',
@@ -314,6 +323,7 @@ if __name__ == '__main__':
             xlim=args.xlim, ylim=args.ylim, xtick=args.xtick,
             xlabel=args.xlabel or data.dtype.names[1],
             ylabel=args.ylabel or data.dtype.names[2],
+            xscale=args.xscale,
             yscale=args.yscale,
             markersize=args.markersize,
             label_order=_tolist(args.label_order) if args.label_order else None)
