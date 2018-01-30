@@ -35,7 +35,7 @@ stds = map(np.std, ys)
 
 rows = zip(xs, means, stds)
 
-print "LABEL\tqueries\truntime\tERR"
+print "LABEL\tqueries\truntime\tERR\tn"
 
 for x, y, err in rows:
-    print "%drepeats\t%d\t%f\t%f" % (len(filenames), x, y, err)
+    print "queries\t%d\t%f\t%f\t%d" % (x, y, err, len(filenames))
