@@ -26,16 +26,21 @@ xs, ys = zip(*map(unzip, xys))
 xs = xs[0]
 ys = zip(*ys)
 
+labels = ['runtime' for _ in range(len(xs))]
 means = map(np.mean, ys)
 stds = map(np.std, ys)
+rows = zip(labels, xs, means, stds)
 
-#marginal = [(means[i]/float(xs[i])) / (means[i-1] / float(xs[i-1])) for i in range(1, len(means))]
-#print np.mean(marginal), np.std(marginal)
-#rows = zip(xs, marginal, [0 for _ in range(len(filenames))])
+labels = ['perquery' for _ in range(len(xs))]
+perquery = [means[i]/xs[i] for i in range(len(xs))]
+perquery_stds = [stds[i]/xs[i] for i in range(len(xs))]
+rows += zip(labels, xs, perquery, perquery_stds)
 
-rows = zip(xs, means, stds)
+#from scipy.stats import linregress
+#print linregress(xs, rates)
 
-print "LABEL\tqueries\truntime\tERR\tn"
 
-for x, y, err in rows:
-    print "queries\t%d\t%f\t%f\t%d" % (x, y, err, len(filenames))
+print "LABEL\tnum_queries\tseconds\tERR\tn"
+
+for lbl, x, y, err in rows:
+    print "%s\t%d\t%f\t%f\t%d" % (lbl, x, y, err, len(filenames))
