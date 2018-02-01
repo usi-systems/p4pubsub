@@ -5,7 +5,7 @@ P4V_PATH=$HOME/src/p4v/mutine
 STDOUT_FILENAME=stdout.log
 STDERR_FILENAME=stderr.log
 
-for n in $(seq 10 10 1000) 10000 100000
+for n in 10 20 40 100 200 400 800 1000 2000 4000 10000
 do
     pretty_num=$(printf "%06d" $n)
     rules_file=rules_greater_uniq200_"$pretty_num".txt
