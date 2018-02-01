@@ -24,6 +24,7 @@ matplotlib.rcParams.update({'font.size': 16})
 matplotlib.rcParams.update({'font.weight': 'bold'})
 matplotlib.rcParams.update({'axes.labelweight': 'bold'})
 matplotlib.rcParams.update({'text.color': 'black'})
+matplotlib.rcParams.update({'figure.figsize': [12, 4]})
 
 markers = itertools.cycle(('o', '^', 'D', 's', '+', 'x', '*' ))
 #linestyles = itertools.cycle(("-","-.","--",":"))
@@ -52,7 +53,8 @@ for i,filename in enumerate(filenames):
     handles.append(h)
 
 
-leg = plt.legend(handles, labels, loc='lower right')
+#leg = plt.legend(handles, labels, loc='lower right')
+leg = plt.legend(handles, labels, loc='upper left')
 #leg.get_frame().set_alpha(0.0)
 #leg.get_frame().set_linewidth(0.0)
 
@@ -61,8 +63,8 @@ ylabel = "Throughput (Kpps)"
 
 ax.set_xlabel(formatLabel(xlabel))
 ax.set_ylabel(formatLabel(ylabel))
-ax.set_xlim([0, 600])
-ax.set_ylim([0, 360000])
+ax.set_xlim([0, 500])
+ax.set_ylim([100000, 350000])
 
 scale = 1/1000.
 ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
