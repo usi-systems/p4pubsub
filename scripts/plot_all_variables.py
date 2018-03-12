@@ -37,9 +37,12 @@ def _get_labels(cur, field):
 
 
 def _get_data(cur, label_field, ind_var, dep_var, fixed_ind_vars, err_field=None):
+    def fmt(v):
+        if isinstance(v, basestring): return "'%s'"%v
+        return "%s"%v
     sql ="SELECT %s,%s,%s%s FROM t WHERE %s" % (label_field, ind_var, dep_var,
             ',' + err_field if err_field else '',
-        ' AND '.join(["%s=%s"%(k,v) for k,v in fixed_ind_vars.iteritems()]))
+        ' AND '.join(["%s=%s"%(k,fmt(v)) for k,v in fixed_ind_vars.iteritems()]))
     try:
         cur.execute(sql)
     except:
@@ -63,6 +66,7 @@ def _get_data(cur, label_field, ind_var, dep_var, fixed_ind_vars, err_field=None
 
     for lbl, points in points_for_label.iteritems():
         for x, ys in points.iteritems():
+            if x == 'None': continue
             err = err_for_label[lbl][x] if err_field else np.std(ys)
             data.append((lbl, float(x), np.average(ys), err))
     return data
