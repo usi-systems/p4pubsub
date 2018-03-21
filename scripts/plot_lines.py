@@ -243,7 +243,7 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
     if xlim: ax.set_xlim(xlim)
     else: ax.set_xlim([x1, x2])
     if ylim: ax.set_ylim(ylim)
-    else: ax.set_ylim([0, y2 + (y2-y1)*0.1])
+    elif y1 != y2: ax.set_ylim([y1 if y1 < 0 else 0, y2 + (y2-y1)*0.1])
     if xtick:
         loc = plticker.MultipleLocator(base=xtick) # this locator puts ticks at regular intervals
         ax.xaxis.set_major_locator(loc)
