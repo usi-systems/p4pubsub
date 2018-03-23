@@ -4,7 +4,7 @@ encapsulated in MoldUDP64 packets.
 
 ## Overview of ITCH formats
 
-# Nasdaq BinaryFILE
+### Nasdaq BinaryFILE
 Nasdaq provides dumps of ITCH feeds here:
 ftp://emi.nasdaq.com/ITCH/
 
@@ -125,7 +125,7 @@ Finding the correlation between two timeseries:
     ../scripts/corr_ts.py aapl_ts.tsv goog_ts.tsv
 
 
-# Extract a single message type
+## Extract a single message type
 Save the first message with MessageType `D`:
 
     ./replay -t D -c 1 -O D.bin ~/Downloads/08302017.NASDAQ_ITCH50
@@ -149,3 +149,17 @@ Send 10M ITCH packets:
 Then, stop the receiver, and parse the log to get latencies:
 
     ./parse_log dpdk_receiver/out.bin | cut -f2 > lats.tsv
+
+# Disable Hyperthreadnig
+
+Find logical CPUs that share a core:
+
+    lscpu -p
+
+For each logical core, print its physical core:
+
+    egrep -e "core id" -e "^processor" /proc/cpuinfo
+
+Disable the extra CPUs:
+
+    for c in $(seq 16 31); do echo 0 | sudo tee /sys/devices/system/cpu/cpu"$c"/online; done
