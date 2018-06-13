@@ -14,9 +14,8 @@ import itertools
 import math
 import re
 
-#matplotlib.rcParams['ps.useafm'] = True
-#matplotlib.rcParams['pdf.use14corefonts'] = True
-#plt.rc('font',family='Times New Roman')
+matplotlib.rcParams['ps.useafm'] = True
+matplotlib.rcParams['pdf.use14corefonts'] = True
 
 def formatLabel(l):
     if matplotlib.rcParams['text.usetex']:
@@ -24,10 +23,6 @@ def formatLabel(l):
     return l
 
 #plt.style.use('ggplot')
-#matplotlib.rcParams.update({'font.size': 16})
-#matplotlib.rcParams.update({'font.weight': 'bold'})
-#matplotlib.rcParams.update({'axes.labelweight': 'bold'})
-matplotlib.rcParams.update({'text.color': 'black'})
 
 def _magnitude(x):
     return int(math.floor(math.log10(x)))
@@ -75,6 +70,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
         if 'fontweight' in conf['style']:
             plt.rc('font', weight=conf['style']['fontweight'])
             plt.rc('axes', labelweight=conf['style']['fontweight'])
+        if 'fontfamily' in conf['style']: plt.rc('font', family=conf['style']['fontfamily'])
 
     if not local_label_order:
         local_label_order = [l for l in label_order] if label_order else label_order_hist
@@ -155,20 +151,25 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
 
     fontsize = None
 
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
     if conf and 'style' in conf:
         if 'linewidth' in conf['style']: linewidth = conf['style']['linewidth']
         if 'markersize' in conf['style']: markersize = conf['style']['markersize']
         if 'fontsize' in conf['style']:
             fontsize = conf['style']['fontsize']
-        if fontsize: plt.rc('font', size=fontsize)
+        if fontsize:
+            plt.rc('font', size=fontsize)
+            ax.xaxis.set_tick_params(labelsize=fontsize)
+            ax.yaxis.set_tick_params(labelsize=fontsize)
         if 'showtitle' in conf['style'] and conf['style']['showtitle'].lower() in ['no', 'false', '0']:
             title = None
         if 'fontweight' in conf['style']:
             plt.rc('font', weight=conf['style']['fontweight'])
             plt.rc('axes', labelweight=conf['style']['fontweight'])
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
+        if 'fontfamily' in conf['style']:
+            plt.rc('font', family=conf['style']['fontfamily'])
 
     # Only plot some labels
     if plot_labels:
