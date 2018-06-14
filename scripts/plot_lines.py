@@ -49,7 +49,7 @@ colors = itertools.cycle(('r', 'g', 'b', 'c', 'm', 'y', 'k'))
 hatches = itertools.cycle(('x', '/', 'o', '\\', '*', 'o', 'O', '.'))
 
 
-def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_error=True,):
+def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_error=True, show_legend=False):
     field_names = data.dtype.names[1:]
     N = len(field_names)
     ind = np.arange(N)  # the x locations for the groups
@@ -119,7 +119,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
 
-    showlegend = conf['showlegend'] if conf and 'showlegend' in conf else True
+    showlegend = show_legend or conf['showlegend'] if conf and 'showlegend' in conf else True
     if showlegend:
         ax.legend([r[0] for r in plot_handles], label_names,
                 loc='upper center',
@@ -142,7 +142,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     return fig
 
 def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None, xscale='linear', yscale='linear',
-        title=None, plot_labels=None, label_order=None, show_error=True, conf=None, linewidth=2, markersize=2):
+        title=None, plot_labels=None, label_order=None, show_error=True, show_legend=False, conf=None, linewidth=2, markersize=2):
     """Plots a 2D array with the format: [[label, x, y, y-dev]]
     """
     if conf and 'units' in conf:
@@ -274,6 +274,8 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
     if conf and 'style' in conf and 'showlegend' in conf['style']:
         showlegend = conf['style']['showlegend'] == 'True'
 
+    showlegend = show_legend or showlegend
+
     if showlegend:
         handles, labels = ax.get_legend_handles_labels()
         # remove the errorbars
@@ -323,6 +325,8 @@ if __name__ == '__main__':
             action='store_true', default=False)
     parser.add_argument('--show', help='Open the plot in a new window',
             action='store_true', default=False)
+    parser.add_argument('--legend', help='Add a legend to the plot',
+            action='store_true', default=False)
     parser.add_argument('--bar', help='Plot a bar chart',
             action='store_true', default=False)
     args = parser.parse_args()
@@ -352,12 +356,14 @@ if __name__ == '__main__':
         fig = plot_bar(data, title=title,
             conf=conf,
             show_error=not args.no_error,
+            show_legend=args.legend,
             ylabel=args.ylabel)
     else:
         fig = plot_lines(data, title=title,
             conf=conf,
             linewidth=args.linewidth,
             show_error=not args.no_error,
+            show_legend=args.legend,
             xlim=args.xlim, ylim=args.ylim, xtick=args.xtick,
             xlabel=args.xlabel or data.dtype.names[1],
             ylabel=args.ylabel or data.dtype.names[2],
