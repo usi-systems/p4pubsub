@@ -39,6 +39,11 @@ def load_conf(filename):
     config.read(filename)
     return config._sections
 
+def is_number(x):
+    attrs = ['__add__', '__sub__', '__mul__', '__div__', '__pow__']
+    if all(hasattr(x, attr) for attr in attrs): return True
+    if type(x) in [int, float]: return True
+    return x.replace('.','',1).isdigit()
 
 label_style_hist = {} # keep history of styles for labels
 label_order_hist = [] # keep history of the order of labels
@@ -75,6 +80,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     if not local_label_order:
         local_label_order = [l for l in label_order] if label_order else label_order_hist
     unseen_labels = [l for l in labels if not l in local_label_order]
+    if all(is_number(l) for l in unseen_labels): unseen_labels.sort(key=float)
     local_label_order += unseen_labels
 
     plot_handles = []
@@ -187,6 +193,7 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
         local_label_order = [l for l in label_order] if label_order else label_order_hist
     labels = set([r[0] for r in data])
     unseen_labels = [l for l in labels if not l in local_label_order]
+    if all(is_number(l) for l in unseen_labels): unseen_labels.sort(key=float)
     local_label_order += unseen_labels
 
     zoom = False
