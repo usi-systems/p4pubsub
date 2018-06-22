@@ -150,7 +150,8 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     return fig
 
 def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None, xscale='linear', yscale='linear',
-        title=None, plot_labels=None, label_order=None, show_error=True, show_legend=False, conf=None, linewidth=2, markersize=2):
+        title=None, plot_labels=None, label_order=None, show_error=True, show_legend=False, legend_title=None,
+        conf=None, linewidth=2, markersize=2):
     """Plots a 2D array with the format: [[label, x, y, y-dev]]
     """
     if conf and 'units' in conf:
@@ -279,7 +280,7 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
 
     ax.margins(x=0.1)
 
-    showlegend = False
+    showlegend = bool(legend_title)
     if conf and 'style' in conf and 'showlegend' in conf['style']:
         showlegend = conf['style']['showlegend'] == 'True'
 
@@ -289,7 +290,8 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
         handles, labels = ax.get_legend_handles_labels()
         # remove the errorbars
         handles = [h[0] for h in handles]
-        ax.legend(loc='best', fancybox=True, framealpha=0.5, handles=handles, labels=labels, prop={'size': fontsize})
+        ax.legend(loc='best', fancybox=True, title=legend_title, framealpha=0.5,
+                handles=handles, labels=labels, prop={'size': fontsize})
 
     fig.tight_layout()
     return fig
@@ -335,7 +337,7 @@ if __name__ == '__main__':
     parser.add_argument('--show', help='Open the plot in a new window',
             action='store_true', default=False)
     parser.add_argument('--legend', help='Add a legend to the plot',
-            action='store_true', default=False)
+            action='store', default=False, const=None, nargs='?')
     parser.add_argument('--bar', help='Plot a bar chart',
             action='store_true', default=False)
     args = parser.parse_args()
@@ -372,7 +374,8 @@ if __name__ == '__main__':
             conf=conf,
             linewidth=args.linewidth,
             show_error=not args.no_error,
-            show_legend=args.legend,
+            show_legend=args.legend is not False,
+            legend_title=args.legend,
             xlim=args.xlim, ylim=args.ylim, xtick=args.xtick,
             xlabel=args.xlabel or data.dtype.names[1],
             ylabel=args.ylabel or data.dtype.names[2],
