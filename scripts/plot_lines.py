@@ -40,10 +40,12 @@ def load_conf(filename):
     return config._sections
 
 def is_number(x):
+    if type(x) in [int, float]: return True
+    if isinstance(x, basestring):
+        return x.replace('.','',1).isdigit()
     attrs = ['__add__', '__sub__', '__mul__', '__div__', '__pow__']
     if all(hasattr(x, attr) for attr in attrs): return True
-    if type(x) in [int, float]: return True
-    return x.replace('.','',1).isdigit()
+    return False
 
 label_style_hist = {} # keep history of styles for labels
 label_order_hist = [] # keep history of the order of labels
