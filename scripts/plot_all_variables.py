@@ -40,7 +40,8 @@ def _get_data(cur, label_field, ind_var, dep_var, fixed_ind_vars, err_field=None
     def fmt(v):
         if isinstance(v, basestring): return "'%s'"%v
         return "%s"%v
-    sql ="SELECT %s,%s,%s%s FROM t WHERE %s" % (label_field, ind_var, dep_var,
+    label_select = "'all'" if label_field is None else label_field
+    sql ="SELECT %s,%s,%s%s FROM t WHERE %s" % (label_select, ind_var, dep_var,
             ',' + err_field if err_field else '',
         ' AND '.join(["%s=%s"%(k,fmt(v)) for k,v in fixed_ind_vars.iteritems()]))
     try:
@@ -81,7 +82,7 @@ def _save_tsv(data, filename, xname='X', yname='Y'):
         f.write('\n'.join(map(lambda r: '\t'.join(map(str, r)), data)))
 
 def plot_variables(fh=None, filename=None, out_dir="./",
-        label_field='mode', label_order=None, out_tsv=False,
+        label_field=None, label_order=None, out_tsv=False,
         conf=None, linewidth=None, markersize=None,
         err_field_suffix=None, skip_single=False, no_title=False,
         independent_vars=None, plot_independent_vars=None, dependent_vars=None):
@@ -94,7 +95,7 @@ def plot_variables(fh=None, filename=None, out_dir="./",
     if err_field_suffix is not None:
         fields = _get_fields(cur)
 
-    labels = _get_labels(cur, label_field)
+    labels = ['all'] if label_field is None else _get_labels(cur, label_field)
 
     if plot_independent_vars is None: plot_independent_vars = independent_vars
     for ind_var in plot_independent_vars:                                    # Choose an independent variable
@@ -138,7 +139,7 @@ if __name__ == '__main__':
     parser.add_argument('--out-dir', '-o', help='Directory to save graphs in',
             type=str, action="store", default="out", required=False)
     parser.add_argument('--label', '-l', help='Name of field containing label',
-            type=str, action="store", required=True)
+            type=str, action="store", default=None, required=False)
     parser.add_argument('--label-order', '-L', help='Comma-separated list of the ordering of labels in the plot',
             type=str, default=None, required=False)
     parser.add_argument('--ind-vars', '-i', help='Comma-separated list of independent variable names',
