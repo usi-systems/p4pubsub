@@ -1,0 +1,6 @@
+*.byte
+*.cmo
+*.cmi
+*.annot
+*.swp
+*.dot

@@ -44,6 +44,7 @@ module Var = struct
     | (_, Lt, k), (_, Eq, j) -> j >= k
     | (_, Eq, j), (_, Eq, k) -> j <> k
 
+  (* if sub is true, then sup must be true *)
   let subset (sub: t) (sup: t) =
     match sub, sup with
     | (a, _, _), (b, _, _) when a <> b -> false
@@ -53,6 +54,11 @@ module Var = struct
     | (_, Eq, j), (_, Gt, k) -> k < j
     | (_, Eq, j), (_, Lt, k) -> k > j
     | _ -> false
+
+
+  let independent (x: t) (y: t) =
+    match x, y with
+    | (a, _, _), (b, _, _) -> a <> b
 
   let hash (x: t) = Hashtbl.hash x
 
@@ -124,41 +130,51 @@ let mk_leaf lbls =
 
 let empty_leaf = mk_leaf []
 
-let rec mergebdd x y =
+let rec prune_implicit (ancestor:Var.t) (is_high_branch:bool) (n:bdd_node) =
+  match n with
+  | N {var = var; high = high; low = low; _} ->
+      if Var.independent ancestor var
+      then
+        n
+      else if is_high_branch && Var.disjoint ancestor var then
+        prune_implicit ancestor is_high_branch low
+      else if is_high_branch && Var.subset ancestor var then
+        prune_implicit ancestor is_high_branch high
+      else if (not is_high_branch) && Var.subset var ancestor then
+        prune_implicit ancestor is_high_branch low
+      else
+        mk_node var (prune_implicit ancestor is_high_branch low) (prune_implicit ancestor is_high_branch high)
+  | L _ -> n
+
+let rec mergebdd (x:bdd_node) (y:bdd_node) : bdd_node =
+  let x,y = match x, y with (* order x and y if they are both internal (decision) nodes *)
+  | N {var = var1; _}, N {var = var2; _} ->
+      if (Var.compare var1 var2) < 0 then (x,y) else (y,x)
+  | _ -> (x, y)
+  in
   match x, y with
   | L {labels = lbls1}, L {labels = lbls2} ->                 (* both leaves *)
       mk_leaf (List.dedup_and_sort (lbls1 @ lbls2))
   | (L _ as l), N {var = var; low = low; high = high; _}
-  | N {var = var; low = low; high = high; _}, (L _ as l) ->   (* leaf and node *)
+  | N {var = var; low = low; high = high; _}, (L _ as l) ->   (* leaf and decision node *)
       mk_node var (mergebdd low l) (mergebdd high l)
-  | N {var = var1; low = low1; high = high1; _},
-    N {var = var2; low = low2; high = high2; _} ->            (* both nodes *)
-    let cmp = Var.compare var1 var2 in
-    if cmp < 0
-    then (* var1 < var2 *)
-      begin
-        if Var.disjoint var1 var2
-        then
-          mk_node var1 (mergebdd low1 y) (mergebdd low2 high1)
-        else if Var.subset var2 var1
-        then
-          mk_node var1 (mergebdd low1 low2) (mergebdd high1 y)
-        else
-          mk_node var1 (mergebdd low1 y) (mergebdd high1 y)
-      end
-    else if cmp = 0
-    then (* var1 = var2  *)
+  | N {var = var1; low = low1; high = high1; _},              (* both decision nodes *)
+    N {var = var2; low = low2; high = high2; _} when Var.equal var1 var2 ->
       mk_node var1 (mergebdd low1 low2) (mergebdd high1 high2)
-    else (* var1 > var2 *)
+  | N {var = var1; low = low1; high = high1; _}, (* already sorted; var1 comes before var2 in the BDD ordering *)
+    N {var = var2; low = low2; high = high2; _} ->            (* both nodes *)
       begin
         if Var.disjoint var1 var2
         then
-          mk_node var2 (mergebdd x low2) (mergebdd low1 high2)
-        else if Var.subset var1 var2
+          mk_node var1 (mergebdd low1 (prune_implicit var1 false y)) (mergebdd (prune_implicit var1 true low2) high1)
+        else if Var.subset var2 var1 (* var2=true --> var1=true *)
         then
-          mk_node var2 (mergebdd low1 low2) (mergebdd x high2)
+          mk_node var1 (mergebdd low1 (prune_implicit var1 false low2)) (mergebdd high1 (prune_implicit var1 true y))
+        else if Var.subset var1 var2 (* var1=true --> var2=true *)
+        then
+          mk_node var1 (mergebdd low1 (prune_implicit var1 false y)) (mergebdd high1 (prune_implicit var1 true high2))
         else
-          mk_node var2 (mergebdd x low2) (mergebdd x high2)
+          mk_node var1 (mergebdd low1 (prune_implicit var1 false y)) (mergebdd high1 (prune_implicit var1 true y))
       end
 
 let fmt_lbls (lbls:int list) : string =
@@ -221,13 +237,24 @@ let () =
   let b = conj_to_bdd [T("a", Gt, 1)] 2 in
   let c = conj_to_bdd [T("a", Gt, 2)] 3 in
   let d = conj_to_bdd [T("a", Lt, 2)] 4 in
+  let a = conj_to_bdd [T("b", Eq, 3)] 1 in
+  let b = conj_to_bdd [T("b", Eq, 4)] 2 in
+  let c = conj_to_bdd [T("b", Gt, 2)] 3 in
+  let d = conj_to_bdd [T("b", Lt, 1)] 4 in
   *)
   let a = conj_to_bdd [T("a", Eq, 3); F("b", Eq, 3)] 1 in
   let b = conj_to_bdd [T("a", Gt, 1); T("b", Eq, 4)] 2 in
   let c = conj_to_bdd [T("a", Gt, 2); T("b", Gt, 2)] 3 in
   let d = conj_to_bdd [T("a", Lt, 2); T("b", Lt, 1)] 4 in
-  let merged = mergebdd a b in
-  let merged = mergebdd merged c in
+  let merged = empty_leaf in
   let merged = mergebdd merged d in
+  let merged = mergebdd merged c in
+  let merged = mergebdd merged b in
+  let merged = mergebdd merged a in
   write_dot merged;
+  let asn = List.fold_left ~init:StringMap.empty ~f:(fun m (l, i) -> StringMap.set m l i)
+    [("a", 3); ("b", 4)] in
+  let x = eval_bdd merged asn in
+  Printf.printf " [ %s ]\n" (fmt_lbls x);
+
   ()
