@@ -1,6 +1,8 @@
 *.byte
+*.native
 *.cmo
 *.cmi
+*.cmx
 *.annot
 *.swp
 *.dot

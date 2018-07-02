@@ -134,14 +134,13 @@ let empty_leaf = mk_leaf []
 let rec prune_implicit (ancestor:Var.t) (is_high_branch:bool) (n:bdd_node) =
   match n with
   | N {var = var; high = high; low = low; _} ->
-      if Var.independent ancestor var
-      then
+      if Var.independent ancestor var then (* stop descending the tree *)
         n
-      else if is_high_branch && Var.disjoint ancestor var then
+      else if is_high_branch && Var.disjoint ancestor var then (* implicitly false *)
         prune_implicit ancestor is_high_branch low
-      else if is_high_branch && Var.subset ancestor var then
+      else if is_high_branch && Var.subset ancestor var then (* implicitly true *)
         prune_implicit ancestor is_high_branch high
-      else if (not is_high_branch) && Var.subset var ancestor then
+      else if (not is_high_branch) && Var.subset var ancestor then (* implicitly false *)
         prune_implicit ancestor is_high_branch low
       else
         mk_node var (prune_implicit ancestor is_high_branch low) (prune_implicit ancestor is_high_branch high)
@@ -213,6 +212,14 @@ type true_or_false_var =
 type conjunction =
   true_or_false_var list
 
+
+let fmt_conj (conj:conjunction) : string =
+  let fmt_tof x = match x with
+  | T v -> Var.format_t v
+  | F v -> Printf.sprintf "~(%s)" (Var.format_t v)
+  in
+  String.concat ~sep:" AND " (List.map ~f:fmt_tof conj)
+
 let rec conj_to_bdd (formula:conjunction) lbl =
   match formula with
   | T q::[] -> mk_node q empty_leaf (mk_leaf [lbl])
@@ -220,6 +227,13 @@ let rec conj_to_bdd (formula:conjunction) lbl =
   | T q::t -> mk_node q empty_leaf (conj_to_bdd t lbl)
   | F q::t -> mk_node q (conj_to_bdd t lbl) empty_leaf
   | _ -> raise (Failure "unreachable")
+
+let rec eval_conj (conj:conjunction) (a: Var.assignments) : bool =
+  match conj with
+  | [] -> true
+  | (T v)::t when Var.eval v a -> eval_conj t a
+  | (F v)::t when not (Var.eval v a) -> eval_conj t a
+  | _ -> false
 
 let rec eval_bdd (u:bdd_node) (a: Var.assignments) : bdd_label list =
   match u with
@@ -231,6 +245,13 @@ let rec eval_bdd (u:bdd_node) (a: Var.assignments) : bdd_label list =
   | L {labels = lbls} -> lbls
 
 
+let fmt_query ((conj:conjunction), (lbl:bdd_label)) : string =
+  (fmt_conj conj) ^ " : " ^ (string_of_int lbl)
+
+let fmt_queries (queries:(conjunction * bdd_label) list) : string =
+  String.concat ~sep:"\n" (List.map ~f:fmt_query queries)
+
+
 let mk_queries num_queries =
   let open Var in
   let rec range a b =
@@ -238,9 +259,10 @@ let mk_queries num_queries =
     else a :: range (a+1) b
   in
   let queries =
-    List.fold_left ~init:[] ~f:(fun l _ ->
-      let a, b, c = (Random.int 101), (Random.int 1001), (Random.int 201) in
-      ([T("a", Eq, a); T("b", Gt, b)], c)::l) (range 0 num_queries)
+    List.fold_left ~init:[] ~f:(fun l i ->
+      let lbl = i (* (Random.int 201) *) in
+      let a, b = (Random.int 101), (Random.int 1001) in
+      ([T("a", Eq, a); T("b", Gt, b)], lbl)::l) (range 0 num_queries)
   in
   queries
 
@@ -264,40 +286,70 @@ let mk_queries_bdd queries =
   in
   merged
 
+let rec satisfies_conj (conj:conjunction) (path:conjunction) : bool =
+  let impl_true x y = (* y --> x *)
+    match x, y with
+    | T v1, T v2 | F v1, F v2 -> Var.subset v2 v1
+    | _ -> false
+  in
+  let impl_false x y = (* y --> ~x *)
+    match x, y with
+    | T v1, T v2 -> Var.disjoint v1 v2
+    | _ -> false
+  in
+  match conj with
+  | x::t ->
+      (List.exists path ~f:(impl_true x))
+      && (not (List.exists path ~f:(impl_false x)))
+      && (satisfies_conj t path)
+  | [] -> true
+
+let rec find_paths (x:bdd_node) (path:conjunction) : ((conjunction * bdd_label list) list)=
+  match x with
+  | N {var=v; low=l; high=h} ->
+      (find_paths l ((F v)::path)) @ (find_paths h ((T v)::path))
+  | L {labels=lbls} ->
+      [(path, lbls)]
+
+let verify_bdd (x:bdd_node) (queries:(conjunction * bdd_label) list) =
+  let paths = find_paths x [] in
+  let check_conj (path, lbls) (conj, lbl) : unit =
+    if satisfies_conj conj path
+    then
+      assert (Caml.List.mem lbl lbls)
+    else
+      assert (not (Caml.List.mem lbl lbls))
+  in
+  let check_path (path, lbls) : unit =
+    List.iter queries ~f:(check_conj (path, lbls))
+  in
+  List.iter paths ~f:check_path
+
+
 let () =
   let open Var in
   (*
-  let merged = empty_leaf in
-  let a = conj_to_bdd [T("a", Eq, 1); T("b", Eq, 2); T("c", Eq, 3)] 1 in
-  let b = conj_to_bdd [T("a", Gt, 0); F("b", Eq, 2); T("c", Eq, 3)] 2 in
-  let c = conj_to_bdd [T("a", Gt, 1); T("b", Eq, 4); T("c", Eq, 3)] 3 in
-  let a = conj_to_bdd [T("a", Eq, 3)] 1 in
-  let b = conj_to_bdd [T("a", Gt, 1)] 2 in
-  let c = conj_to_bdd [T("a", Gt, 2)] 3 in
-  let d = conj_to_bdd [T("a", Lt, 2)] 4 in
-  let a = conj_to_bdd [T("b", Eq, 3)] 1 in
-  let b = conj_to_bdd [T("b", Eq, 4)] 2 in
-  let c = conj_to_bdd [T("b", Gt, 2)] 3 in
-  let d = conj_to_bdd [T("b", Lt, 1)] 4 in
-  let a = conj_to_bdd [T("a", Eq, 3); T("b", Eq, 3)] 1 in
-  let b = conj_to_bdd [T("a", Gt, 1); T("b", Eq, 4)] 2 in
-  let c = conj_to_bdd [T("a", Gt, 2); T("b", Gt, 2)] 3 in
-  let d = conj_to_bdd [T("a", Lt, 2); T("b", Lt, 1)] 4 in
-  let merged = mergebdd merged d in
-  let merged = mergebdd merged c in
-  let merged = mergebdd merged b in
-  let merged = mergebdd merged a in
+  let a = ([T("a", Eq, 3); T("b", Eq, 3)], 1) in
+  let b = ([T("a", Gt, 1); T("b", Eq, 4)], 2) in
+  let c = ([T("a", Gt, 2); T("b", Gt, 2)], 3) in
+  let d = ([T("a", Lt, 2); T("b", Lt, 1)], 4) in
+  let queries = [a; b; c; d] in
+  Random.init 1341;
+  Printf.printf "%s\n" (fmt_queries queries);
   *)
-
   Random.init 1337;
 
-  let queries = mk_queries 40000 in
+  let queries = mk_queries 10000 in
   let merged = mk_queries_bdd queries in
 
   write_dot merged;
+
+  verify_bdd merged queries;
+
   let asn = List.fold_left ~init:StringMap.empty ~f:(fun m (l, i) -> StringMap.set m l i)
     [("a", 3); ("b", 4)] in
   let x = eval_bdd merged asn in
   Printf.printf " [ %s ]\n" (fmt_lbls x);
+  assert (eval_conj [T("a", Lt, 4); T("b", Gt, 3)] asn);
 
   ()
