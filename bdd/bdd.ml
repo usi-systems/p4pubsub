@@ -156,6 +156,9 @@ let rec mergebdd (x:bdd_node) (y:bdd_node) : bdd_node =
   match x, y with
   | L {labels = lbls1}, L {labels = lbls2} ->                 (* both leaves *)
       mk_leaf (List.dedup_and_sort (lbls1 @ lbls2))
+  | L {labels = []; _}, (N {var = var; low = low; high = high; _} as n)
+  | (N {var = var; low = low; high = high; _} as n), L {labels = []; _} ->   (* empty leaf and decision node *)
+      n (* this is an optimization; we don't need to push the empty leaf all the way down all branches *)
   | (L _ as l), N {var = var; low = low; high = high; _}
   | N {var = var; low = low; high = high; _}, (L _ as l) ->   (* leaf and decision node *)
       mk_node var (mergebdd low l) (mergebdd high l)
