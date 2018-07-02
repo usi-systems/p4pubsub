@@ -228,9 +228,43 @@ let rec eval_bdd (u:bdd_node) (a: Var.assignments) : bdd_label list =
   | L {labels = lbls} -> lbls
 
 
+let mk_queries num_queries =
+  let open Var in
+  let rec range a b =
+    if a > b then []
+    else a :: range (a+1) b
+  in
+  let queries =
+    List.fold_left ~init:[] ~f:(fun l _ ->
+      let a, b, c = (Random.int 101), (Random.int 1001), (Random.int 201) in
+      ([T("a", Eq, a); T("b", Gt, b)], c)::l) (range 0 num_queries)
+  in
+  queries
+
+
+let mk_queries_bdd queries =
+  let cnt = ref 0 in
+  let last_time = ref (Unix.gettimeofday ()) in
+  let merged =
+    List.fold_left ~init:empty_leaf ~f:(fun m (c, i) ->
+      cnt := !cnt + 1;
+      if !cnt mod 1000 = 0
+      then
+        begin
+          let time_now = Unix.gettimeofday () in
+          Printf.printf "%d\t%f\n" !cnt (time_now -. !last_time);
+          Out_channel.flush stdout;
+          last_time := time_now;
+        end;
+      mergebdd m (conj_to_bdd c i))
+    queries
+  in
+  merged
+
 let () =
   let open Var in
   (*
+  let merged = empty_leaf in
   let a = conj_to_bdd [T("a", Eq, 1); T("b", Eq, 2); T("c", Eq, 3)] 1 in
   let b = conj_to_bdd [T("a", Gt, 0); F("b", Eq, 2); T("c", Eq, 3)] 2 in
   let c = conj_to_bdd [T("a", Gt, 1); T("b", Eq, 4); T("c", Eq, 3)] 3 in
@@ -242,16 +276,21 @@ let () =
   let b = conj_to_bdd [T("b", Eq, 4)] 2 in
   let c = conj_to_bdd [T("b", Gt, 2)] 3 in
   let d = conj_to_bdd [T("b", Lt, 1)] 4 in
-  *)
   let a = conj_to_bdd [T("a", Eq, 3); T("b", Eq, 3)] 1 in
   let b = conj_to_bdd [T("a", Gt, 1); T("b", Eq, 4)] 2 in
   let c = conj_to_bdd [T("a", Gt, 2); T("b", Gt, 2)] 3 in
   let d = conj_to_bdd [T("a", Lt, 2); T("b", Lt, 1)] 4 in
-  let merged = empty_leaf in
   let merged = mergebdd merged d in
   let merged = mergebdd merged c in
   let merged = mergebdd merged b in
   let merged = mergebdd merged a in
+  *)
+
+  Random.init 1337;
+
+  let queries = mk_queries 40000 in
+  let merged = mk_queries_bdd queries in
+
   write_dot merged;
   let asn = List.fold_left ~init:StringMap.empty ~f:(fun m (l, i) -> StringMap.set m l i)
     [("a", 3); ("b", 4)] in
