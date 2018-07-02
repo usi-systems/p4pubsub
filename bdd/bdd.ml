@@ -22,6 +22,7 @@ module Var = struct
     | (_, Eq, _), (_, Gt, _)
     | (_, Eq, _), (_, Lt, _)
     | (_, Gt, _), (_, Lt, _) -> 1
+    | (_, Lt, j), (_, Lt, k) -> Pervasives.compare k j (* reversed  for Lt *)
     | (_, _, j), (_, _, k) -> Pervasives.compare j k
 
   let equal (x: t) (y:t) = x = y
@@ -194,7 +195,7 @@ let write_dot (bdd:bdd_node) : unit =
             Printf.fprintf oc "n%d -> n%d;\n" i (uid h);
             w l; w h
         | L {leaf_uid = i; labels = lbls } ->
-            Printf.fprintf oc "n%d [label=\"%s\" shape=box];\n" i (fmt_lbls lbls)
+            Printf.fprintf oc "n%d [label=\"%s\" shape=box style=filled] {rank=sink; n%d};\n" i (fmt_lbls lbls) i
       end
   in
   Printf.fprintf oc "digraph G {\n";
@@ -242,7 +243,7 @@ let () =
   let c = conj_to_bdd [T("b", Gt, 2)] 3 in
   let d = conj_to_bdd [T("b", Lt, 1)] 4 in
   *)
-  let a = conj_to_bdd [T("a", Eq, 3); F("b", Eq, 3)] 1 in
+  let a = conj_to_bdd [T("a", Eq, 3); T("b", Eq, 3)] 1 in
   let b = conj_to_bdd [T("a", Gt, 1); T("b", Eq, 4)] 2 in
   let c = conj_to_bdd [T("a", Gt, 2); T("b", Gt, 2)] 3 in
   let d = conj_to_bdd [T("a", Lt, 2); T("b", Lt, 1)] 4 in
