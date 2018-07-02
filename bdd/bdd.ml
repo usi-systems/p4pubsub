@@ -313,6 +313,11 @@ let rec find_paths (x:bdd_node) (path:conjunction) : ((conjunction * bdd_label l
 
 let verify_bdd (x:bdd_node) (queries:(conjunction * bdd_label) list) =
   let paths = find_paths x [] in
+  let all_terminal_lbls = List.concat (List.map ~f:snd paths) in
+  let query_lbls = List.map ~f:snd queries in
+  List.iter
+    query_lbls
+    ~f:(fun lbl -> assert (Caml.List.mem lbl all_terminal_lbls));
   let check_conj (path, lbls) (conj, lbl) : unit =
     if satisfies_conj conj path
     then
