@@ -72,12 +72,17 @@ module Var = struct
 end
 
 type bdd_label = int
+module IntSet = Set.Make(Int)
 
 type bdd_node =
 | L of leaf
 | N of decision_node
-and leaf = {leaf_uid: uid; labels: bdd_label list}
+and leaf = {leaf_uid: uid; labels: bdd_labelset}
 and decision_node = {uid: uid; var: Var.t; low: bdd_node; high: bdd_node }
+and bdd_labelset = IntSet.t
+
+let merge_labels (x:bdd_labelset) (y:bdd_labelset) : bdd_labelset =
+  IntSet.union x y
 
 let uid = function
   | L l -> l.leaf_uid
@@ -90,7 +95,7 @@ let node_equal x y =
       && uid n1.low = uid n2.low
       && uid n1.high = uid n2.high
   | L l1, L l2 ->
-      l1.labels = l2.labels
+      IntSet.equal l1.labels l2.labels
   | N _, L _ | L _, N _ -> false
 
 
@@ -129,7 +134,7 @@ let mk_leaf lbls =
     then incr next_uid;
   l2
 
-let empty_leaf = mk_leaf []
+let empty_leaf = mk_leaf IntSet.empty
 
 let rec prune_implicit (ancestor:Var.t) (is_high_branch:bool) (n:bdd_node) =
   match n with
@@ -146,6 +151,7 @@ let rec prune_implicit (ancestor:Var.t) (is_high_branch:bool) (n:bdd_node) =
         mk_node var (prune_implicit ancestor is_high_branch low) (prune_implicit ancestor is_high_branch high)
   | L _ -> n
 
+
 let rec mergebdd (x:bdd_node) (y:bdd_node) : bdd_node =
   let x,y = match x, y with (* order x and y if they are both internal (decision) nodes *)
   | N {var = var1; _}, N {var = var2; _} ->
@@ -154,9 +160,9 @@ let rec mergebdd (x:bdd_node) (y:bdd_node) : bdd_node =
   in
   match x, y with
   | L {labels = lbls1}, L {labels = lbls2} ->                 (* both leaves *)
-      mk_leaf (List.dedup_and_sort (lbls1 @ lbls2))
-  | L {labels = []; _}, (N {var = var; low = low; high = high; _} as n)
-  | (N {var = var; low = low; high = high; _} as n), L {labels = []; _} ->   (* empty leaf and decision node *)
+      mk_leaf (merge_labels lbls1 lbls2)
+  | (L _ as l), (N {var = var; low = low; high = high; _} as n)
+  | (N {var = var; low = low; high = high; _} as n), (L _ as l) when node_equal l empty_leaf ->   (* empty leaf and decision node *)
       n (* this is an optimization; we don't need to push the empty leaf all the way down all branches *)
   | (L _ as l), N {var = var; low = low; high = high; _}
   | N {var = var; low = low; high = high; _}, (L _ as l) ->   (* leaf and decision node *)
@@ -180,8 +186,8 @@ let rec mergebdd (x:bdd_node) (y:bdd_node) : bdd_node =
           mk_node var1 (mergebdd low1 (prune_implicit var1 false y)) (mergebdd high1 (prune_implicit var1 true y))
       end
 
-let fmt_lbls (lbls:int list) : string =
-  String.concat ~sep:", " (List.map ~f:string_of_int lbls)
+let fmt_lbls (lbls:bdd_labelset) : string =
+  String.concat ~sep:", " (List.map ~f:string_of_int (IntSet.to_list lbls))
 
 let write_dot (bdd:bdd_node) : unit =
   let oc = Out_channel.create "out.dot" in
@@ -222,8 +228,8 @@ let fmt_conj (conj:conjunction) : string =
 
 let rec conj_to_bdd (formula:conjunction) lbl =
   match formula with
-  | T q::[] -> mk_node q empty_leaf (mk_leaf [lbl])
-  | F q::[] -> mk_node q (mk_leaf [lbl]) empty_leaf
+  | T q::[] -> mk_node q empty_leaf (mk_leaf (IntSet.singleton lbl))
+  | F q::[] -> mk_node q (mk_leaf (IntSet.singleton lbl)) empty_leaf
   | T q::t -> mk_node q empty_leaf (conj_to_bdd t lbl)
   | F q::t -> mk_node q (conj_to_bdd t lbl) empty_leaf
   | _ -> raise (Failure "unreachable")
@@ -235,7 +241,7 @@ let rec eval_conj (conj:conjunction) (a: Var.assignments) : bool =
   | (F v)::t when not (Var.eval v a) -> eval_conj t a
   | _ -> false
 
-let rec eval_bdd (u:bdd_node) (a: Var.assignments) : bdd_label list =
+let rec eval_bdd (u:bdd_node) (a: Var.assignments) : bdd_labelset =
   match u with
   | N {var = v; low = l; high = h} ->
       if Var.eval v a then
@@ -304,7 +310,7 @@ let rec satisfies_conj (conj:conjunction) (path:conjunction) : bool =
       && (satisfies_conj t path)
   | [] -> true
 
-let rec find_paths (x:bdd_node) (path:conjunction) : ((conjunction * bdd_label list) list)=
+let rec find_paths (x:bdd_node) (path:conjunction) : ((conjunction * bdd_labelset) list)=
   match x with
   | N {var=v; low=l; high=h} ->
       (find_paths l ((F v)::path)) @ (find_paths h ((T v)::path))
@@ -313,17 +319,17 @@ let rec find_paths (x:bdd_node) (path:conjunction) : ((conjunction * bdd_label l
 
 let verify_bdd (x:bdd_node) (queries:(conjunction * bdd_label) list) =
   let paths = find_paths x [] in
-  let all_terminal_lbls = List.concat (List.map ~f:snd paths) in
+  let all_terminal_lbls = List.fold_left ~init:IntSet.empty ~f:IntSet.union (List.map ~f:snd paths) in
   let query_lbls = List.map ~f:snd queries in
   List.iter
     query_lbls
-    ~f:(fun lbl -> assert (Caml.List.mem lbl all_terminal_lbls));
+    ~f:(fun lbl -> assert (IntSet.mem all_terminal_lbls lbl));
   let check_conj (path, lbls) (conj, lbl) : unit =
     if satisfies_conj conj path
     then
-      assert (Caml.List.mem lbl lbls)
+      assert (IntSet.mem lbls lbl)
     else
-      assert (not (Caml.List.mem lbl lbls))
+      assert (not (IntSet.mem lbls lbl))
   in
   let check_path (path, lbls) : unit =
     List.iter queries ~f:(check_conj (path, lbls))
@@ -339,12 +345,12 @@ let () =
   let c = ([T("a", Gt, 2); T("b", Gt, 2)], 3) in
   let d = ([T("a", Lt, 2); T("b", Lt, 1)], 4) in
   let queries = [a; b; c; d] in
-  Random.init 1341;
   Printf.printf "%s\n" (fmt_queries queries);
   *)
   Random.init 1337;
 
   let queries = mk_queries 10000 in
+
   let merged = mk_queries_bdd queries in
 
   write_dot merged;
