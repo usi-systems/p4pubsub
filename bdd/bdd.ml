@@ -273,11 +273,17 @@ let mk_queries num_queries =
   queries
 
 
-let mk_queries_bdd queries =
+let mk_queries_bdd ?slices:(slices=20) queries =
   let cnt = ref 0 in
   let last_time = ref (Unix.gettimeofday ()) in
-  let merged =
-    List.fold_left ~init:empty_leaf ~f:(fun m (c, i) ->
+  let rec split l n =
+    if n = 1 then [l]
+    else
+      let h, t = List.split_n l ((List.length queries)/slices) in
+      h::(split t (n-1))
+  in
+  let queries_slices = split queries slices in
+  let merge_query m (c, i) =
       cnt := !cnt + 1;
       if !cnt mod 1000 = 0
       then
@@ -287,11 +293,17 @@ let mk_queries_bdd queries =
           Out_channel.flush stdout;
           last_time := time_now;
         end;
-      mergebdd m (conj_to_bdd c i))
-    queries
+      mergebdd m (conj_to_bdd c i)
   in
-  merged
+  let bdd_for_slice queries_slice =
+    List.fold_left ~init:empty_leaf ~f:merge_query queries_slice
+  in
+  let slice_bdds =
+    List.map ~f:bdd_for_slice queries_slices
+  in
+  List.fold_left ~init:empty_leaf ~f:mergebdd slice_bdds
 
+(* Does a path through the BDD satisfy the conjuction? *)
 let rec satisfies_conj (conj:conjunction) (path:conjunction) : bool =
   let impl_true x y = (* y --> x *)
     match x, y with
@@ -305,9 +317,9 @@ let rec satisfies_conj (conj:conjunction) (path:conjunction) : bool =
   in
   match conj with
   | x::t ->
-      (List.exists path ~f:(impl_true x))
-      && (not (List.exists path ~f:(impl_false x)))
-      && (satisfies_conj t path)
+      (List.exists path ~f:(impl_true x))              (* the atom x should be true along the path *)
+      && (not (List.exists path ~f:(impl_false x)))    (* and never false *)
+      && (satisfies_conj t path)                       (* check the remaning atoms in the conj *)
   | [] -> true
 
 let rec find_paths (x:bdd_node) (path:conjunction) : ((conjunction * bdd_labelset) list)=
@@ -353,9 +365,10 @@ let () =
 
   let merged = mk_queries_bdd queries in
 
+  (*
   write_dot merged;
-
   verify_bdd merged queries;
+  *)
 
   let asn = List.fold_left ~init:StringMap.empty ~f:(fun m (l, i) -> StringMap.set m l i)
     [("a", 3); ("b", 4)] in
