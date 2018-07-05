@@ -258,26 +258,28 @@ let fmt_queries (queries:(conjunction * bdd_label) list) : string =
   String.concat ~sep:"\n" (List.map ~f:fmt_query queries)
 
 
-let mk_queries num_queries =
+let mk_queries ?unique_lbl:(unique_lbl=true) ?random_op:(random_op=false) num_queries =
   let open Var in
-  let rec range a b =
-    if a > b then []
-    else a :: range (a+1) b
-  in
+  let randop () = match Random.int 3 with 0 -> Lt | 1 -> Gt | _ -> Eq in
   let queries =
-    List.fold_left ~init:[] ~f:(fun l i ->
-      let lbl = i (* (Random.int 201) *) in
-      let a, b = (Random.int 101), (Random.int 1001) in
-      ([T("a", Eq, a); T("b", Gt, b)], lbl)::l) (range 0 num_queries)
+    List.fold_left
+      ~init:[]
+      ~f:(fun l i ->
+        let lbl = if unique_lbl then i else Random.int 101 in
+        let a, b = Random.int 101, Random.int 1001 in
+        let opa, opb = if random_op then (randop (), randop ()) else (Eq, Gt) in
+        ([T("a", opa, a); T("b", opb, b)], lbl)::l)
+      (List.range 1 (num_queries+1))
   in
   queries
 
 
-let mk_queries_bdd ?slices:(slices=20) queries =
+let mk_queries_bdd ?slices:(slices=100) queries =
   let cnt = ref 0 in
   let last_time = ref (Unix.gettimeofday ()) in
   let rec split l n =
     if n = 1 then [l]
+    else if l = [] then []
     else
       let h, t = List.split_n l ((List.length queries)/slices) in
       h::(split t (n-1))
@@ -307,12 +309,13 @@ let mk_queries_bdd ?slices:(slices=20) queries =
 let rec satisfies_conj (conj:conjunction) (path:conjunction) : bool =
   let impl_true x y = (* y --> x *)
     match x, y with
-    | T v1, T v2 | F v1, F v2 -> Var.subset v2 v1
+    | T v2, T v1 | F v1, F v2 -> Var.subset v1 v2
     | _ -> false
   in
   let impl_false x y = (* y --> ~x *)
     match x, y with
     | T v1, T v2 -> Var.disjoint v1 v2
+    | T v1, F v2 | F v2, T v1 -> Var.subset v1 v2
     | _ -> false
   in
   match conj with
@@ -363,17 +366,22 @@ let () =
 
   let queries = mk_queries 10000 in
 
+  Printf.printf "made queries\n"; Out_channel.flush stdout;
+
   let merged = mk_queries_bdd queries in
+  Printf.printf "made bdd\n"; Out_channel.flush stdout;
 
   (*
   write_dot merged;
   verify_bdd merged queries;
   *)
 
+  (*
   let asn = List.fold_left ~init:StringMap.empty ~f:(fun m (l, i) -> StringMap.set m l i)
     [("a", 3); ("b", 4)] in
   let x = eval_bdd merged asn in
   Printf.printf " [ %s ]\n" (fmt_lbls x);
   assert (eval_conj [T("a", Lt, 4); T("b", Gt, 3)] asn);
+  *)
 
   ()
