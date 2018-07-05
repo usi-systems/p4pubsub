@@ -1,0 +1,11 @@
+opam-version: "1.2"
+version: "1.0"
+maintainer: "jepsen@usi.ch"
+authors: ["Theo Jepsen"]
+homepage: "https://github.com"
+bug-reports: "https://github.com/issues"
+dev-repo: "https://github.com/"
+license: "None"
+build: [
+  ["jbuilder" "build" "--only" "camus" "--root" "." "-j" jobs "@install"]
+]

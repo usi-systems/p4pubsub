@@ -1,8 +1,7 @@
-*.byte
-*.native
-*.cmo
-*.cmi
-*.cmx
-*.annot
+.DS_Store
 *.swp
 *.dot
+_build
+*.exe
+*.install
+*.merlin

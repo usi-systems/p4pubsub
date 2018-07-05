@@ -1,0 +1,8 @@
+(jbuild_version 1)
+
+(library
+  ((name camus)
+   (public_name camus)
+   (libraries (bignum core core_extended sexplib))
+   (preprocess (pps (ppx_let ppx_deriving ppx_compare ppx_sexp_conv)))
+))

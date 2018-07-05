@@ -1,20 +1,23 @@
+TARGETS=querycompiler.exe
 
-all: bdd.native
+.PHONY: all build clean %.exe
 
-bdd.byte: bdd.ml
-	ocamlfind ocamlc -g -annot -g -o bdd.byte bdd.ml -package core -linkpkg -thread
+all: build link
 
-bdd.native : bdd.ml
-	ocamlfind ocamlopt -g -annot -g -o bdd.native bdd.ml -package core -linkpkg -thread
+build:
+	jbuilder build
 
-run: bdd.native
-	./bdd.native
+link: $(TARGETS)
 
-show: run
-	dot -Tpng out.dot | display
+%.exe:
+	if [ ! -f $@ ]; then ln -s _build/default/bin/$@ . ; fi
 
-tidy:
-	rm -f *.cmo *.cmi *.annot
+install:
+	jbuilder install
 
-clean: tidy
-	rm -f bdd.native bdd.byte
+clean:
+	rm -rf _build *.install $(TARGETS)
+
+run: querycompiler.exe build
+	./querycompiler.exe
+
