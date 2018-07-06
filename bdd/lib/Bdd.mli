@@ -19,7 +19,6 @@ end
 module type BddLabel = sig
   type t
     [@@deriving compare, sexp]
-  val compare : t -> t -> int
   val format_t : t -> string
 end
   

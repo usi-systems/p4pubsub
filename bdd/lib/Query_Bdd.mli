@@ -6,7 +6,6 @@ module StringMap : module type of Map.Make(String)
 module QueryLabel : sig
   type t = int
     [@@deriving compare, sexp]
-  val compare : t -> t -> int
   val format_t : t -> string
 end
 

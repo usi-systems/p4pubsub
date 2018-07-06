@@ -4,7 +4,6 @@ open Bdd
 module QueryLabel = struct
   type t = int
     [@@deriving compare, sexp]
-  let compare = Pervasives.compare 
   let format_t = string_of_int
 end
 
