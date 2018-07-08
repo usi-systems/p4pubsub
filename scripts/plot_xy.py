@@ -44,31 +44,43 @@ ax.grid()
 
 for i,filename in enumerate(filenames):
     #if i != 0: ax = ax.twinx() # For different y scales
+    color = colors.next()
+    linestyle = linestyles.next()
 
-    data = np.loadtxt(filename, unpack=True)
+    #data = np.loadtxt(filename, unpack=True)
+    data = np.genfromtxt(filename, dtype=None, delimiter='\t')
 
-    h, = ax.plot(data[0], data[1], color=colors.next(),
-            marker=None, linestyle=linestyles.next(),
-            label=filename, linewidth=2)
+    # Line of best fit
+    xs, ys = zip(*data)[:2]
+    #min_x, max_x, min_y, max_y = min(xs), max(xs), min(ys), max(ys)
+    #ax.plot(np.unique(xs), np.poly1d(np.polyfit(xs, ys, 1))(np.unique(xs)), color=color, linestyle=linestyle)
+    #from scipy.stats.stats import pearsonr
+    #print pearsonr(xs, ys)
+
+    h, = ax.plot(xs, ys, color=color, linestyle=linestyle,
+            #marker=None,
+            marker=markers.next(),
+            label=filename, linewidth=0)
+
     handles.append(h)
 
 
 #leg = plt.legend(handles, labels, loc='lower right')
-leg = plt.legend(handles, labels, loc='upper left')
+#leg = plt.legend(handles, labels, loc='upper left')
 #leg.get_frame().set_alpha(0.0)
 #leg.get_frame().set_linewidth(0.0)
 
 xlabel = "Time (ms)"
 ylabel = "Throughput (Kpps)"
 
-ax.set_xlabel(formatLabel(xlabel))
-ax.set_ylabel(formatLabel(ylabel))
-ax.set_xlim([0, 500])
-ax.set_ylim([100000, 350000])
+#ax.set_xlabel(formatLabel(xlabel))
+#ax.set_ylabel(formatLabel(ylabel))
+#ax.set_xlim([0, 500])
+#ax.set_ylim([100000, 350000])
 
-scale = 1/1000.
-ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
-ax.yaxis.set_major_formatter(ticks)
+#scale = 1/1000.
+#ticks = ticker.FuncFormatter(lambda y, pos: '{0:g}'.format(y*scale))
+#ax.yaxis.set_major_formatter(ticks)
 
 plt.tight_layout()
 plt.savefig('out.pdf')
