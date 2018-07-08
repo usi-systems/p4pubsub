@@ -16,3 +16,20 @@ Run the compiler on all of them:
 Parse the results:
 
     ./parse_results.py results/* > compile_time_nasdaq.tsv
+
+Plot the results:
+
+    ./parse_results.py results/*.tsv | \
+        q -tOTH "SELECT * FROM - WHERE LABEL='runtime'" | \
+        ~/s/plot_lines.py --show \
+            --title "Compile time for ITCH workloads" - \
+            --ylabel "Compile time (s)" \
+            --xlabel "Number of subscriptions"
+
+
+    ./parse_results.py results/*.tsv | \
+        q -tOTH "SELECT * FROM - WHERE LABEL='perquery'" | \
+        ~/s/plot_lines.py --show \
+            --title "Compile time for ITCH workloads" - \
+            --ylabel "Compile time per query (s)" \
+            --xlabel "Number of subscriptions"

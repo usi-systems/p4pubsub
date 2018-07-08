@@ -275,6 +275,7 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
         yscale = conf['style']['yscale']
     if yscale: ax.set_yscale(yscale, nonposx='clip')
 
+    # Replace thousands with 'K':
     #ticks_x = plticker.FuncFormatter(lambda x, pos: re.sub('000$', 'K', '{0:g}'.format(x)))
     #ax.get_xaxis().set_major_formatter(ticks_x)
 
