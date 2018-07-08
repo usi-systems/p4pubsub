@@ -2,7 +2,7 @@
 
 Generate 100K filters:
 
-    python generate_itch_filters.py > rules_greater_uniq200_100000.txt
+    python generate_itch_filters.py 100000 > rules_greater_uniq200_100000.txt
 
 Generate files for 10, 20, etc. filters:
 
