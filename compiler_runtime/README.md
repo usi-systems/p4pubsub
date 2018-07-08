@@ -30,6 +30,6 @@ Plot the results:
     ./parse_results.py results/*.tsv | \
         q -tOTH "SELECT * FROM - WHERE LABEL='perquery'" | \
         ~/s/plot_lines.py --show \
-            --title "Compile time for ITCH workloads" - \
+            --title "Compile time for ITCH workloads" \
             --ylabel "Compile time per query (s)" \
             --xlabel "Number of subscriptions"
