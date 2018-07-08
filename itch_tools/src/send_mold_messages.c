@@ -158,6 +158,9 @@ int main(int argc, char *argv[]) {
         h = (struct omx_moldudp64_header *)buf;
         msg_count = ntohs(h->MessageCount);
 
+        // Print the number of ITCH messages in the MOLD header:
+        //printf("%d\n", msg_count);
+
         for (msg_num = 0; msg_num < msg_count; msg_num++) {
             if (!fread(buf+pkt_offset, 2, 1, fh))
                 error("fread()");
