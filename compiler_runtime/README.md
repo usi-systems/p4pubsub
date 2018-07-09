@@ -15,21 +15,22 @@ Run the compiler on all of them:
 
 Parse the results:
 
-    ./parse_results.py results/* > compile_time_nasdaq.tsv
+    ./parse_results.py results/* > compile_time.tsv
 
 Plot the results:
 
-    ./parse_results.py results/*.tsv | \
-        q -tOTH "SELECT * FROM - WHERE LABEL='runtime'" | \
-        ~/s/plot_lines.py --show \
-            --title "Compile time for ITCH workloads" - \
-            --ylabel "Compile time (s)" \
-            --xlabel "Number of subscriptions"
+    ~/s/plot_lines.py --show \
+        --labels runtime \
+        --title "Compile time for ITCH workloads" \
+        --ylabel "Compile time (s)" \
+        --xlabel "Number of subscriptions" \
+        compile_time.tsv
+    mv compile_time.png compile_time_total.png
 
-
-    ./parse_results.py results/*.tsv | \
-        q -tOTH "SELECT * FROM - WHERE LABEL='perquery'" | \
-        ~/s/plot_lines.py --show \
-            --title "Compile time for ITCH workloads" \
-            --ylabel "Compile time per query (s)" \
-            --xlabel "Number of subscriptions"
+    ~/s/plot_lines.py --show \
+        --labels perquery \
+        --title "Compile time for ITCH workloads" \
+        --ylabel "Compile time per query (s)" \
+        --xlabel "Number of subscriptions" \
+        compile_time.tsv
+    mv compile_time.png compile_time_perquery.png
