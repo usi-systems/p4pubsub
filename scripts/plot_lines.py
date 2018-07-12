@@ -39,13 +39,28 @@ def load_conf(filename):
     config.read(filename)
     return config._sections
 
-def is_number(x):
+def can_cast_to_number(x):
     if type(x) in [int, float]: return True
     if isinstance(x, basestring):
         return x.replace('.','',1).isdigit()
     attrs = ['__add__', '__sub__', '__mul__', '__div__', '__pow__']
     if all(hasattr(x, attr) for attr in attrs): return True
     return False
+
+def int_or_float(x):
+    if isinstance(x, basestring):
+        return int(x)
+    else:
+        return x
+
+def one_or_more_numbers(x):
+    if can_cast_to_number(x):
+        return int_or_float(x)
+    elif isinstance(x, basestring):
+        if ',' not in x: return ValueError("Expects a comma delimited list of numbers")
+        return map(int_or_float, x.split(','))
+    else:
+        raise ValueError("Not a number or list of numbers")
 
 label_style_hist = {} # keep history of styles for labels
 label_order_hist = [] # keep history of the order of labels
@@ -82,7 +97,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     if not local_label_order:
         local_label_order = [l for l in label_order] if label_order else label_order_hist
     unseen_labels = [l for l in labels if not l in local_label_order]
-    if all(is_number(l) for l in unseen_labels): unseen_labels.sort(key=float)
+    if all(can_cast_to_number(l) for l in unseen_labels): unseen_labels.sort(key=float)
     local_label_order += unseen_labels
 
     plot_handles = []
@@ -149,16 +164,14 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     fig.tight_layout()
     return fig
 
-def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None, xscale='linear', yscale='linear',
+def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None, xscale='linear', yscale='linear',
         title=None, plot_labels=None, label_order=None, show_error=True, show_legend=False, legend_title=None,
-        conf=None, linewidth=2, markersize=2):
+        conf=None, linewidth=2, markersize=2, fontsize=None):
     """Plots a 2D array with the format: [[label, x, y, y-dev]]
     """
     if conf and 'units' in conf:
         if ylabel in conf['units']: ylabel = conf['units'][ylabel]
         if xlabel in conf['units']: xlabel = conf['units'][xlabel]
-
-    fontsize = None
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -166,7 +179,7 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
     if conf and 'style' in conf:
         if 'linewidth' in conf['style']: linewidth = conf['style']['linewidth']
         if 'markersize' in conf['style']: markersize = conf['style']['markersize']
-        if 'fontsize' in conf['style']:
+        if 'fontsize' in conf['style'] and fontsize is None:
             fontsize = conf['style']['fontsize']
         if fontsize:
             plt.rc('font', size=fontsize)
@@ -196,7 +209,7 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
         local_label_order = [l for l in label_order] if label_order else label_order_hist
     labels = set([r[0] for r in data])
     unseen_labels = [l for l in labels if not l in local_label_order]
-    if all(is_number(l) for l in unseen_labels): unseen_labels.sort(key=float)
+    if all(can_cast_to_number(l) for l in unseen_labels): unseen_labels.sort(key=float)
     local_label_order += unseen_labels
 
     zoom = False
@@ -250,14 +263,25 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
     if not xlabel is None: ax.set_xlabel(formatLabel(xlabel))
     if not ylabel is None: ax.set_ylabel(formatLabel(ylabel))
 
+    if not xscale and conf and 'style' in conf and 'xscale' in conf['style']:
+        xscale = conf['style']['xscale']
+    if xscale: ax.set_xscale(xscale, nonposx='clip')
+
+    if not yscale and conf and 'style' in conf and 'yscale' in conf['style']:
+        yscale = conf['style']['yscale']
+    if yscale: ax.set_yscale(yscale, nonposx='clip')
+
     y1, y2, x1, x2 = min(all_y), max(all_y), min(all_x), max(all_x)
     if xlim: ax.set_xlim(xlim)
     else: ax.set_xlim([x1, x2])
     if ylim: ax.set_ylim(ylim)
     elif y1 != y2: ax.set_ylim([y1 if y1 < 0 else 0, y2 + (y2-y1)*0.1])
-    if xtick:
-        loc = plticker.MultipleLocator(base=xtick) # this locator puts ticks at regular intervals
-        ax.xaxis.set_major_locator(loc)
+    if xticks:
+        if isinstance(xticks, list):
+            ax.axis.xticks(xticks)
+        else:
+            loc = plticker.MultipleLocator(base=xticks) # this locator puts ticks at regular intervals
+            ax.xaxis.set_major_locator(loc)
 
     showgrid = True
     if conf and 'style' in conf and 'showgrid' in conf['style']:
@@ -267,13 +291,6 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
         ax.grid()
     #if _should_use_log(all_x):
     #    ax.set_xscale('symlog', linthreshx=1)
-    if not xscale and conf and 'style' in conf and 'xscale' in conf['style']:
-        xscale = conf['style']['xscale']
-    if xscale: ax.set_xscale(xscale, nonposx='clip')
-
-    if not yscale and conf and 'style' in conf and 'yscale' in conf['style']:
-        yscale = conf['style']['yscale']
-    if yscale: ax.set_yscale(yscale, nonposx='clip')
 
     # Replace thousands with 'K':
     #ticks_x = plticker.FuncFormatter(lambda x, pos: re.sub('000$', 'K', '{0:g}'.format(x)))
@@ -297,7 +314,6 @@ def plot_lines(data, xlabel=None, xlim=None, xtick=None, ylabel=None, ylim=None,
     fig.tight_layout()
     return fig
 
-
 if __name__ == '__main__':
 
     get_lim = lambda s: map(float, s.split(','))
@@ -311,8 +327,8 @@ if __name__ == '__main__':
             type=str, action="store", default=None, required=False)
     parser.add_argument('--xlim', help='x-axis limits',
             type=get_lim, default=None, required=False)
-    parser.add_argument('--xtick', help='x-axis tick frequency',
-            type=float, default=None, required=False)
+    parser.add_argument('--xticks', help='x-axis tick frequency',
+            type=one_or_more_numbers, default=None, required=False)
     parser.add_argument('--ylim', help='y-axis limits',
             type=get_lim, default=None, required=False)
     parser.add_argument('--ylabel', '-y', help='y-axis label',
@@ -328,6 +344,8 @@ if __name__ == '__main__':
     parser.add_argument('--markersize', '-m', help='marker size',
             type=int, action="store", default=4, required=False)
     parser.add_argument('--conf', '-c', help='A python config file with [style] and [labels] sections',
+            type=str, required=False, default=None)
+    parser.add_argument('--font-size', help='Font size',
             type=str, required=False, default=None)
     parser.add_argument('--label-order', '-L', help='Comma-separated list of the ordering of labels in the plot',
             type=str, default=None, required=False)
@@ -377,11 +395,12 @@ if __name__ == '__main__':
             show_error=not args.no_error,
             show_legend=args.legend is not False,
             legend_title=args.legend,
-            xlim=args.xlim, ylim=args.ylim, xtick=args.xtick,
+            xlim=args.xlim, ylim=args.ylim, xticks=args.xticks,
             xlabel=args.xlabel or data.dtype.names[1],
             ylabel=args.ylabel or data.dtype.names[2],
             xscale=args.xscale,
             yscale=args.yscale,
+            fontsize=args.font_size,
             markersize=args.markersize,
             plot_labels=args.labels,
             label_order=_tolist(args.label_order) if args.label_order else None)
