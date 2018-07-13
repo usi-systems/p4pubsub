@@ -49,7 +49,8 @@ def can_cast_to_number(x):
 
 def int_or_float(x):
     if isinstance(x, basestring):
-        return int(x)
+        try:                return int(x)
+        except ValueError:  return float(x)
     else:
         return x
 
@@ -271,6 +272,17 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
         yscale = conf['style']['yscale']
     if yscale: ax.set_yscale(yscale, nonposx='clip')
 
+    showgrid = True
+    if conf and 'style' in conf and 'showgrid' in conf['style']:
+        showgrid = conf['style']['showgrid'] == 'True'
+    if showgrid:
+        # Show a minor grid:
+        #ax.set_yticks(ax.get_yticks(), minor=True)
+        #ax.set_xticks(range(0, 100000, 20000), minor=True)
+        #ax.grid(which='minor') # show only minor grid
+        ax.grid(which='both') # show both grids
+
+
     y1, y2, x1, x2 = min(all_y), max(all_y), min(all_x), max(all_x)
     if xlim: ax.set_xlim(xlim)
     else: ax.set_xlim([x1, x2])
@@ -278,17 +290,12 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
     elif y1 != y2: ax.set_ylim([y1 if y1 < 0 else 0, y2 + (y2-y1)*0.1])
     if xticks:
         if isinstance(xticks, list):
-            ax.axis.xticks(xticks)
+            ax.set_xticks(xticks)
         else:
             loc = plticker.MultipleLocator(base=xticks) # this locator puts ticks at regular intervals
             ax.xaxis.set_major_locator(loc)
 
-    showgrid = True
-    if conf and 'style' in conf and 'showgrid' in conf['style']:
-        showgrid = conf['style']['showgrid'] == 'True'
 
-    if showgrid:
-        ax.grid()
     #if _should_use_log(all_x):
     #    ax.set_xscale('symlog', linthreshx=1)
 
