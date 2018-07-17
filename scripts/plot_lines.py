@@ -377,7 +377,7 @@ if __name__ == '__main__':
         title = os.path.splitext(args.filename)[0]
         file_out = os.path.splitext(args.filename)[0] + '.' + args.format
 
-    data = np.genfromtxt(file_in, delimiter='\t', names=True, dtype=None)
+    data = np.genfromtxt(file_in, delimiter='\t', names=True, dtype=None, encoding=None)
 
     if args.title is not None: title = args.title if args.title else None
 
