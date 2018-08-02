@@ -1,0 +1,63 @@
+{
+	"version" : "0.0.1",
+	"target" : {
+		"toplogy": "fat-tree",
+		"host_number" : 16
+	},
+	"hosts": {
+		"h11": {
+			"queries" : "examples/queries/q1.txt",
+		},
+		"h12": {
+			"queries" : "examples/queries/q2.txt",
+		},
+		"h13": {
+			"queries" : "examples/queries/q3.txt",
+		},
+		"h14": {
+			"queries" : "examples/queries/q4.txt",
+		},
+
+
+		"h21": {
+			"queries" : "examples/queries/q1.txt",
+		},
+		"h22": {
+			"queries" : "examples/queries/q2.txt",
+		},
+		"h23": {
+			"queries" : "examples/queries/q3.txt",
+		},
+		"h24": {
+			"queries" : "examples/queries/q4.txt",
+		},
+
+
+		"h31": {
+			"queries" : "examples/queries/q1.txt",
+		},
+		"h32": {
+			"queries" : "examples/queries/q2.txt",
+		},
+		"h33": {
+			"queries" : "examples/queries/q3.txt",
+		},
+		"h34": {
+			"queries" : "examples/queries/q4.txt",
+		},
+
+
+		"h41": {
+			"queries" : "examples/queries/q1.txt",
+		},
+		"h42": {
+			"queries" : "examples/queries/q2.txt",
+		},
+		"h43": {
+			"queries" : "examples/queries/q3.txt",
+		},
+		"h44": {
+			"queries" : "examples/queries/q4.txt",
+		}
+	}
+}
