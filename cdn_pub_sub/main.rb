@@ -19,11 +19,11 @@ end
 include CamusPostProcessing
 include Config
 
-rules_file 		= "#{Config.g "base_directory"}examples/queries/itch_rules.txt" 
-base_name 		= "./generated/ruby_g"
-p4_output 		= "#{Config.g "output_directory"}ruby_g.p4"
-input_template 	= "#{Config.g "base_directory"}examples/itch.p4"
-topology_file 	= "#{Config.g "base_directory"}examples/cdn_topo.json"
+rules_file 		= "#{g "base_directory"}examples/queries/itch_rules.txt" 
+base_name 		= "#{g "output_directory"}ruby_g"
+p4_output 		= "#{g "output_directory"}ruby_g.p4"
+input_template 	= "#{g "base_directory"}examples/itch.p4"
+topology_file 	= "#{g "base_directory"}examples/cdn_topo.json"
 
 
 
