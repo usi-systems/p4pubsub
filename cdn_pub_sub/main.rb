@@ -1,4 +1,6 @@
-require 'yaml'
+require 'json'
+require_relative 'fat_tree'
+require_relative 'config'
 
 module CamusPostProcessing 
 	def p4pp file_name
@@ -15,49 +17,18 @@ end
 
 
 include CamusPostProcessing
-
-module Config
-	@@CONFIG_FILE_NAME = "config.yaml"
-	@@CONFIGS = {}
-
-	def g key
-		load_config_file if @@CONFIGS.empty?
-		@@CONFIGS[key]
-	end
-
-	def load_config_file
-		@@CONFIGS = YAML.load_file(@@CONFIG_FILE_NAME)	
-	end	
-
-	def execute_camus rules_file, base_name, ouput_p4_file, input_template
-		command = (g "camus_compiler") % 
-			[
-				rules_file, 
-				base_name,
-				ouput_p4_file,
-				input_template
-			]
-		p command
-		system command
-		CamusPostProcessing.p4pp ouput_p4_file
-	end
-
-	def p4_compile p4_file, output_file
-		input = "#{@@CONFIGS["base_directory"]}#{p4_file}"
-		output = "#{@@CONFIGS["output_directory"]}"
-		output_file = "#{output_directory}#{output_file}"
-		command = "#{@@CONFIGS["p4_compiler"] }"
-	end
-end
-
 include Config
 
-rules_file 		= "#{Config.g "base_directory"}examples/itch_rules.txt" 
-base_name 		= "ruby_g_"
-p4_output 		= "#{Config.g "output_directory"}ruby_g_.p4"
+rules_file 		= "#{Config.g "base_directory"}examples/queries/itch_rules.txt" 
+base_name 		= "./generated/ruby_g"
+p4_output 		= "#{Config.g "output_directory"}ruby_g.p4"
 input_template 	= "#{Config.g "base_directory"}examples/itch.p4"
+topology_file 	= "#{Config.g "base_directory"}examples/cdn_topo.json"
+
+
 
 Config.execute_camus rules_file, base_name, p4_output, input_template
+Config.load_topology topology_file
 
 
 
