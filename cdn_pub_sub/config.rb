@@ -27,13 +27,6 @@ module Config
 		CamusPostProcessing.p4pp ouput_p4_file
 	end
 
-	def p4_compile p4_file, output_file
-		input = "#{@@CONFIGS["base_directory"]}#{p4_file}"
-		output = "#{@@CONFIGS["output_directory"]}"
-		output_file = "#{output_directory}#{output_file}"
-		command = "#{@@CONFIGS["p4_compiler"] }"
-	end
-
 	def load_topology file_name
 		topology_file = File.read file_name
 		topo = JSON.parse topology_file
