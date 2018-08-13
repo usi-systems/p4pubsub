@@ -3,7 +3,6 @@ require_relative 'config'
 class FatTree
 	attr_accessor :pod_size
 	attr_accessor :host_size
-	attr_accessor :mininet_config
 
 	def initialize obj
 		@pod_size = obj["target"]["pod_size"]
@@ -11,10 +10,10 @@ class FatTree
 		raise "Too big topology: #{pod_size}" if @pod_size > 255
 		raise "Only even numbers are supported #{pod_size}" if @pod_size % 2 != 0
 
-		mininet_raw
+		mininet_config
 	end
 
-	def mininet_raw
+	def mininet_config
 		@mininet_config = {}
 		@mininet_config["program"] = "simple_router.p4"
   		@mininet_config["language"] = "p4-14"
@@ -30,18 +29,19 @@ class FatTree
 		multiswitch["hosts"] = hosts
 		multiswitch["switches"] = switches
 
-		puts switches.size()
+		@mininet_config["targets"] = {multiswitch: multiswitch}
 
-		@mininet_config["multiswitch"] = multiswitch
-		puts JSON.pretty_generate(@mininet_config)
+		File.open("#{g "output_directory"}p4app.json", "w") { |file| 
+			file.puts JSON.pretty_generate(@mininet_config)
+		}
 	end
 
 	def switch_command sw_id
 		{commands: "#{g "output_directory"}commands/#{sw_id}.txt"}
 	end
 
-	def host_name switch_id, host_id
-		"h_#{switch_id}_#{host_id}"
+	def host_name pod_id, switch_id, host_id
+		"h_#{pod_id}_#{switch_id}_#{host_id}"
 	end
 
 	def agg_sw_name pod_id, switch_id
@@ -56,22 +56,67 @@ class FatTree
 		"s_core_#{core_id}#{switch_id}"
 	end
 
+	def intf_mac tor_id, host_id
+		"00:aa:00:ff:#{'%02x' % tor_id}:#{'%02x' % host_id}"
+	end
+
+	def host_ip pod_id, tor_id, host_id
+		"10.#{pod_id}.#{tor_id}.#{host_id}"
+	end
+
+	def fill_commands_tor pod_id, tor_id
+		file_name = switch_command(tor_sw_name pod_id, tor_id)[:commands]
+
+		
+		# puts "fileName: #{file_name}"
+
+		File.open(file_name, "w") {|file| 
+			1.upto(@pod_size/2) do |host_id|
+				puts "pod: #{pod_id}, tor: #{tor_id}, host: #{host_id}: ---> #{file_name}"
+
+				file.puts "table_add send_frame rewrite_mac 0x#{host_id} => #{intf_mac tor_id, host_id}"
+				file.puts "table_add ipv4_lpm set_nhop #{host_ip pod_id, tor_id, host_id}/32 => #{host_ip pod_id, tor_id, host_id} 0x#{'%x' % host_id}"
+
+			end
+
+
+			file.puts  
+		}
+	end
+
+	def fill_commands_agg pod_id, agg_id
+		file_name = switch_command(agg_sw_name pod_id, agg_id)[:commands]
+		File.open(file_name, "w") {|file| 
+			file.puts  " "
+		}
+	end
+
+	def fill_commands_core core_id, agg_id
+		file_name = switch_command(core_sw_name core_id, agg_id)[:commands]
+		File.open(file_name, "w") {|file| 
+			file.puts  " "
+		}
+	end
+
 	def switches
 		s = {}
 		1.upto(@pod_size) do |p_id|
 			@pod_size.downto(@pod_size/2 + 1) do |tor_sw_id|
 				id = tor_sw_name(p_id, tor_sw_id)
 				s[id] = switch_command id
+				fill_commands_tor p_id, tor_sw_id
 			end
 			1.upto(@pod_size/2) do |agg_sw_id|
 				id = agg_sw_name(p_id, agg_sw_id)
 				s[id] = switch_command id 
+				fill_commands_agg p_id, agg_sw_id
 			end
 		end
 		1.upto(@pod_size/2) do |agg_sw_id|
 			1.upto(@pod_size/2) do |core_sw_id|
 				id = core_sw_name core_sw_id, agg_sw_id
 				s[id] = switch_command id 
+				fill_commands_core core_sw_id, agg_sw_id
 			end
 		end
 		s
@@ -88,7 +133,7 @@ class FatTree
 				tor_switch_id = tor_sw_name p_id, tor_sw_id
 
 				1.upto(@pod_size/2) do |host_id|
-					host_id = host_name tor_sw_id, host_id
+					host_id = host_name p_id, tor_sw_id, host_id
 					l << [tor_switch_id, host_id]
 				end
 
