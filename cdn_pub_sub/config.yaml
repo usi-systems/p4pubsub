@@ -4,6 +4,6 @@ camus_compiler: "~/camus_compiler/p4query.exe -rules %s -rt-out %s -prog-out %s 
 p4_compiler: "/usr/local/bin/p4c-bm2-ss --p4v 14"
 
 fat_tree_bmv2_log: true
-fat_tree_pcap_dump: true
-fat_tree_auto_control_plane: true
+fat_tree_pcap_dump: false
+fat_tree_auto_control_plane: false
 fat_tree_cli: true

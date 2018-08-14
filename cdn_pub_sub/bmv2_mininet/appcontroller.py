@@ -194,9 +194,9 @@ class AppController:
             h = self.net.get(host_name)
             for link in self.topo._host_links[host_name].values():
                 sw = link['sw']
-                self.commands[sw].append('table_add send_frame rewrite_mac %d => %s' % (link['sw_port'], link['sw_mac']))
-                self.commands[sw].append('table_add forward set_dmac %s => %s' % (link['host_ip'], link['host_mac']))
-                self.commands[sw].append('table_add ipv4_lpm set_nhop %s/32 => %s %d' % (link['host_ip'], link['host_ip'], link['sw_port']))
+                # self.commands[sw].append('table_add send_frame rewrite_mac %d => %s' % (link['sw_port'], link['sw_mac']))
+                # self.commands[sw].append('table_add forward set_dmac %s => %s' % (link['host_ip'], link['host_mac']))
+                # self.commands[sw].append('table_add ipv4_lpm set_nhop %s/32 => %s %d' % (link['host_ip'], link['host_ip'], link['sw_port']))
 
 
         for h in self.net.hosts:
@@ -206,9 +206,9 @@ class AppController:
                 if not path: continue
                 if not path[1] in self.topo._port_map: continue # next hop is a switch
                 sw_link = self.topo._sw_links[sw.name][path[1]]
-                self.commands[sw.name].append('table_add send_frame rewrite_mac %d => %s' % (sw_link[0]['port'], sw_link[0]['mac']))
-                self.commands[sw.name].append('table_add forward set_dmac %s => %s' % (h_link['host_ip'], sw_link[1]['mac']))
-                self.commands[sw.name].append('table_add ipv4_lpm set_nhop %s/32 => %s %d' % (h_link['host_ip'], h_link['host_ip'], sw_link[0]['port']))
+                # self.commands[sw.name].append('table_add send_frame rewrite_mac %d => %s' % (sw_link[0]['port'], sw_link[0]['mac']))
+                # self.commands[sw.name].append('table_add forward set_dmac %s => %s' % (h_link['host_ip'], sw_link[1]['mac']))
+                # self.commands[sw.name].append('table_add ipv4_lpm set_nhop %s/32 => %s %d' % (h_link['host_ip'], h_link['host_ip'], sw_link[0]['port']))
 
     def getPortForHost(self, sw, h=None, ip=None):
         if ip is not None:

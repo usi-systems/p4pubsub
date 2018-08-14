@@ -45,23 +45,31 @@ class FatTree
 	end
 
 	def agg_sw_name pod_id, switch_id
-		"s_agg_#{pod_id}#{switch_id}"
+		"s_agg_#{pod_id}_#{switch_id}"
 	end
 
 	def tor_sw_name pod_id, switch_id
-		"s_tor_#{pod_id}#{switch_id}"
+		"s_tor_#{pod_id}_#{switch_id}"
 	end
 
 	def core_sw_name core_id, switch_id
-		"s_core_#{core_id}#{switch_id}"
+		"s_core_#{core_id}_#{switch_id}"
 	end
 
-	def intf_mac tor_id, host_id
-		"00:aa:00:ff:#{'%02x' % tor_id}:#{'%02x' % host_id}"
+	def tor_intf_mac pod_id, tor_id, host_id
+		"00:ff:00:#{'%02x' % pod_id}:#{'%02x' % tor_id}:#{'%02x' % host_id}"
+	end
+
+	def agg_intf_mac agg_id, tor_id
+		"00:77:00:88:#{'%02x' % agg_id}:#{'%02x' % tor_id}"
 	end
 
 	def host_ip pod_id, tor_id, host_id
 		"10.#{pod_id}.#{tor_id}.#{host_id}"
+	end
+
+	def host_mac pod_id, tor_id, host_id
+		"00:aa:00:#{'%02x' % pod_id}:#{'%02x' % tor_id}:#{'%02x' % host_id}"
 	end
 
 	def fill_commands_tor pod_id, tor_id
@@ -72,12 +80,18 @@ class FatTree
 
 		File.open(file_name, "w") {|file| 
 			1.upto(@pod_size/2) do |host_id|
-				puts "pod: #{pod_id}, tor: #{tor_id}, host: #{host_id}: ---> #{file_name}"
-
-				file.puts "table_add send_frame rewrite_mac 0x#{host_id} => #{intf_mac tor_id, host_id}"
+				file.puts "table_add send_frame rewrite_mac 0x#{host_id} => #{tor_intf_mac pod_id, tor_id, host_id}"
 				file.puts "table_add ipv4_lpm set_nhop #{host_ip pod_id, tor_id, host_id}/32 => #{host_ip pod_id, tor_id, host_id} 0x#{'%x' % host_id}"
-
+				file.puts "table_add forward set_dmac #{host_ip pod_id, tor_id, host_id} => #{host_mac pod_id, tor_id, host_id}"
+				file.puts ""
 			end
+
+			# Currently, I just forward pakcets to the first upward interface! Since I don't know the 
+			# swtich's mac address, I use a random value. Let's see if it works!!
+			uplink_port = "0x#{'%02x' % (@pod_size/2 + 1)}"
+			file.puts "table_add send_frame rewrite_mac #{uplink_port} => #{tor_intf_mac pod_id, tor_id, 0}"
+			file.puts "table_add ipv4_lpm set_nhop 10.0.0.0/8 => 10.0.0.100 #{uplink_port}"
+			file.puts "table_add forward set_dmac 10.0.0.100 => #{tor_intf_mac pod_id, tor_id, 0}"
 
 
 			file.puts  
@@ -87,14 +101,20 @@ class FatTree
 	def fill_commands_agg pod_id, agg_id
 		file_name = switch_command(agg_sw_name pod_id, agg_id)[:commands]
 		File.open(file_name, "w") {|file| 
-			file.puts  " "
+			(@pod_size/2 + 1).upto(@pod_size) do |tor_id|
+				intf_id = @pod_size - (tor_id - (@pod_size/2 + 1))
+				file.puts "table_add send_frame rewrite_mac 0x#{tor_id} => #{agg_intf_mac agg_id, tor_id}"
+				file.puts "table_add ipv4_lpm set_nhop #{host_ip pod_id, tor_id, 0}/24 => #{host_ip pod_id, tor_id, 0} 0x#{'%x' % intf_id}"
+				file.puts "table_add forward set_dmac #{host_ip pod_id, tor_id, 0} => #{tor_intf_mac pod_id, tor_id, 0}"
+				file.puts ""
+			end
 		}
 	end
 
 	def fill_commands_core core_id, agg_id
 		file_name = switch_command(core_sw_name core_id, agg_id)[:commands]
 		File.open(file_name, "w") {|file| 
-			file.puts  " "
+			file.puts " "
 		}
 	end
 
@@ -128,6 +148,17 @@ class FatTree
 
 	def links
 		l = []
+
+		1.upto(@pod_size) do |p_id|
+			1.upto(@pod_size/2) do |agg_sw_id|
+				agg_switch_id = agg_sw_name p_id, agg_sw_id
+				1.upto(@pod_size/2) do |core_sw_id|
+					core_switch_id = core_sw_name core_sw_id, agg_sw_id
+					l << [agg_switch_id, core_switch_id]
+				end
+			end
+		end
+
 		1.upto(@pod_size) do |p_id|
 			@pod_size.downto(@pod_size/2 + 1) do |tor_sw_id|
 				tor_switch_id = tor_sw_name p_id, tor_sw_id
@@ -143,17 +174,6 @@ class FatTree
 				end
 			end
 		end
-
-		1.upto(@pod_size) do |p_id|
-			1.upto(@pod_size/2) do |agg_sw_id|
-				agg_switch_id = agg_sw_name p_id, agg_sw_id
-				1.upto(@pod_size/2) do |core_sw_id|
-					core_switch_id = core_sw_name core_sw_id, agg_sw_id
-					l << [agg_switch_id, core_switch_id]
-				end
-			end
-		end
-
 
 		l
 	end

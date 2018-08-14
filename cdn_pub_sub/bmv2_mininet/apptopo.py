@@ -2,6 +2,15 @@ from mininet.topo import Topo
 
 class AppTopo(Topo):
 
+    def get_sw_mac(self,sw_name):
+        sw_type = sw_name.split("_")[1]
+        pod_id = int(sw_name.split("_")[2])
+        sw_id = int(sw_name.split("_")[3])
+
+        if(sw_type == "agg"):
+            return '00:aa:aa:00:%02x:%02x' % (pod_id, sw_id)
+        return '00:aa:cc:00:%02x:%02x' % (pod_id, sw_id)
+
     def __init__(self, manifest=None, target=None, **opts):
         Topo.__init__(self, **opts)
 
@@ -28,6 +37,11 @@ class AppTopo(Topo):
             self.addSwitch(sw_name)
 
         for host_name in host_names:
+            pod_id = int(host_name.split("_")[1])
+            tor_id = int(host_name.split("_")[2])
+            host_id = int(host_name.split("_")[3])
+
+
             host_num = host_names.index(host_name)+1
 
             self.addHost(host_name)
@@ -41,7 +55,7 @@ class AppTopo(Topo):
                 assert sw in sw_names, "Hosts should be connected to switches, not " + str(sw)
                 sw_num = sw_names.index(sw)+1
 
-                host_mac = '00:04:00:00:%02x:%02x' % (host_num, sw_idx+1)
+                host_mac = '00:aa:00:%02x:%02x:%02x' % (pod_id, tor_id, host_id)
 
                 delay_key = tuple(sorted([host_name, sw]))
                 delay = self.conf['latencies'][delay_key] if delay_key in self.conf['latencies'] else '0ms'
@@ -49,10 +63,10 @@ class AppTopo(Topo):
                 self._host_links[host_name][sw] = dict(
                         idx=sw_idx,
                         host_mac = host_mac,
-                        host_ip = "10.0.%d.%d" % (host_num, 100+sw_idx+1),
+                        host_ip = "10.%d.%d.%d" % (pod_id, tor_id, host_id),
                         sw = sw,
-                        sw_mac = "00:aa:00:%02x:00:%02x" % (sw_num, host_num),
-                        sw_ip = "10.0.%d.%d" % (host_num, sw_idx+1),
+                        sw_mac = "00:ff:00:%02x:%02x:%02x" % (pod_id, tor_id, host_id),
+                        sw_ip = "10.%d.%d.%d" % (pod_id, tor_id, 100),
                         sw_port = self._port_map[sw][host_name]
                         )
                 self._sw_hosts[sw][host_name] = self._host_links[host_name][sw]
@@ -71,8 +85,10 @@ class AppTopo(Topo):
             self._port_map[sw2][sw1] = len(self._port_map[sw2])+1
 
             sw1_num, sw2_num = sw_names.index(sw1)+1, sw_names.index(sw2)+1
-            sw1_port = dict(mac="00:aa:00:%02x:%02x:00" % (sw1_num, sw2_num), port=self._port_map[sw1][sw2])
-            sw2_port = dict(mac="00:aa:00:%02x:%02x:00" % (sw2_num, sw1_num), port=self._port_map[sw2][sw1])
+
+            # the mac addresses are not applied in the simulated network. I don't know why :(
+            sw1_port = dict(mac=self.get_sw_mac(sw1) , port=self._port_map[sw1][sw2])
+            sw2_port = dict(mac=self.get_sw_mac(sw2) , port=self._port_map[sw2][sw1])
 
             self._sw_links[sw1][sw2] = [sw1_port, sw2_port]
             self._sw_links[sw2][sw1] = [sw2_port, sw1_port]

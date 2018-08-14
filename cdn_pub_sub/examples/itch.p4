@@ -336,9 +336,9 @@ control ingress {
 			@pragma query_control
 		}
    
-		if (((standard_metadata.egress_spec == 0) and (standard_metadata.egress_port == 0))) { 
+		// if (((standard_metadata.egress_spec == 0) and (standard_metadata.egress_port == 0))) { 
 			apply(ipv4_lpm);
-		}
+		// }
 
 		apply(forward);
 	}
