@@ -19,16 +19,18 @@ end
 include CamusPostProcessing
 include Config
 
-rules_file 		= "#{g "base_directory"}examples/queries/itch_rules.txt" 
-base_name 		= "#{g "output_directory"}ruby_g"
-p4_output 		= "#{g "output_directory"}ruby_g.p4"
-input_template 	= "#{g "base_directory"}examples/itch.p4"
+# rules_file 		= "#{g "base_directory"}examples/queries/itch_rules.txt" 
+# rules_file 		= "#{g "base_directory"}generated/queries/s_core_1_1.txt" 
+# base_name 		= "#{g "output_directory"}ruby_g"
+# p4_output 		= "#{g "output_directory"}ruby_g.p4"
+# input_template 	= "#{g "base_directory"}examples/itch.p4"
 topology_file 	= "#{g "base_directory"}examples/cdn_topo.json"
 
 
 
-Config.execute_camus rules_file, base_name, p4_output, input_template
+# Config.execute_camus rules_file, base_name, p4_output, input_template
 Config.load_topology topology_file
+
 
 
 

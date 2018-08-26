@@ -16,6 +16,48 @@ class FatTree
 
 		mininet_config
 		handle_queries
+		execute_all_camus
+	end
+
+	def execute_all_camus
+		1.upto(@pod_size) do |p_id|
+			@pod_size.downto(@pod_size/2 + 1) do |tor_id|
+				sw_name = tor_sw_name p_id, tor_id
+				query_file = switch_queries sw_name
+				run_camus query_file, sw_name
+			end
+			1.upto(@pod_size/2) do |agg_id|
+				query_file = switch_queries(agg_sw_name p_id, agg_id)
+				run_camus query_file, (agg_sw_name p_id, agg_id)
+			end
+		end
+
+		1.upto(@pod_size/2) do |agg_sw_id|
+			1.upto(@pod_size/2) do |core_sw_id|
+				query_file = switch_queries(core_sw_name core_sw_id, agg_sw_id)
+				run_camus query_file, (core_sw_name core_sw_id, agg_sw_id)
+			end
+		end
+
+	end
+
+	def run_camus rules_file, base_name
+		b_name 			= "#{g "output_directory"}#{base_name}"
+		p4_output 		= "#{g "output_directory"}ruby_g.p4"
+		input_template 	= "#{g "base_directory"}examples/itch.p4"
+
+
+
+		Config.execute_camus rules_file, b_name, p4_output, input_template
+
+		rule_file = "#{b_name}_commands.txt"
+		command_file = switch_command(base_name)[:commands]
+
+		File.open(command_file, "a") do |f|
+			f.puts ""
+			f.puts File.open(rule_file, "r").read
+		end
+		File.delete rule_file
 	end
 
 	def handle_queries
