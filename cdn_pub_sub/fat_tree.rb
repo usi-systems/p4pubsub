@@ -3,14 +3,110 @@ require_relative 'config'
 class FatTree
 	attr_accessor :pod_size
 	attr_accessor :host_size
+	attr_accessor :host_names
+	attr_accessor :obj
 
 	def initialize obj
+		@obj = obj
+		@host_names = {}
 		@pod_size = obj["target"]["pod_size"]
 		@host_size = @pod_size * @pod_size * @pod_size / 4
 		raise "Too big topology: #{pod_size}" if @pod_size > 255
 		raise "Only even numbers are supported #{pod_size}" if @pod_size % 2 != 0
 
 		mininet_config
+		handle_queries
+	end
+
+	def handle_queries
+		hosts = @obj["hosts"]
+		hosts.each do |key, value|
+			raise "invalid host name: #{key}" unless @host_names.has_key? key
+			@host_names[key][:file] = hosts[key]["queries"]
+		end
+
+		delete_old_queries_files
+		fill_queries_files
+	end
+
+	def delete_old_queries_files
+		1.upto(@pod_size) do |p_id|
+			@pod_size.downto(@pod_size/2 + 1) do |tor_id|
+				File.delete(switch_queries(tor_sw_name p_id, tor_id)) rescue {}
+			end
+			1.upto(@pod_size/2) do |agg_id|
+				File.delete(switch_queries(agg_sw_name p_id, agg_id)) rescue {}
+			end
+		end
+		1.upto(@pod_size/2) do |agg_sw_id|
+			1.upto(@pod_size/2) do |core_sw_id|
+				File.delete(switch_queries(core_sw_name core_sw_id, agg_sw_id)) rescue {}
+			end
+		end
+	end
+
+	def fill_queries_files
+		1.upto(@pod_size) do |p_id|
+			@pod_size.downto(@pod_size/2 + 1) do |tor_sw_id|
+				fill_queries_tor p_id, tor_sw_id
+			end
+			1.upto(@pod_size/2) do |agg_sw_id|
+				fill_queries_agg p_id, agg_sw_id
+			end
+		end
+
+		1.upto(@pod_size/2) do |agg_sw_id|
+			1.upto(@pod_size/2) do |core_sw_id|
+				fill_queries_core core_sw_id, agg_sw_id
+			end
+		end
+	end
+
+	def fill_queries_tor pod_id, tor_id
+		1.upto(@pod_size/2) do |host_id|
+			h_file = @host_names["#{host_name pod_id, tor_id, host_id}"][:file]
+			h_queries = File.open(h_file, "r").read
+
+			File.open(switch_queries(tor_sw_name pod_id, tor_id), "a") do |file|
+				h_queries.each_line do |l|
+					file.puts "#{l.strip}: fwd(#{host_id});"
+				end
+			end
+		end
+	end
+
+	def fill_queries_agg pod_id, agg_id
+		(@pod_size/2 + 1).upto(@pod_size) do |tor_id|
+			intf_id = @pod_size - (tor_id - (@pod_size/2 + 1))
+
+			1.upto(@pod_size/2) do |host_id|
+				h_file = @host_names["#{host_name pod_id, tor_id, host_id}"][:file]
+				h_queries = File.open(h_file, "r").read
+
+				File.open(switch_queries(agg_sw_name pod_id, agg_id), "a") do |file|
+					h_queries.each_line do |l|
+						file.puts "#{l.strip}: fwd(#{intf_id});"
+					end
+				end
+			end	
+		end
+	end
+
+	def fill_queries_core core_id, agg_id
+		1.upto(@pod_size) do |pod_id|
+			(@pod_size/2 + 1).upto(@pod_size) do |tor_id|
+				1.upto(@pod_size/2) do |host_id|
+					h_file = @host_names["#{host_name pod_id, tor_id, host_id}"][:file]
+					h_queries = File.open(h_file, "r").read
+
+					File.open(switch_queries(core_sw_name core_id, agg_id), "a") do |file|
+						h_queries.each_line do |l|
+							file.puts "#{l.strip}: fwd(#{pod_id});"
+						end
+					end
+				end	
+			end
+		end
 	end
 
 	def mininet_config
@@ -40,8 +136,19 @@ class FatTree
 		{commands: "#{g "output_directory"}commands/#{sw_id}.txt"}
 	end
 
+	def switch_queries sw_id
+		"#{g "output_directory"}queries/#{sw_id}.txt"
+	end
+
 	def host_name pod_id, switch_id, host_id
-		"h_#{pod_id}_#{switch_id}_#{host_id}"
+		key = "h_#{pod_id}_#{switch_id}_#{host_id}"
+
+		@host_names[key] = {} unless @host_names.has_key? key
+		@host_names[key][:pod_id] = pod_id
+		@host_names[key][:switch_id] = switch_id
+		@host_names[key][:host_id] = host_id
+
+		key
 	end
 
 	def agg_sw_name pod_id, switch_id
