@@ -34,6 +34,7 @@ OPTIONS is a string of chars, which can include:\n\
     t - print stats on number of messages by type\n\
     a - print Add Order messages as TSV\n\
     s - print the symbol of each Add Order message\n\
+    r - repreat until MAX_MESSAGES are sent\n\
 \n\
 ", progname);
     exit(rc);
@@ -131,6 +132,7 @@ int main(int argc, char *argv[]) {
     int do_stats = 0;
     int do_print_symbols = 0;
     int do_print_ao = 0;
+    int do_repeat = 0;
     struct session_stats stats;
     float msgs_per_s = 0;
     bzero(&stats, sizeof(struct session_stats));
@@ -191,6 +193,8 @@ int main(int argc, char *argv[]) {
             do_print_symbols = 1;
         if (strchr(extra_options, 'a'))
             do_print_ao = 1;
+        if (strchr(extra_options, 'r'))
+            do_repeat = 1;
     }
 
     long double min_interval_secs =msgs_per_s > 0 ? 1 / msgs_per_s : 0;
@@ -250,6 +254,7 @@ int main(int argc, char *argv[]) {
     int pos = 0;
     uint64_t seq = 0;
     while (pos < size) {
+
         const short len = ntohs(*(const short *)(data + pos));
         const char *payload = data + pos + 2;
 
@@ -312,6 +317,8 @@ int main(int argc, char *argv[]) {
         }
 
         pos += len + 2;
+        if (pos >= size && do_repeat && max_messages > 0)
+            pos = 0;
         if (max_messages > 0 && seq == max_messages)
             break;
     }
