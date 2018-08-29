@@ -42,7 +42,7 @@ class FatTree
 	end
 
 	def run_camus rules_file, base_name
-		b_name 			= "#{g "output_directory"}#{base_name}"
+		b_name 			= "#{g "output_directory"}/commands/#{base_name}"
 		p4_output 		= "#{g "output_directory"}ruby_g.p4"
 		input_template 	= "#{g "base_directory"}examples/itch.p4"
 
@@ -50,14 +50,14 @@ class FatTree
 
 		Config.execute_camus rules_file, b_name, p4_output, input_template
 
-		rule_file = "#{b_name}_commands.txt"
-		command_file = switch_command(base_name)[:commands]
+		# rule_file = "#{b_name}_commands.txt"
+		# command_file = switch_command(base_name)[:commands].first
 
-		File.open(command_file, "a") do |f|
-			f.puts ""
-			f.puts File.open(rule_file, "r").read
-		end
-		File.delete rule_file
+		# File.open(command_file, "a") do |f|
+		# 	f.puts ""
+		# 	f.puts File.open(rule_file, "r").read
+		# end
+		# File.delete rule_file
 	end
 
 	def handle_queries
@@ -175,7 +175,13 @@ class FatTree
 	end
 
 	def switch_command sw_id
-		{commands: "#{g "output_directory"}commands/#{sw_id}.txt"}
+		{
+			commands: [
+				"#{g "output_directory"}commands/#{sw_id}_ipv4.txt",
+				"#{g "output_directory"}commands/#{sw_id}_commands.txt"
+			],
+			mcast_groups: "#{g "output_directory"}commands/#{sw_id}_mcast_groups.txt"
+		}
 	end
 
 	def switch_queries sw_id
@@ -226,7 +232,7 @@ class FatTree
 	end
 
 	def fill_commands_tor pod_id, tor_id
-		file_name = switch_command(tor_sw_name pod_id, tor_id)[:commands]
+		file_name = switch_command(tor_sw_name pod_id, tor_id)[:commands].first
 
 		
 		# puts "fileName: #{file_name}"
@@ -252,7 +258,7 @@ class FatTree
 	end
 
 	def fill_commands_agg pod_id, agg_id
-		file_name = switch_command(agg_sw_name pod_id, agg_id)[:commands]
+		file_name = switch_command(agg_sw_name pod_id, agg_id)[:commands].first
 		File.open(file_name, "w") {|file| 
 			(@pod_size/2 + 1).upto(@pod_size) do |tor_id|
 				intf_id = @pod_size - (tor_id - (@pod_size/2 + 1))
@@ -275,7 +281,7 @@ class FatTree
 	end
 
 	def fill_commands_core core_id, agg_id
-		file_name = switch_command(core_sw_name core_id, agg_id)[:commands]
+		file_name = switch_command(core_sw_name core_id, agg_id)[:commands].first
 		File.open(file_name, "w") {|file| 
 			1.upto(@pod_size) do |pod_id|
 				file.puts "table_add send_frame rewrite_mac 0x#{pod_id} => #{core_intf_mac pod_id, core_id}"
