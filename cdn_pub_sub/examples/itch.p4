@@ -13,6 +13,18 @@
  * Headers
  */
 
+header_type intrinsic_metadata_t {
+    fields {
+        mcast_grp : 4;
+        egress_rid : 4;
+        mcast_hash : 16;
+        lf_field_list: 32;
+        ingress_global_timestamp : 64;
+        resubmit_flag : 16;
+        recirculate_flag : 16;
+    }
+}
+
 header_type ethernet_t {
 	fields {
 		dstAddr : 48;
@@ -57,6 +69,7 @@ header_type routing_metadata_t {
 
 metadata routing_metadata_t routing_metadata;
 metadata arp_ipv4_metadata_t arp_ipv4_meta;
+metadata intrinsic_metadata_t ig_intr_md_for_tm;
 
 
 header_type ipv4_t {
@@ -337,8 +350,9 @@ control ingress {
 		}
    
 		// if (((standard_metadata.egress_spec == 0) and (standard_metadata.egress_port == 0))) { 
+		if ((ig_intr_md_for_tm.mcast_grp == 0)) { 
 			apply(ipv4_lpm);
-		// }
+		}
 
 		apply(forward);
 	}
