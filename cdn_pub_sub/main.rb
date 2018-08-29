@@ -5,9 +5,8 @@ require_relative 'config'
 module CamusPostProcessing 
 	def p4pp file_name
 		text = File.read(file_name)
-		new_contents = text.gsub(/ig_intr_md_for_tm/, "standard_metadata")
-		new_contents.gsub!("ucast_egress_port", "egress_spec")
-		new_contents.gsub!("mcast_grp_a", "egress_spec")
+		new_contents = text.gsub("ig_intr_md_for_tm.ucast_egress_port", "standard_metadata.egress_spec")
+		new_contents.gsub!("mcast_grp_a", "mcast_grp")
 		new_contents.each_line do |line|
 			new_contents.gsub!(line, "") if line.include? "tofino"
 		end
