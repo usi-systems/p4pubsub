@@ -42,22 +42,10 @@ class FatTree
 	end
 
 	def run_camus rules_file, base_name
-		b_name 			= "#{g "output_directory"}/commands/#{base_name}"
+		b_name 			= "#{g "output_directory"}commands/#{base_name}"
 		p4_output 		= "#{g "output_directory"}ruby_g.p4"
-		input_template 	= "#{g "base_directory"}examples/itch.p4"
 
-
-
-		Config.execute_camus rules_file, b_name, p4_output, input_template
-
-		# rule_file = "#{b_name}_commands.txt"
-		# command_file = switch_command(base_name)[:commands].first
-
-		# File.open(command_file, "a") do |f|
-		# 	f.puts ""
-		# 	f.puts File.open(rule_file, "r").read
-		# end
-		# File.delete rule_file
+		Config.execute_camus rules_file, b_name, p4_output
 	end
 
 	def handle_queries

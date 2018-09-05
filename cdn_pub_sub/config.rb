@@ -14,13 +14,12 @@ module Config
 		@@CONFIGS = YAML.load_file(@@CONFIG_FILE_NAME)	
 	end	
 
-	def execute_camus rules_file, base_name, ouput_p4_file, input_template
+	def execute_camus rules_file, base_name, ouput_p4_file
 		command = (g "camus_compiler") % 
 			[
 				rules_file, 
 				base_name,
-				ouput_p4_file,
-				input_template
+				ouput_p4_file
 			]
 		p command
 		system command
