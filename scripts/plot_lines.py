@@ -67,7 +67,7 @@ label_style_hist = {} # keep history of styles for labels
 label_order_hist = [] # keep history of the order of labels
 
 markers = itertools.cycle(('o', '^', 'D', 's', '+', 'x', '*' ))
-linestyles = itertools.cycle(("-.","--","-",":"))
+linestyles = itertools.cycle(("-","--","-.",":"))
 colors = itertools.cycle(('r', 'g', 'b', 'c', 'm', 'y', 'k'))
 hatches = itertools.cycle(('x', '/', 'o', '\\', '*', 'o', 'O', '.'))
 
@@ -178,8 +178,8 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
     ax = fig.add_subplot(111)
 
     if conf and 'style' in conf:
-        if 'linewidth' in conf['style']: linewidth = conf['style']['linewidth']
-        if 'markersize' in conf['style']: markersize = conf['style']['markersize']
+        if 'linewidth' in conf['style']: linewidth = int(conf['style']['linewidth'])
+        if 'markersize' in conf['style']: markersize = int(conf['style']['markersize'])
         if 'fontsize' in conf['style'] and fontsize is None:
             fontsize = conf['style']['fontsize']
         if fontsize:
@@ -208,6 +208,10 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
 
     if not local_label_order:
         local_label_order = [l for l in label_order] if label_order else label_order_hist
+
+    if label_order:
+        for l in label_order:
+            if l not in local_label_order: local_label_order.append(l)
     labels = set([r[0] for r in data])
     unseen_labels = [l for l in labels if not l in local_label_order]
     if all(can_cast_to_number(l) for l in unseen_labels): unseen_labels.sort(key=float)
@@ -261,8 +265,8 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
         mark_inset(ax, axins, loc1=3, loc2=4, fc="none", ec="0.3")
 
     if not title is None: ax.set_title(title)
-    if not xlabel is None: ax.set_xlabel(formatLabel(xlabel))
-    if not ylabel is None: ax.set_ylabel(formatLabel(ylabel))
+    if not xlabel is None: ax.set_xlabel(formatLabel(xlabel), fontsize=fontsize)
+    if not ylabel is None: ax.set_ylabel(formatLabel(ylabel), fontsize=fontsize)
 
     if not xscale and conf and 'style' in conf and 'xscale' in conf['style']:
         xscale = conf['style']['xscale']
@@ -302,6 +306,8 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
     # Replace thousands with 'K':
     #ticks_x = plticker.FuncFormatter(lambda x, pos: re.sub('000$', 'K', '{0:g}'.format(x)))
     #ax.get_xaxis().set_major_formatter(ticks_x)
+    #ticks_y = plticker.FuncFormatter(lambda y, pos: re.sub('000$', 'K', '{0:g}'.format(y)))
+    #ax.get_yaxis().set_major_formatter(ticks_y)
 
     ax.margins(x=0.1)
 
