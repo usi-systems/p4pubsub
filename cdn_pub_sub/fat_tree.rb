@@ -38,7 +38,6 @@ class FatTree
 				run_camus query_file, (core_sw_name core_sw_id, agg_sw_id)
 			end
 		end
-
 	end
 
 	def run_camus rules_file, base_name
@@ -102,6 +101,16 @@ class FatTree
 					file.puts "#{l.strip}: fwd(#{host_id});"
 				end
 			end
+
+			uplink_port = (@pod_size/2 + 1)
+			upward_query = "add_order.price < 99999999: fwd(#{uplink_port});"
+
+			queries = File.open(switch_queries(tor_sw_name pod_id, tor_id), "r").read
+			return if queries.include? upward_query
+			File.open(switch_queries(tor_sw_name pod_id, tor_id), "a") do |file|
+				file.puts upward_query
+			end
+						
 		end
 	end
 
@@ -113,12 +122,21 @@ class FatTree
 				h_file = @host_names["#{host_name pod_id, tor_id, host_id}"][:file]
 				h_queries = File.open(h_file, "r").read
 
-				File.open(switch_queries(agg_sw_name pod_id, agg_id), "a") do |file|
+				file_name_ = switch_queries(agg_sw_name pod_id, agg_id)
+				File.open(file_name_, "a") do |file|
 					h_queries.each_line do |l|
 						file.puts "#{l.strip}: fwd(#{intf_id});"
 					end
 				end
-			end	
+
+				uplink_port = 1
+				upward_query = "add_order.price < 99999999: fwd(#{uplink_port});"
+				queries = File.open(file_name_, "r").read
+				next if queries.include? upward_query
+				File.open(file_name_, "a") do |file|
+					file.puts upward_query
+				end
+			end
 		end
 	end
 
@@ -229,7 +247,10 @@ class FatTree
 			1.upto(@pod_size/2) do |host_id|
 				file.puts "table_add send_frame rewrite_mac 0x#{host_id} => #{tor_intf_mac pod_id, tor_id, host_id}"
 				file.puts "table_add ipv4_lpm set_nhop #{host_ip pod_id, tor_id, host_id}/32 => #{host_ip pod_id, tor_id, host_id} 0x#{'%x' % host_id}"
-				file.puts "table_add forward set_dmac #{host_ip pod_id, tor_id, host_id} => #{host_mac pod_id, tor_id, host_id}"
+				file.puts "table_add forward set_dmac 0x#{'%x' % host_id} => #{host_mac pod_id, tor_id, host_id}"
+
+				file.puts "table_add icn_to_ip set_dip 0x#{'%x' % host_id} => #{host_ip pod_id, tor_id, host_id}"
+
 				file.puts ""
 			end
 
@@ -238,7 +259,7 @@ class FatTree
 			uplink_port = "0x#{'%02x' % (@pod_size/2 + 1)}"
 			file.puts "table_add send_frame rewrite_mac #{uplink_port} => #{tor_intf_mac pod_id, tor_id, 0}"
 			file.puts "table_add ipv4_lpm set_nhop 10.0.0.0/8 => 10.0.0.100 #{uplink_port}"
-			file.puts "table_add forward set_dmac 10.0.0.100 => #{tor_intf_mac pod_id, tor_id, 0}"
+			file.puts "table_add forward set_dmac #{uplink_port} => #{tor_intf_mac pod_id, tor_id, 0}"
 
 
 			file.puts  ""
@@ -252,7 +273,7 @@ class FatTree
 				intf_id = @pod_size - (tor_id - (@pod_size/2 + 1))
 				file.puts "table_add send_frame rewrite_mac 0x#{tor_id} => #{agg_intf_mac agg_id, tor_id}"
 				file.puts "table_add ipv4_lpm set_nhop #{host_ip pod_id, tor_id, 0}/24 => #{host_ip pod_id, tor_id, 0} 0x#{'%x' % intf_id}"
-				file.puts "table_add forward set_dmac #{host_ip pod_id, tor_id, 0} => #{tor_intf_mac pod_id, tor_id, 0}"
+				file.puts "table_add forward set_dmac 0x#{'%x' % intf_id} => #{tor_intf_mac pod_id, tor_id, 0}"
 				file.puts ""
 			end
 
@@ -261,7 +282,7 @@ class FatTree
 			uplink_port = "0x1"
 			file.puts "table_add send_frame rewrite_mac #{uplink_port} => #{agg_intf_mac pod_id, agg_id}"
 			file.puts "table_add ipv4_lpm set_nhop 10.0.0.0/8 => 10.0.0.100 #{uplink_port}"
-			file.puts "table_add forward set_dmac 10.0.0.100 => #{core_intf_mac pod_id, agg_id}"
+			file.puts "table_add forward set_dmac #{uplink_port} => #{core_intf_mac pod_id, agg_id}"
 
 
 			file.puts  ""
@@ -274,7 +295,7 @@ class FatTree
 			1.upto(@pod_size) do |pod_id|
 				file.puts "table_add send_frame rewrite_mac 0x#{pod_id} => #{core_intf_mac pod_id, core_id}"
 				file.puts "table_add ipv4_lpm set_nhop #{host_ip pod_id, 0, 0}/16 => #{host_ip pod_id, 0, 0} 0x#{'%x' % pod_id}"
-				file.puts "table_add forward set_dmac #{host_ip pod_id, 0, 0} => #{tor_intf_mac pod_id, 0, 0}"
+				file.puts "table_add forward set_dmac 0x#{'%x' % pod_id} => #{tor_intf_mac pod_id, 0, 0}"
 				file.puts ""
 			end
 		}

@@ -186,8 +186,8 @@ class AppController:
         for sw in self.topo.switches():
             if sw not in self.commands: self.commands[sw] = []
             self.commands[sw] += [
-                'table_set_default send_frame _drop',
-                'table_set_default forward _drop',
+                'table_set_default send_frame _nop',
+                'table_set_default forward _nop',
                 'table_set_default ipv4_lpm _drop']
 
         for host_name in self.topo._host_links:

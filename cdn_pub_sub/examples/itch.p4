@@ -1,5 +1,6 @@
 #define ETHERTYPE_IPV4          0x0800
 #define ETHERTYPE_ARP           0x0806
+#define IP_PROT_UDP 			0x11
 
 #define ARP_HTYPE_ETHERNET      0x0001
 #define ARP_PTYPE_IPV4          0x0800
@@ -66,11 +67,6 @@ header_type routing_metadata_t {
 		nhop_ipv4 : 32;
 	}
 }
-
-metadata routing_metadata_t routing_metadata;
-metadata arp_ipv4_metadata_t arp_ipv4_meta;
-metadata intrinsic_metadata_t ig_intr_md_for_tm;
-
 
 header_type ipv4_t {
 	fields {
@@ -139,6 +135,9 @@ header_type itch_add_order_t {
 
 header itch_add_order_t add_order;
 
+metadata routing_metadata_t routing_metadata;
+metadata arp_ipv4_metadata_t arp_ipv4_meta;
+metadata intrinsic_metadata_t ig_intr_md_for_tm;
 
 /*
  * Parser
@@ -206,8 +205,6 @@ calculated_field ipv4.hdrChecksum  {
 	verify ipv4_checksum;
 	update ipv4_checksum;
 }
-
-#define IP_PROT_UDP 0x11
 
 parser parse_ipv4 {
 	extract(ipv4);
@@ -281,7 +278,7 @@ action set_dmac(dmac) {
 
 table forward {
 	reads {
-		routing_metadata.nhop_ipv4 : exact;
+		standard_metadata.egress_port : exact;
 	}
 	actions {
 		set_dmac;
@@ -291,6 +288,20 @@ table forward {
 }
 
 
+action set_dip(dip) {
+	modify_field(ipv4.dstAddr, dip);
+}
+
+table icn_to_ip {
+	reads {
+		standard_metadata.egress_port : exact;
+	}
+	actions {
+		set_dip;
+		_drop;
+	}
+	size: 512;
+}
 
 action rewrite_mac(smac) {
 	modify_field(ethernet.srcAddr, smac);
@@ -339,6 +350,14 @@ action reply_arp() {
   modify_field(standard_metadata.egress_spec, standard_metadata.ingress_port);
 }
 
+table just_drop {
+	actions {
+		_drop;
+	}
+	default_action : _drop;
+	size: 256;
+}
+
 control ingress {
 	if(valid(ipv4)) {
 		
@@ -350,11 +369,9 @@ control ingress {
 		}
    
 		// if (((standard_metadata.egress_spec == 0) and (standard_metadata.egress_port == 0))) { 
-		if ((ig_intr_md_for_tm.mcast_grp == 0)) { 
+		if ((ig_intr_md_for_tm.mcast_grp == 0) and (standard_metadata.egress_spec == 0)) { 
 			apply(ipv4_lpm);
 		}
-
-		apply(forward);
 	}
 
 	if(valid(arp)) {
@@ -364,6 +381,16 @@ control ingress {
 
 control egress {
 	if (valid(ipv4)) {
+		apply(icn_to_ip);
 		apply(send_frame);
+		apply(forward);
+	} 
+
+	if(valid(arp)){
+		
+	} else {
+		if (standard_metadata.egress_port == standard_metadata.ingress_port) {
+			apply(just_drop);
+		}	
 	}
 }

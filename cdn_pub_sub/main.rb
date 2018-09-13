@@ -7,6 +7,8 @@ module CamusPostProcessing
 		text = File.read(file_name)
 		new_contents = text.gsub("ig_intr_md_for_tm.ucast_egress_port", "standard_metadata.egress_spec")
 		new_contents.gsub!("mcast_grp_a", "mcast_grp")
+		
+		new_contents.gsub!("ig_intr_md_for_tm", "intrinsic_metadata")
 		new_contents.each_line do |line|
 			new_contents.gsub!(line, "") if line.include? "tofino"
 		end
