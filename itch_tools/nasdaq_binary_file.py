@@ -56,7 +56,7 @@ if __name__ == '__main__':
         seq = 0
         while seq != args.count:
             seq += 1
-            fields = dict()
+            fields = args.fields
             msg = MoldMessage(generate_message(stock_dist=stock_dist, msg_type_dist=msg_type_dist, fields=fields))
             fd.write(msg)
 
