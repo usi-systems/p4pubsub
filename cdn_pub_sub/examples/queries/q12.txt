@@ -1,0 +1,2 @@
+add_order.price = 2
+add_order.shares > 100 and add_order.stock = "q12"

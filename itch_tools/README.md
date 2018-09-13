@@ -163,3 +163,17 @@ For each logical core, print its physical core:
 Disable the extra CPUs:
 
     for c in $(seq 16 31); do echo 0 | sudo tee /sys/devices/system/cpu/cpu"$c"/online; done
+
+# Pub/sub example
+
+Start the ITCH receiver listenning on UDP port 1234:
+
+    ./receiver -oa 1234
+
+Generate a Nasdaq dump (BinaryFILE format):
+
+    ./nasdaq_binary_file.py -c 100 -s AAPL,GOOGL -S uniform dump.bin
+
+Send it using the replayer:
+
+    ./replay -c 1000 -o ar -R 10 dump.bin 127.0.0.1:1234
