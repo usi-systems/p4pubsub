@@ -1,0 +1,8 @@
+table_add send_frame rewrite_mac 0x1 => 00:ff:00:02:03:01
+table_add forward set_dmac 0x1 => 00:aa:00:02:03:01
+table_add icn_to_ip set_dip 0x1 => 10.2.3.1
+
+table_add send_frame rewrite_mac 0x2 => 00:ff:00:02:03:02
+table_add forward set_dmac 0x2 => 00:aa:00:02:03:02
+table_add icn_to_ip set_dip 0x2 => 10.2.3.2
+

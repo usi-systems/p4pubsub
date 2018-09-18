@@ -1,0 +1,14 @@
+table_add send_frame rewrite_mac 0x1 => 00:ff:00:04:04:01
+table_add ipv4_lpm set_nhop 10.4.4.1/32 => 10.4.4.1 0x1
+table_add forward set_dmac 0x1 => 00:aa:00:04:04:01
+table_add icn_to_ip set_dip 0x1 => 10.4.4.1
+
+table_add send_frame rewrite_mac 0x2 => 00:ff:00:04:04:02
+table_add ipv4_lpm set_nhop 10.4.4.2/32 => 10.4.4.2 0x2
+table_add forward set_dmac 0x2 => 00:aa:00:04:04:02
+table_add icn_to_ip set_dip 0x2 => 10.4.4.2
+
+table_add send_frame rewrite_mac 0x03 => 00:ff:00:04:04:00
+table_add ipv4_lpm set_nhop 10.0.0.0/8 => 10.0.0.100 0x03
+table_add forward set_dmac 0x03 => 00:ff:00:04:04:00
+

@@ -1,0 +1,5 @@
+table_add multicast set_mid 0x1 => 0x1
+table_add multicast set_mid 0x2 => 0x2
+
+table_add multicast set_mid 0x3 => 0x3
+table_add multicast set_mid 0x4 => 0x4

@@ -1,0 +1,1520 @@
+{
+  "header_types" : [
+    {
+      "name" : "scalars_0",
+      "id" : 0,
+      "fields" : []
+    },
+    {
+      "name" : "standard_metadata",
+      "id" : 1,
+      "fields" : [
+        ["ingress_port", 9, false],
+        ["egress_spec", 9, false],
+        ["egress_port", 9, false],
+        ["clone_spec", 32, false],
+        ["instance_type", 32, false],
+        ["drop", 1, false],
+        ["recirculate_port", 16, false],
+        ["packet_length", 32, false],
+        ["checksum_error", 1, false],
+        ["_padding", 3, false]
+      ]
+    },
+    {
+      "name" : "itch_add_order_t",
+      "id" : 2,
+      "fields" : [
+        ["stock_locate", 16, false],
+        ["tracking_number", 16, false],
+        ["timestamp_ns", 48, false],
+        ["order_ref_number", 64, false],
+        ["buy_sell_indicator", 8, false],
+        ["shares", 32, false],
+        ["stock", 64, false],
+        ["price", 32, false]
+      ]
+    },
+    {
+      "name" : "arp_t",
+      "id" : 3,
+      "fields" : [
+        ["htype", 16, false],
+        ["ptype", 16, false],
+        ["hlen", 8, false],
+        ["plen", 8, false],
+        ["oper", 16, false]
+      ]
+    },
+    {
+      "name" : "arp_ipv4_t",
+      "id" : 4,
+      "fields" : [
+        ["sha", 48, false],
+        ["spa", 32, false],
+        ["tha", 48, false],
+        ["tpa", 32, false]
+      ]
+    },
+    {
+      "name" : "ethernet_t",
+      "id" : 5,
+      "fields" : [
+        ["dstAddr", 48, false],
+        ["srcAddr", 48, false],
+        ["etherType", 16, false]
+      ]
+    },
+    {
+      "name" : "ipv4_t",
+      "id" : 6,
+      "fields" : [
+        ["version", 4, false],
+        ["ihl", 4, false],
+        ["diffserv", 8, false],
+        ["totalLen", 16, false],
+        ["identification", 16, false],
+        ["flags", 3, false],
+        ["fragOffset", 13, false],
+        ["ttl", 8, false],
+        ["protocol", 8, false],
+        ["hdrChecksum", 16, false],
+        ["srcAddr", 32, false],
+        ["dstAddr", 32, false]
+      ]
+    },
+    {
+      "name" : "itch_msg_type_t",
+      "id" : 7,
+      "fields" : [
+        ["msg_type", 8, false]
+      ]
+    },
+    {
+      "name" : "moldudp_hdr_t",
+      "id" : 8,
+      "fields" : [
+        ["session", 80, false],
+        ["seq", 64, false],
+        ["msg_cnt", 16, false]
+      ]
+    },
+    {
+      "name" : "moldudp_msg_t",
+      "id" : 9,
+      "fields" : [
+        ["msg_len", 16, false]
+      ]
+    },
+    {
+      "name" : "udp_t",
+      "id" : 10,
+      "fields" : [
+        ["srcPort", 16, false],
+        ["dstPort", 16, false],
+        ["length_", 16, false],
+        ["checksum", 16, false]
+      ]
+    },
+    {
+      "name" : "arp_ipv4_metadata_t",
+      "id" : 11,
+      "fields" : [
+        ["sha", 48, false],
+        ["spa", 32, false],
+        ["tha", 48, false],
+        ["tpa", 32, false]
+      ]
+    },
+    {
+      "name" : "intrinsic_metadata_t",
+      "id" : 12,
+      "fields" : [
+        ["mcast_grp", 4, false],
+        ["egress_rid", 4, false],
+        ["mcast_hash", 16, false],
+        ["lf_field_list", 32, false],
+        ["ingress_global_timestamp", 64, false],
+        ["resubmit_flag", 16, false],
+        ["recirculate_flag", 16, false]
+      ]
+    },
+    {
+      "name" : "routing_metadata_t",
+      "id" : 13,
+      "fields" : [
+        ["nhop_ipv4", 32, false]
+      ]
+    }
+  ],
+  "headers" : [
+    {
+      "name" : "scalars",
+      "id" : 0,
+      "header_type" : "scalars_0",
+      "metadata" : true,
+      "pi_omit" : true
+    },
+    {
+      "name" : "standard_metadata",
+      "id" : 1,
+      "header_type" : "standard_metadata",
+      "metadata" : true,
+      "pi_omit" : true
+    },
+    {
+      "name" : "add_order",
+      "id" : 2,
+      "header_type" : "itch_add_order_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "arp",
+      "id" : 3,
+      "header_type" : "arp_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "arp_ipv4",
+      "id" : 4,
+      "header_type" : "arp_ipv4_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "ethernet",
+      "id" : 5,
+      "header_type" : "ethernet_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "ipv4",
+      "id" : 6,
+      "header_type" : "ipv4_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "itch_msg_type",
+      "id" : 7,
+      "header_type" : "itch_msg_type_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "moldudp_hdr",
+      "id" : 8,
+      "header_type" : "moldudp_hdr_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "moldudp_msg",
+      "id" : 9,
+      "header_type" : "moldudp_msg_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "udp",
+      "id" : 10,
+      "header_type" : "udp_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "arp_ipv4_meta",
+      "id" : 11,
+      "header_type" : "arp_ipv4_metadata_t",
+      "metadata" : true,
+      "pi_omit" : true
+    },
+    {
+      "name" : "intrinsic_metadata",
+      "id" : 12,
+      "header_type" : "intrinsic_metadata_t",
+      "metadata" : true,
+      "pi_omit" : true
+    },
+    {
+      "name" : "routing_metadata",
+      "id" : 13,
+      "header_type" : "routing_metadata_t",
+      "metadata" : true,
+      "pi_omit" : true
+    }
+  ],
+  "header_stacks" : [],
+  "header_union_types" : [],
+  "header_unions" : [],
+  "header_union_stacks" : [],
+  "field_lists" : [],
+  "errors" : [],
+  "enums" : [],
+  "parsers" : [
+    {
+      "name" : "parser",
+      "id" : 0,
+      "init_state" : "start",
+      "parse_states" : [
+        {
+          "name" : "parse_add_order",
+          "id" : 0,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "add_order"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : []
+        },
+        {
+          "name" : "parse_arp",
+          "id" : 1,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "arp"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x0800",
+              "mask" : null,
+              "next_state" : "parse_arp_ipv4"
+            },
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["arp", "ptype"]
+            }
+          ]
+        },
+        {
+          "name" : "parse_arp_ipv4",
+          "id" : 2,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "arp_ipv4"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : []
+        },
+        {
+          "name" : "parse_ethernet",
+          "id" : 3,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "ethernet"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x0800",
+              "mask" : null,
+              "next_state" : "parse_ipv4"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x0806",
+              "mask" : null,
+              "next_state" : "parse_arp"
+            },
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "etherType"]
+            }
+          ]
+        },
+        {
+          "name" : "parse_ipv4",
+          "id" : 4,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "ipv4"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x11",
+              "mask" : null,
+              "next_state" : "parse_udp"
+            },
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "protocol"]
+            }
+          ]
+        },
+        {
+          "name" : "parse_moldudp",
+          "id" : 5,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "moldudp_hdr"
+                }
+              ],
+              "op" : "extract"
+            },
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "moldudp_msg"
+                }
+              ],
+              "op" : "extract"
+            },
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "itch_msg_type"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x41",
+              "mask" : null,
+              "next_state" : "parse_add_order"
+            },
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["itch_msg_type", "msg_type"]
+            }
+          ]
+        },
+        {
+          "name" : "parse_udp",
+          "id" : 6,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "udp"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x04d2",
+              "mask" : null,
+              "next_state" : "parse_moldudp"
+            },
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["udp", "dstPort"]
+            }
+          ]
+        },
+        {
+          "name" : "start",
+          "id" : 7,
+          "parser_ops" : [],
+          "transitions" : [
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : "parse_ethernet"
+            }
+          ],
+          "transition_key" : []
+        }
+      ]
+    }
+  ],
+  "parse_vsets" : [],
+  "deparsers" : [
+    {
+      "name" : "deparser",
+      "id" : 0,
+      "order" : ["ethernet", "arp", "arp_ipv4", "ipv4", "udp", "moldudp_hdr", "moldudp_msg", "itch_msg_type", "add_order"]
+    }
+  ],
+  "meter_arrays" : [],
+  "counter_arrays" : [],
+  "register_arrays" : [],
+  "calculations" : [
+    {
+      "name" : "calc",
+      "id" : 0,
+      "algo" : "csum16",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["ipv4", "version"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "ihl"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "diffserv"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "totalLen"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "identification"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "flags"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "fragOffset"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "ttl"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "protocol"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "dstAddr"]
+        }
+      ]
+    },
+    {
+      "name" : "calc_0",
+      "id" : 1,
+      "algo" : "csum16",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["ipv4", "version"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "ihl"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "diffserv"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "totalLen"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "identification"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "flags"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "fragOffset"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "ttl"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "protocol"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "dstAddr"]
+        }
+      ]
+    }
+  ],
+  "learn_lists" : [],
+  "actions" : [
+    {
+      "name" : "NoAction",
+      "id" : 0,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "NoAction",
+      "id" : 1,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "set_dmac",
+      "id" : 2,
+      "runtime_data" : [
+        {
+          "name" : "dmac",
+          "bitwidth" : 48
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 262,
+            "column" : 16,
+            "source_fragment" : "dmac) { ..."
+          }
+        }
+      ]
+    },
+    {
+      "name" : "_nop",
+      "id" : 3,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "_nop",
+      "id" : 4,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "_drop",
+      "id" : 5,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "drop",
+          "parameters" : [],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 251,
+            "column" : 1,
+            "source_fragment" : "drop()"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "_drop",
+      "id" : 6,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "drop",
+          "parameters" : [],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 251,
+            "column" : 1,
+            "source_fragment" : "drop()"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "_drop",
+      "id" : 7,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "drop",
+          "parameters" : [],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 251,
+            "column" : 1,
+            "source_fragment" : "drop()"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "set_dip",
+      "id" : 8,
+      "runtime_data" : [
+        {
+          "name" : "dip",
+          "bitwidth" : 32
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "dstAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 291,
+            "column" : 15,
+            "source_fragment" : "dip) { ..."
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["udp", "checksum"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x0000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 293,
+            "column" : 1,
+            "source_fragment" : "modify_field(udp.checksum, 0)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "forward_arp",
+      "id" : 9,
+      "runtime_data" : [
+        {
+          "name" : "port",
+          "bitwidth" : 9
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 322,
+            "column" : 19,
+            "source_fragment" : "port){ ..."
+          }
+        }
+      ]
+    },
+    {
+      "name" : "_nop",
+      "id" : 10,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "reply_arp",
+      "id" : 11,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4_meta", "tha"]
+            },
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4", "tha"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 327,
+            "column" : 2,
+            "source_fragment" : "modify_field(arp_ipv4_meta.tha, arp_ipv4.tha)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4_meta", "sha"]
+            },
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4", "sha"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 328,
+            "column" : 2,
+            "source_fragment" : "modify_field(arp_ipv4_meta.sha, arp_ipv4.sha)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4_meta", "spa"]
+            },
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4", "spa"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 329,
+            "column" : 2,
+            "source_fragment" : "modify_field(arp_ipv4_meta.spa, arp_ipv4.spa)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4_meta", "tpa"]
+            },
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4", "tpa"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 330,
+            "column" : 2,
+            "source_fragment" : "modify_field(arp_ipv4_meta.tpa, arp_ipv4.tpa)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4", "tha"]
+            },
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4", "sha"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 328,
+            "column" : 34,
+            "source_fragment" : "arp_ipv4.sha); ..."
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4", "sha"]
+            },
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4_meta", "tha"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 333,
+            "column" : 2,
+            "source_fragment" : "modify_field(arp_ipv4.sha, arp_ipv4_meta.tha)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4", "spa"]
+            },
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4", "tpa"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 330,
+            "column" : 34,
+            "source_fragment" : "arp_ipv4.tpa); ..."
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4", "tpa"]
+            },
+            {
+              "type" : "field",
+              "value" : ["arp_ipv4_meta", "spa"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 335,
+            "column" : 2,
+            "source_fragment" : "modify_field(arp_ipv4.tpa, arp_ipv4_meta.spa)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["arp", "oper"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x0002"
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 337,
+            "column" : 2,
+            "source_fragment" : "modify_field(arp.oper, 0x2)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "ingress_port"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 338,
+            "column" : 2,
+            "source_fragment" : "modify_field(standard_metadata.egress_spec, standard_metadata.ingress_port)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "set_mid",
+      "id" : 12,
+      "runtime_data" : [
+        {
+          "name" : "mid",
+          "bitwidth" : 4
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "ttl"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "expression",
+                    "value" : {
+                      "op" : "+",
+                      "left" : {
+                        "type" : "field",
+                        "value" : ["ipv4", "ttl"]
+                      },
+                      "right" : {
+                        "type" : "hexstr",
+                        "value" : "0xff"
+                      }
+                    }
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 258,
+            "column" : 1,
+            "source_fragment" : "modify_field(ipv4.ttl, ipv4.ttl - 1)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["intrinsic_metadata", "mcast_grp"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 257,
+            "column" : 15,
+            "source_fragment" : "mid){ ..."
+          }
+        }
+      ]
+    },
+    {
+      "name" : "_drop",
+      "id" : 13,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "drop",
+          "parameters" : [],
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 251,
+            "column" : 1,
+            "source_fragment" : "drop()"
+          }
+        }
+      ]
+    }
+  ],
+  "pipelines" : [
+    {
+      "name" : "ingress",
+      "id" : 0,
+      "init_table" : "node_2",
+      "tables" : [
+        {
+          "name" : "multicast",
+          "id" : 0,
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 266,
+            "column" : 0,
+            "source_fragment" : "table multicast { ..."
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "standard_metadata.ingress_port",
+              "target" : ["standard_metadata", "ingress_port"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 512,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [12, 13],
+          "actions" : ["set_mid", "_drop"],
+          "base_default_next" : "node_4",
+          "next_tables" : {
+            "set_mid" : "node_4",
+            "_drop" : "node_4"
+          },
+          "default_entry" : {
+            "action_id" : 13,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "handle_arp",
+          "id" : 1,
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 308,
+            "column" : 0,
+            "source_fragment" : "table handle_arp { ..."
+          },
+          "key" : [
+            {
+              "match_type" : "lpm",
+              "name" : "arp_ipv4.tpa",
+              "target" : ["arp_ipv4", "tpa"],
+              "mask" : null
+            },
+            {
+              "match_type" : "exact",
+              "name" : "arp.oper",
+              "target" : ["arp", "oper"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "lpm",
+          "type" : "simple",
+          "max_size" : 256,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [9, 10, 11],
+          "actions" : ["forward_arp", "_nop", "reply_arp"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "forward_arp" : null,
+            "_nop" : null,
+            "reply_arp" : null
+          },
+          "default_entry" : {
+            "action_id" : 11,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        }
+      ],
+      "action_profiles" : [],
+      "conditionals" : [
+        {
+          "name" : "node_2",
+          "id" : 0,
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 350,
+            "column" : 4,
+            "source_fragment" : "valid(ipv4)"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["ipv4", "$valid$"]
+              }
+            }
+          },
+          "true_next" : "multicast",
+          "false_next" : "node_4"
+        },
+        {
+          "name" : "node_4",
+          "id" : 1,
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 354,
+            "column" : 4,
+            "source_fragment" : "valid(arp)"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["arp", "$valid$"]
+              }
+            }
+          },
+          "false_next" : null,
+          "true_next" : "handle_arp"
+        }
+      ]
+    },
+    {
+      "name" : "egress",
+      "id" : 1,
+      "init_table" : "node_8",
+      "tables" : [
+        {
+          "name" : "icn_to_ip",
+          "id" : 2,
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 296,
+            "column" : 0,
+            "source_fragment" : "table icn_to_ip { ..."
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "standard_metadata.egress_port",
+              "target" : ["standard_metadata", "egress_port"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 512,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [8, 4, 6, 1],
+          "actions" : ["set_dip", "_nop", "_drop", "NoAction"],
+          "base_default_next" : "forward",
+          "next_tables" : {
+            "set_dip" : "forward",
+            "_nop" : "forward",
+            "_drop" : "forward",
+            "NoAction" : "forward"
+          },
+          "default_entry" : {
+            "action_id" : 1,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "forward",
+          "id" : 3,
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 278,
+            "column" : 0,
+            "source_fragment" : "table forward { ..."
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "standard_metadata.egress_port",
+              "target" : ["standard_metadata", "egress_port"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 512,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [2, 3, 5, 0],
+          "actions" : ["set_dmac", "_nop", "_drop", "NoAction"],
+          "base_default_next" : "node_12",
+          "next_tables" : {
+            "set_dmac" : "node_12",
+            "_nop" : "node_12",
+            "_drop" : "node_12",
+            "NoAction" : "node_12"
+          },
+          "default_entry" : {
+            "action_id" : 0,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "just_drop",
+          "id" : 4,
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 341,
+            "column" : 0,
+            "source_fragment" : "table just_drop { ..."
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 256,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [7],
+          "actions" : ["_drop"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "_drop" : null
+          },
+          "default_entry" : {
+            "action_id" : 7,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        }
+      ],
+      "action_profiles" : [],
+      "conditionals" : [
+        {
+          "name" : "node_8",
+          "id" : 2,
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 360,
+            "column" : 5,
+            "source_fragment" : "valid(ipv4)"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["ipv4", "$valid$"]
+              }
+            }
+          },
+          "true_next" : "node_9",
+          "false_next" : "node_12"
+        },
+        {
+          "name" : "node_9",
+          "id" : 3,
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 361,
+            "column" : 5,
+            "source_fragment" : "valid(udp)"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["udp", "$valid$"]
+              }
+            }
+          },
+          "true_next" : "icn_to_ip",
+          "false_next" : "forward"
+        },
+        {
+          "name" : "node_12",
+          "id" : 4,
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 367,
+            "column" : 4,
+            "source_fragment" : "valid(arp)"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["arp", "$valid$"]
+              }
+            }
+          },
+          "true_next" : null,
+          "false_next" : "node_13"
+        },
+        {
+          "name" : "node_13",
+          "id" : 5,
+          "source_info" : {
+            "filename" : "multicast_router.p4",
+            "line" : 370,
+            "column" : 70,
+            "source_fragment" : "or"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "or",
+              "left" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "==",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["standard_metadata", "egress_port"]
+                  },
+                  "right" : {
+                    "type" : "field",
+                    "value" : ["standard_metadata", "ingress_port"]
+                  }
+                }
+              },
+              "right" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "==",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["ipv4", "ttl"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0x00"
+                  }
+                }
+              }
+            }
+          },
+          "false_next" : null,
+          "true_next" : "just_drop"
+        }
+      ]
+    }
+  ],
+  "checksums" : [
+    {
+      "name" : "cksum",
+      "id" : 0,
+      "target" : ["ipv4", "hdrChecksum"],
+      "type" : "generic",
+      "calculation" : "calc",
+      "if_cond" : {
+        "type" : "bool",
+        "value" : true
+      }
+    },
+    {
+      "name" : "cksum_0",
+      "id" : 1,
+      "target" : ["ipv4", "hdrChecksum"],
+      "type" : "generic",
+      "calculation" : "calc_0",
+      "if_cond" : {
+        "type" : "bool",
+        "value" : true
+      }
+    }
+  ],
+  "force_arith" : [],
+  "extern_instances" : [],
+  "field_aliases" : [],
+  "program" : "multicast_router.p4",
+  "__meta__" : {
+    "version" : [2, 18],
+    "compiler" : "https://github.com/p4lang/p4c"
+  }
+}
