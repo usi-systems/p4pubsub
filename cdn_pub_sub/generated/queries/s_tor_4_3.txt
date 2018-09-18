@@ -1,0 +1,5 @@
+add_order.price = 2: fwd(1);
+add_order.shares > 100 and add_order.stock = "q43": fwd(1);
+add_order.price < 99999999: fwd(3);
+add_order.price = 2: fwd(2);
+add_order.shares > 100 and add_order.stock = "q44": fwd(2);

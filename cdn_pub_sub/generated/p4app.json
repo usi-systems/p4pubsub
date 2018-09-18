@@ -1,0 +1,350 @@
+{
+  "program": "simple_router.p4",
+  "language": "p4-14",
+  "targets": {
+    "multiswitch": {
+      "bmv2_log": true,
+      "pcap_dump": false,
+      "auto-control-plane": false,
+      "cli": true,
+      "links": [
+        [
+          "s_agg_1_1",
+          "s_core_1_1"
+        ],
+        [
+          "s_agg_1_1",
+          "s_core_2_1"
+        ],
+        [
+          "s_agg_1_2",
+          "s_core_1_2"
+        ],
+        [
+          "s_agg_1_2",
+          "s_core_2_2"
+        ],
+        [
+          "s_agg_2_1",
+          "s_core_1_1"
+        ],
+        [
+          "s_agg_2_1",
+          "s_core_2_1"
+        ],
+        [
+          "s_agg_2_2",
+          "s_core_1_2"
+        ],
+        [
+          "s_agg_2_2",
+          "s_core_2_2"
+        ],
+        [
+          "s_agg_3_1",
+          "s_core_1_1"
+        ],
+        [
+          "s_agg_3_1",
+          "s_core_2_1"
+        ],
+        [
+          "s_agg_3_2",
+          "s_core_1_2"
+        ],
+        [
+          "s_agg_3_2",
+          "s_core_2_2"
+        ],
+        [
+          "s_agg_4_1",
+          "s_core_1_1"
+        ],
+        [
+          "s_agg_4_1",
+          "s_core_2_1"
+        ],
+        [
+          "s_agg_4_2",
+          "s_core_1_2"
+        ],
+        [
+          "s_agg_4_2",
+          "s_core_2_2"
+        ],
+        [
+          "s_tor_1_4",
+          "h_1_4_1"
+        ],
+        [
+          "s_tor_1_4",
+          "h_1_4_2"
+        ],
+        [
+          "s_agg_1_1",
+          "s_tor_1_4"
+        ],
+        [
+          "s_agg_1_2",
+          "s_tor_1_4"
+        ],
+        [
+          "s_tor_1_3",
+          "h_1_3_1"
+        ],
+        [
+          "s_tor_1_3",
+          "h_1_3_2"
+        ],
+        [
+          "s_agg_1_1",
+          "s_tor_1_3"
+        ],
+        [
+          "s_agg_1_2",
+          "s_tor_1_3"
+        ],
+        [
+          "s_tor_2_4",
+          "h_2_4_1"
+        ],
+        [
+          "s_tor_2_4",
+          "h_2_4_2"
+        ],
+        [
+          "s_agg_2_1",
+          "s_tor_2_4"
+        ],
+        [
+          "s_agg_2_2",
+          "s_tor_2_4"
+        ],
+        [
+          "s_tor_2_3",
+          "h_2_3_1"
+        ],
+        [
+          "s_tor_2_3",
+          "h_2_3_2"
+        ],
+        [
+          "s_agg_2_1",
+          "s_tor_2_3"
+        ],
+        [
+          "s_agg_2_2",
+          "s_tor_2_3"
+        ],
+        [
+          "s_tor_3_4",
+          "h_3_4_1"
+        ],
+        [
+          "s_tor_3_4",
+          "h_3_4_2"
+        ],
+        [
+          "s_agg_3_1",
+          "s_tor_3_4"
+        ],
+        [
+          "s_agg_3_2",
+          "s_tor_3_4"
+        ],
+        [
+          "s_tor_3_3",
+          "h_3_3_1"
+        ],
+        [
+          "s_tor_3_3",
+          "h_3_3_2"
+        ],
+        [
+          "s_agg_3_1",
+          "s_tor_3_3"
+        ],
+        [
+          "s_agg_3_2",
+          "s_tor_3_3"
+        ],
+        [
+          "s_tor_4_4",
+          "h_4_4_1"
+        ],
+        [
+          "s_tor_4_4",
+          "h_4_4_2"
+        ],
+        [
+          "s_agg_4_1",
+          "s_tor_4_4"
+        ],
+        [
+          "s_agg_4_2",
+          "s_tor_4_4"
+        ],
+        [
+          "s_tor_4_3",
+          "h_4_3_1"
+        ],
+        [
+          "s_tor_4_3",
+          "h_4_3_2"
+        ],
+        [
+          "s_agg_4_1",
+          "s_tor_4_3"
+        ],
+        [
+          "s_agg_4_2",
+          "s_tor_4_3"
+        ]
+      ],
+      "hosts": {
+      },
+      "switches": {
+        "s_tor_1_4": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_1_4_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_1_4_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_tor_1_4_mcast_groups.txt"
+        },
+        "s_tor_1_3": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_1_3_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_1_3_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_tor_1_3_mcast_groups.txt"
+        },
+        "s_agg_1_1": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_1_1_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_1_1_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_agg_1_1_mcast_groups.txt"
+        },
+        "s_agg_1_2": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_1_2_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_1_2_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_agg_1_2_mcast_groups.txt"
+        },
+        "s_tor_2_4": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_2_4_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_2_4_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_tor_2_4_mcast_groups.txt"
+        },
+        "s_tor_2_3": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_2_3_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_2_3_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_tor_2_3_mcast_groups.txt"
+        },
+        "s_agg_2_1": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_2_1_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_2_1_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_agg_2_1_mcast_groups.txt"
+        },
+        "s_agg_2_2": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_2_2_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_2_2_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_agg_2_2_mcast_groups.txt"
+        },
+        "s_tor_3_4": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_3_4_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_3_4_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_tor_3_4_mcast_groups.txt"
+        },
+        "s_tor_3_3": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_3_3_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_3_3_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_tor_3_3_mcast_groups.txt"
+        },
+        "s_agg_3_1": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_3_1_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_3_1_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_agg_3_1_mcast_groups.txt"
+        },
+        "s_agg_3_2": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_3_2_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_3_2_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_agg_3_2_mcast_groups.txt"
+        },
+        "s_tor_4_4": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_4_4_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_4_4_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_tor_4_4_mcast_groups.txt"
+        },
+        "s_tor_4_3": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_4_3_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_tor_4_3_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_tor_4_3_mcast_groups.txt"
+        },
+        "s_agg_4_1": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_4_1_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_4_1_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_agg_4_1_mcast_groups.txt"
+        },
+        "s_agg_4_2": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_4_2_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_agg_4_2_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_agg_4_2_mcast_groups.txt"
+        },
+        "s_core_1_1": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_core_1_1_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_core_1_1_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_core_1_1_mcast_groups.txt"
+        },
+        "s_core_2_1": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_core_2_1_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_core_2_1_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_core_2_1_mcast_groups.txt"
+        },
+        "s_core_1_2": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_core_1_2_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_core_1_2_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_core_1_2_mcast_groups.txt"
+        },
+        "s_core_2_2": {
+          "commands": [
+            "/home/ali/cdn_pub_sub/generated/commands/s_core_2_2_ipv4.txt",
+            "/home/ali/cdn_pub_sub/generated/commands/s_core_2_2_commands.txt"
+          ],
+          "mcast_groups": "/home/ali/cdn_pub_sub/generated/commands/s_core_2_2_mcast_groups.txt"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+table_add send_frame rewrite_mac 0x3 => 00:77:00:88:02:03
+table_add ipv4_lpm set_nhop 10.3.3.0/24 => 10.3.3.0 0x4
+table_add forward set_dmac 0x4 => 00:ff:00:03:03:00
+
+table_add send_frame rewrite_mac 0x4 => 00:77:00:88:02:04
+table_add ipv4_lpm set_nhop 10.3.4.0/24 => 10.3.4.0 0x3
+table_add forward set_dmac 0x3 => 00:ff:00:03:04:00
+
+table_add send_frame rewrite_mac 0x1 => 00:77:00:88:03:02
+table_add ipv4_lpm set_nhop 10.0.0.0/8 => 10.0.0.100 0x1
+table_add forward set_dmac 0x1 => 00:77:00:88:03:02
+
