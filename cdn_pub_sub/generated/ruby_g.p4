@@ -281,6 +281,7 @@ table ipv4_lpm {
   actions {
     set_nhop;
     _drop;
+    _nop;
   }
   size : 1024;
 }
@@ -297,6 +298,7 @@ table forward {
   actions {
     set_dmac;
     _drop;
+    _nop;
   }
   size : 512;
 }
@@ -312,6 +314,7 @@ table icn_to_ip {
   actions {
     set_dip;
     _drop;
+    _nop;
   }
   size : 512;
 }
@@ -326,6 +329,7 @@ table send_frame {
   }
   actions {
     rewrite_mac;
+    _nop;
     _drop;
   }
   size : 256;
@@ -338,6 +342,7 @@ table handle_arp {
   }
   actions {
     forward_arp;
+    _nop;
   }
   default_action: reply_arp;
   size : 256;
@@ -363,6 +368,7 @@ action reply_arp() {
 table just_drop {
   actions {
     _drop;
+    _nop;
     }
     default_action: _drop;
     size : 256;

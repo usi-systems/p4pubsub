@@ -4,7 +4,7 @@
   "targets": {
     "multiswitch": {
       "bmv2_log": true,
-      "pcap_dump": false,
+      "pcap_dump": true,
       "auto-control-plane": false,
       "cli": true,
       "links": [
