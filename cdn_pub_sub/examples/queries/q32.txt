@@ -1,2 +1,1 @@
-add_order.price = 2
-add_order.shares > 100 and add_order.stock = "q32"
+add_order.price = 32
