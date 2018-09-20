@@ -1,1 +1,1 @@
-add_order.price = 11
+add_order.price = 8

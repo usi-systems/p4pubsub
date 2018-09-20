@@ -1,5 +1,5 @@
-add_order.price = 8: fwd(4);
+add_order.price = 6: fwd(4);
 add_order.price < 99999999: fwd(1);
 add_order.price = 14: fwd(4);
-add_order.price = 29: fwd(3);
 add_order.price = 13: fwd(3);
+add_order.price = 9: fwd(3);
