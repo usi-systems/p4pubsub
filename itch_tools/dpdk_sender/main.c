@@ -50,18 +50,19 @@
 #include "../third-party/libtrading/lib/proto/nasdaq_itch50_message.c"
 
 #define RX_RING_SIZE 4096
-#define TX_RING_SIZE 64
+#define TX_RING_SIZE 4096
 
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 250
-#define BURST_SIZE 32
+//#define BURST_SIZE 32
+#define BURST_SIZE 16
 // Smallest burst size supported by this NIC:
 #define MIN_BURST_SIZE 4
 
 #define WRAP_LOG
 
 static const struct rte_eth_conf port_conf_default = {
-    .link_speeds = ETH_LINK_SPEED_25G,
+    .link_speeds = ETH_LINK_SPEED_10G,
     .rxmode = {
         .mq_mode        = ETH_MQ_RX_RSS,
         .max_rx_pkt_len = ETHER_MAX_LEN,
@@ -169,7 +170,7 @@ uint64_t send_start_opackets;
 uint64_t send_start_obytes;
 
 
-const char dst_mac[] = {0x3c, 0xfd, 0xfe, 0xa6, 0x7e, 0x5d};
+const char dst_mac[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
 unsigned dst_addr = 0x0a000002;
 uint64_t send_timestamp;
 uint64_t recv_timestamp;
