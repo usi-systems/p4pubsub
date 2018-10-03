@@ -14,7 +14,7 @@ from threading import Thread
 from itertools import cycle
 
 #plt.style.use('ggplot')
-matplotlib.rcParams.update({'font.size': 16})
+matplotlib.rcParams.update({'font.size': 24})
 matplotlib.rcParams.update({'font.weight': 'bold'})
 matplotlib.rcParams.update({'axes.labelweight': 'bold'})
 matplotlib.rcParams.update({'text.color': 'black'})
@@ -44,13 +44,13 @@ linestyles = cycle(("-"))
 
 for lbl in labels:
     xs, ys = cdfs[lbl]
-    plt.plot(xs, ys, label=lbl, linestyle=next(linestyles), color=next(color), linewidth=3)
+    plt.plot(xs, ys, label=lbl, linestyle=next(linestyles), color=next(color), linewidth=4)
 
 
 # Display grid
 plt.axes().grid()
 
-plt.axes().set_xscale("log", nonposx='clip')
+#plt.axes().set_xscale("log", nonposx='clip')
 
 ticks_x = ticker.FuncFormatter(lambda x, pos: '%g'%x if x<1e3 else '{0:1.0e}'.format(x).replace('+0', ''))
 plt.axes().get_xaxis().set_major_formatter(ticks_x)
@@ -71,20 +71,32 @@ plt.show()
 
 # Zoom in
 plt.xlim([0,500])
+plt.savefig('cdf_zoomed0.pdf')
 plt.savefig('cdf_zoomed0.png', transparent=transparent_png)
 plt.xlim([0,300])
 plt.savefig('cdf_zoomed1.pdf')
 plt.savefig('cdf_zoomed1.png', transparent=transparent_png)
-plt.xlim([0,400])
-plt.savefig('cdf_zoomed2.pdf')
-plt.xlim([0,150])
-plt.savefig('cdf_zoomed2.png', transparent=transparent_png)
 plt.xlim([0,100])
+plt.savefig('cdf_zoomed2.pdf')
+plt.savefig('cdf_zoomed2.png', transparent=transparent_png)
+plt.xlim([0,50])
 plt.savefig('cdf_zoomed3.pdf')
 plt.savefig('cdf_zoomed3.png', transparent=transparent_png)
-plt.xlim([0,10])
+plt.xlim([0,30])
+plt.savefig('cdf_zoomed4.pdf')
 plt.savefig('cdf_zoomed4.png', transparent=transparent_png)
-plt.xlim([0,600])
-plt.ylim([0.8,1.0])
+plt.xlim([0,20])
 plt.savefig('cdf_zoomed5.pdf')
 plt.savefig('cdf_zoomed5.png', transparent=transparent_png)
+plt.xlim([0,10])
+plt.savefig('cdf_zoomed6.pdf')
+plt.savefig('cdf_zoomed6.png', transparent=transparent_png)
+plt.xlim([5,20])
+#plt.ylim([0.8,1.0])
+plt.savefig('cdf_zoomed7.pdf')
+plt.savefig('cdf_zoomed7.png', transparent=transparent_png)
+plt.xlim([0,50])
+plt.ylim([0.96,1.0])
+leg.remove()
+plt.savefig('cdf_zoomed8.pdf')
+plt.savefig('cdf_zoomed8.png', transparent=transparent_png)
