@@ -192,7 +192,6 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
 
     if fontsize:
         plt.rc('font', size=fontsize)
-        print "FONT SIZE", fontsize
         ax.xaxis.set_tick_params(labelsize=fontsize)
         ax.yaxis.set_tick_params(labelsize=fontsize)
 
