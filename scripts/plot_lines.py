@@ -19,7 +19,7 @@ matplotlib.rcParams['pdf.use14corefonts'] = True
 
 def formatLabel(l):
     if matplotlib.rcParams['text.usetex']:
-        return l.replace('_', '\\_').replace('%', '\\%')
+        return l.replace('_', '\\_').replace('%', '\\%').replace('#', '\\#')
     return l
 
 #plt.style.use('ggplot')
@@ -67,7 +67,7 @@ label_style_hist = {} # keep history of styles for labels
 label_order_hist = [] # keep history of the order of labels
 
 markers = itertools.cycle(('o', '^', 'D', 's', '+', 'x', '*' ))
-linestyles = itertools.cycle(("-","--","-.",":"))
+linestyles = itertools.cycle(("-","-","--","-.",":"))
 colors = itertools.cycle(('r', 'g', 'b', 'c', 'm', 'y', 'k'))
 hatches = itertools.cycle(('x', '/', 'o', '\\', '*', 'o', 'O', '.'))
 
@@ -182,10 +182,6 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
         if 'markersize' in conf['style']: markersize = int(conf['style']['markersize'])
         if 'fontsize' in conf['style'] and fontsize is None:
             fontsize = conf['style']['fontsize']
-        if fontsize:
-            plt.rc('font', size=fontsize)
-            ax.xaxis.set_tick_params(labelsize=fontsize)
-            ax.yaxis.set_tick_params(labelsize=fontsize)
         if 'showtitle' in conf['style'] and conf['style']['showtitle'].lower() in ['no', 'false', '0']:
             title = None
         if 'fontweight' in conf['style']:
@@ -193,6 +189,12 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
             plt.rc('axes', labelweight=conf['style']['fontweight'])
         if 'fontfamily' in conf['style']:
             plt.rc('font', family=conf['style']['fontfamily'])
+
+    if fontsize:
+        plt.rc('font', size=fontsize)
+        print "FONT SIZE", fontsize
+        ax.xaxis.set_tick_params(labelsize=fontsize)
+        ax.yaxis.set_tick_params(labelsize=fontsize)
 
     # Only plot some labels
     if plot_labels:
