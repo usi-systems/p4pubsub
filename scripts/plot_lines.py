@@ -376,7 +376,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.filename == '-':
-        title = '-'
+        title = None
         file_in = sys.stdin
         file_out = 'out.' + args.format
     else:
