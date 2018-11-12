@@ -322,7 +322,9 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
         handles, labels = ax.get_legend_handles_labels()
         # remove the errorbars
         handles = [h[0] for h in handles]
-        ax.legend(loc='best', fancybox=True, title=formatLabel(legend_title), framealpha=0.5,
+        ax.legend(loc='best', fancybox=True, framealpha=0.5,
+                title=formatLabel(legend_title) if legend_title else None,
+                handlelength=0.5,
                 handles=handles, labels=labels, prop={'size': fontsize})
 
     fig.tight_layout()
