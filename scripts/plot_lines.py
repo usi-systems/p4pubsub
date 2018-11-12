@@ -123,7 +123,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
         label_name = lbl
         if conf and 'labels' in conf:
             if lbl in conf['labels']: label_name = conf['labels'][lbl]
-        label_name = formatLabel(label_name)
+        label_name = formatLabel(str(label_name))
         label_names.append(label_name)
 
         plot_handles.append(rects)
@@ -238,7 +238,7 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
         if conf and 'labels' in conf:
             if label in conf['labels']: label_name = conf['labels'][label]
 
-        label_name = formatLabel(label_name)
+        label_name = formatLabel(str(label_name))
 
         (_, caps, _) = ax.errorbar(x, y, label=label_name, linewidth=linewidth, markersize=markersize,
                 elinewidth=1, yerr=yerr if show_error else None,
@@ -322,7 +322,7 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
         handles, labels = ax.get_legend_handles_labels()
         # remove the errorbars
         handles = [h[0] for h in handles]
-        ax.legend(loc='best', fancybox=True, title=legend_title, framealpha=0.5,
+        ax.legend(loc='best', fancybox=True, title=formatLabel(legend_title), framealpha=0.5,
                 handles=handles, labels=labels, prop={'size': fontsize})
 
     fig.tight_layout()
