@@ -66,7 +66,7 @@ def one_or_more_numbers(x):
 label_style_hist = {} # keep history of styles for labels
 label_order_hist = [] # keep history of the order of labels
 
-markers = itertools.cycle(('o', '^', 'D', 's', '+', 'x', '*' ))
+markers = itertools.cycle(('o', 'x', 'D', 's', '+', '^', '*' ))
 linestyles = itertools.cycle(("-","-","--","-.",":"))
 colors = itertools.cycle(('r', 'g', 'b', 'c', 'm', 'y', 'k'))
 hatches = itertools.cycle(('x', '/', 'o', '\\', '*', 'o', 'O', '.'))
@@ -166,7 +166,8 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     return fig
 
 def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None, xscale='linear', yscale='linear',
-        title=None, plot_labels=None, label_order=None, show_error=True, show_legend=False, legend_title=None,
+        title=None, plot_labels=None, label_order=None, label_names=None,
+        show_error=True, show_legend=False, legend_title=None,
         conf=None, linewidth=2, markersize=2, fontsize=None):
     """Plots a 2D array with the format: [[label, x, y, y-dev]]
     """
@@ -225,7 +226,7 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
 
 
     all_x, all_y = [], []
-    for label in [l for l in local_label_order if l in labels]:
+    for ith_label,label in enumerate([l for l in local_label_order if l in labels]):
         if not label in label_style_hist:
             label_style_hist[label] = dict(line=linestyles.next(), marker=markers.next(), color=colors.next())
 
@@ -237,6 +238,9 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
         label_name = label
         if conf and 'labels' in conf:
             if label in conf['labels']: label_name = conf['labels'][label]
+
+        if label_names and ith_label < len(label_names):
+            label_name = label_names[ith_label]
 
         label_name = formatLabel(str(label_name))
 
@@ -367,6 +371,8 @@ if __name__ == '__main__':
             type=str, default=None, required=False)
     parser.add_argument('--labels', help='Comma-separated list of labels to plot',
             type=_tolist, default=None, required=False)
+    parser.add_argument('--label-names', help='Comma-separated list of label names to use on plot',
+            type=_tolist, default=None, required=False)
     parser.add_argument('--no-error', help='Do not display error bars on the plot',
             action='store_true', default=False)
     parser.add_argument('--show', help='Open the plot in a new window',
@@ -419,6 +425,7 @@ if __name__ == '__main__':
             fontsize=args.font_size,
             markersize=args.markersize,
             plot_labels=args.labels,
+            label_names=args.label_names,
             label_order=_tolist(args.label_order) if args.label_order else None)
 
     fig.savefig(file_out)
