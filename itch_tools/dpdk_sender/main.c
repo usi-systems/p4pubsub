@@ -334,7 +334,7 @@ int handle_pkt(struct rte_mbuf *pkt) {
 
         if (m->MessageType == ITCH50_MSG_ADD_ORDER) {
             ao = (struct itch50_msg_add_order *)m;
-            if (matches_filter(ao)) {
+            if (unlikely(matches_filter(ao))) {
                 total_matches++;
                 if (log_filename)
                     log_add_order(ao);
@@ -371,7 +371,8 @@ receiver(void)
 					"polling thread (core %u).\n\tPerformance will "
 					"not be optimal.\n", receiver_port, rte_lcore_id());
 
-	printf("\nCore %u receiving packets on port %d.\n", rte_lcore_id(), receiver_port);
+	printf("\nCore %u (socket %u) receiving packets on port %d (socket %u).\n", rte_lcore_id(), rte_socket_id(),
+            receiver_port, rte_eth_dev_socket_id(receiver_port));
 
     struct rte_eth_stats stats;
     int i;
@@ -556,7 +557,8 @@ sender(void)
 					"polling thread (core %u).\n\tPerformance will "
 					"not be optimal.\n", sender_port, rte_lcore_id());
 
-	printf("\nCore %u sending packets on port %d.\n", rte_lcore_id(), sender_port);
+	printf("\nCore %u (socket %u) sending packets on port %d (socket %u).\n", rte_lcore_id(), rte_socket_id(),
+            sender_port, rte_eth_dev_socket_id(sender_port));
 
     // Wait 1 sec for the receiver to be ready
     sleep(1);
