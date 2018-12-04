@@ -62,12 +62,12 @@ void pp_int(char *buf, size_t size) {
     assert(ofst < size);
 
     struct intl4_shim *shim = (struct intl4_shim *) (buf + ofst);
-    printf("intl4_shim\n\ttype: %u\n\tlen: %u\n\n", shim->int_type, shim->len);
+    printf("intl4_shim\n\ttype: %u\n\tlen: %u\n", shim->int_type, shim->len);
     ofst += sizeof(struct intl4_shim);
     assert(ofst < size);
 
     struct int_header *hdr = (struct int_header *) (buf + ofst);
-    printf("int_header\n\tremaining_hop_cnt: %u\n\tins_mask1: %u\n\n", hdr->remaining_hop_cnt, hdr->instruction_mask_0007);
+    printf("int_header\n\tremaining_hop_cnt: %u\n\tins_mask1: %u\n", hdr->remaining_hop_cnt, hdr->instruction_mask_0007);
     ofst += sizeof(struct int_header);
     assert(ofst < size);
 
@@ -83,7 +83,7 @@ void pp_int(char *buf, size_t size) {
 
     struct int_q_occupancy *qo = (struct int_q_occupancy *) (buf + ofst);
     unsigned occ = (qo->q_occupancy1 << 16) | (qo->q_occupancy2 << 8) | qo->q_occupancy3;
-    printf("q_id %d occ: %X\n", qo->q_id, occ);
+    printf("q_id %d occ: %X\n\n", qo->q_id, occ);
     ofst += sizeof(struct int_q_occupancy);
 
 }

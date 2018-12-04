@@ -17,7 +17,7 @@
 char *progname;
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-c COUNT] DST_HOST DST_PORT\n\
+            "Usage: %s [-c COUNT] [-r REMAINING_HOP_CNT] DST_HOST DST_PORT\n\
 \n\
 ", progname);
     exit(rc);
@@ -67,12 +67,16 @@ int main(int argc, char *argv[]) {
     int opt, i, sock_fd;
     struct sockaddr_in sock_addr;
     int count = 8;
+    int remaining_hop_cnt = 2;
 
     progname = basename(argv[0]);
-    while ((opt = getopt(argc, argv, "hc:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:r:")) != -1) {
         switch (opt) {
             case 'c':
                 count = atoi(optarg);
+                break;
+            case 'r':
+                remaining_hop_cnt = atoi(optarg);
                 break;
             case 'h':
                 usage(0);
@@ -105,7 +109,7 @@ int main(int argc, char *argv[]) {
     size_t payload_size;
 
     for (i = 0; i < count; i++) {
-        payload_size = make_int_payload(buf, 2);
+        payload_size = make_int_payload(buf, remaining_hop_cnt);
         sendto(sock_fd, buf, payload_size, 0, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
 	}
 
