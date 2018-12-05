@@ -243,7 +243,7 @@ action modify_int() {
 
 table from_loopback {
     reads {
-        standard_metadata.ingress_port: exact;
+        standard_metadata.egress_port: exact;
     }
     actions {
         modify_int;
