@@ -7,18 +7,6 @@
 //            HEADERS
 // *********************************
 
-header_type intrinsic_metadata_t {
-    fields {
-        mcast_grp : 4;
-        egress_rid : 4;
-        mcast_hash : 16;
-        lf_field_list: 32;
-        ingress_global_timestamp : 64;
-        resubmit_flag : 16;
-        recirculate_flag : 16;
-    }
-}
-
 header_type ethernet_t {
     fields {
         dstAddr : 48;
@@ -93,13 +81,6 @@ header_type int_header_t {
 header_type int_switch_id_t {
     fields {
         switch_id: 32;
-    }
-}
-
-header_type int_level1_port_ids_t {
-    fields {
-        ingress_port_id: 16;
-        egress_port_id: 16;
     }
 }
 
@@ -204,8 +185,6 @@ parser parse_int {
     extract(int_q_occupancy);
     return ingress;
 }
-
-metadata intrinsic_metadata_t intrinsic_metadata;
 
 
 // *********************************
