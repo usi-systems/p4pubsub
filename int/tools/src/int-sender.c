@@ -34,7 +34,7 @@ size_t make_int_payload(char *buf, uint8_t remaining_hop_cnt) { // returns size 
     struct intl4_shim *shim = (struct intl4_shim *) (buf + ofst);
     bzero(shim, sizeof(struct intl4_shim));
     shim->int_type = 1;
-    size_t len_bytes = sizeof(struct intl4_shim) + sizeof(struct int_header) + sizeof(struct int_switch_id) + sizeof(struct int_hop_latency);
+    size_t len_bytes = sizeof(struct intl4_shim) + sizeof(struct int_header) + sizeof(struct int_switch_id) + sizeof(struct int_hop_latency) + sizeof(struct int_q_occupancy);
     shim->len = len_bytes / 4; // length in 4-byte words
     ofst += sizeof(struct intl4_shim);
 
