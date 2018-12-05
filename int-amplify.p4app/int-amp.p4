@@ -207,24 +207,6 @@ metadata intrinsic_metadata_t intrinsic_metadata;
 
 action nop() { }
 
-action modify_int() {
-    add_to_field(int_switch_id.switch_id, 1);
-    add_to_field(int_hop_latency.hop_latency, 1);
-    add_to_field(int_q_occupancy.q_occupancy, 1);
-}
-
-table from_loopback {
-    reads {
-        standard_metadata.ingress_port: exact;
-    }
-    actions {
-        modify_int;
-        nop;
-    }
-    default_action: nop;
-}
-
-
 action set_mgid(mgid) {
     modify_field(intrinsic_metadata.mcast_grp, mgid, mgid);
 }
@@ -244,18 +226,32 @@ table forward {
 }
 
 control ingress {
-    if (valid(int_header)) {
-
-        apply(from_loopback);
-
+    if (valid(int_header))
         apply(forward);
-    }
 }
 
 
 // *********************************
 //            EGRESS
 // *********************************
+
+action modify_int() {
+    add_to_field(int_switch_id.switch_id, 1);
+    add_to_field(int_hop_latency.hop_latency, 1);
+    add_to_field(int_q_occupancy.q_occupancy, 1);
+}
+
+table from_loopback {
+    reads {
+        standard_metadata.ingress_port: exact;
+    }
+    actions {
+        modify_int;
+        nop;
+    }
+    default_action: nop;
+}
+
 
 action decr_hop_cnt() { subtract_from_field(int_header.remaining_hop_cnt, 1); }
 table update_hop_cnt { actions { decr_hop_cnt; } default_action: decr_hop_cnt; }
@@ -281,6 +277,8 @@ control egress {
     if (valid(ipv4))
         apply(rewrite_dst);
 
-    if (valid(int_header))
+    if (valid(int_header)) {
         apply(update_hop_cnt);
+        apply(from_loopback);
+    }
 }

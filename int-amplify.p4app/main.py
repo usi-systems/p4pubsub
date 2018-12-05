@@ -41,6 +41,8 @@ time.sleep(0.2)
 source_proc = h2.popen('./int-sender -c 1 -r 3 10.0.0.3 1234')
 print source_proc.communicate()
 
+time.sleep(0.2)
+
 #raw_input() # debug
 
 # Cleanup:
