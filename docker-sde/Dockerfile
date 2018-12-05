@@ -6,11 +6,13 @@ ENV DEV_TOOLS vim \
               zsh \
               colordiff \
               tcpdump \
+              less \
               ethtool
 
 ENV SDE_DEPS  sudo \
               graphviz \
               zlib1g-dev \
+              libpcap-dev \
               libc-ares-dev \
               autoconf \
               automake \
@@ -55,7 +57,6 @@ ENV MAYBE_DEPS bison \
               libgmp10 \
               libgmpxx4ldbl \
               libjudy-dev \
-              libpcap-dev \
               libreadline6 \
               libreadline6-dev
 
@@ -86,8 +87,6 @@ ENV SDE_INSTALL=/bf-sde-8.4.0/install
 
 WORKDIR /bf-sde-8.4.0
 RUN PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig/ ./sde_build.sh -q \
-                --bf-drivers-extra-flags="--without-kdrv"
-#                --switch-pkg none \
-#                --no-deps \
+                --bf-drivers-extra-flags="--without-kdrv" -e 9
 
 ENTRYPOINT ["/bin/zsh"]
