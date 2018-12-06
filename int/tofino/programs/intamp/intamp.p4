@@ -227,15 +227,17 @@ action modify_int() {
     add_to_field(int_q_occupancy.q_occupancy3, 1);
 }
 
-table from_loopback {
+table update_dup {
     reads {
         eg_intr_md.egress_port: exact;
+        ig_intr_md.ingress_port: exact;
     }
     actions {
         modify_int;
         nop;
     }
-    default_action: nop;
+    default_action: modify_int;
+    size: 64;
 }
 
 
@@ -265,6 +267,6 @@ control egress {
 
     if (valid(int_header)) {
         apply(update_hop_cnt);
-        apply(from_loopback);
+        apply(update_dup);
     }
 }

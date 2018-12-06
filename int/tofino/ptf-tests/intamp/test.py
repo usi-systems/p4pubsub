@@ -115,8 +115,8 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
             self.ingress_port = 0
             self.egress_port = 4
         else:
-            self.ingress_port = 132 # ens2f1
-            self.egress_port =  133 # ens2f0
+            self.ingress_port = 46 # ens2f1
+            self.egress_port =  168 # ens2f0
 
         self.mgid = 5
         self.loopback_port = 1
@@ -179,15 +179,15 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
                 intamp_forward_match_spec_t(1),
                 intamp_set_egress_port_action_spec_t(self.egress_port))]
 
-    def popFromLoopback(self):
-        self.entries['from_loopback'] = [self.client.from_loopback_table_add_with_modify_int(
+    def popUpdateDup(self):
+        self.entries['update_dup'] = [self.client.update_dup_table_add_with_nop(
                 self.shdl, self.dev_tgt,
-                intamp_from_loopback_match_spec_t(self.loopback_port))]
+                intamp_update_dup_match_spec_t(self.ingress_port, self.egress_port))]
 
 
     def popTables(self):
         self.popForward()
-        self.popFromLoopback()
+        self.popUpdateDup()
 
     def setupMulticast(self):
         rid = 1
@@ -195,7 +195,10 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
 
         self.mc_sess_hdl = self.mc.mc_create_session()
 
-        port_map = set_port_or_lag_bitmap(288, [self.loopback_port, self.egress_port])
+        ports = [self.loopback_port, self.egress_port]
+        if test_param_get('target') != 'asic-model': # if running on HW
+            ports += [self.egress_port+i for i in xrange(1, 4)]
+        port_map = set_port_or_lag_bitmap(288, ports)
         self.mc_node_hdl = self.mc.mc_node_create(self.mc_sess_hdl, dev_id, rid, port_map,
 					lag_map)
 
@@ -261,4 +264,4 @@ class HW(BaseTest):
         self.conn_mgr.complete_operations(self.shdl)
 
         print "Finished populating tables."
-        raw_input("Hit ENTER to cleanup and exit.")
+        raw_input("Hit ENTER to cleanup and exit...")
