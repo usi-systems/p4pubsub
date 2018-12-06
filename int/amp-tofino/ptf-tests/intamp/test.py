@@ -180,6 +180,8 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
                 intamp_set_egress_port_action_spec_t(self.egress_port))]
 
     def popUpdateDup(self):
+        self.client.update_dup_set_default_action_modify_int(self.shdl, self.dev_tgt,
+                intamp_modify_int_action_spec_t(hex_to_i32(0), hex_to_i32(1), hex_to_byte(1)))
         self.entries['update_dup'] = [self.client.update_dup_table_add_with_nop(
                 self.shdl, self.dev_tgt,
                 intamp_update_dup_match_spec_t(self.ingress_port, self.egress_port))]

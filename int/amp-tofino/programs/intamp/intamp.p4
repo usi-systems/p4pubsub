@@ -221,10 +221,10 @@ control ingress {
 //            EGRESS
 // *********************************
 
-action modify_int() {
-    add_to_field(int_switch_id.switch_id, 1);
-    add_to_field(int_hop_latency.hop_latency, 1);
-    add_to_field(int_q_occupancy.q_occupancy3, 1);
+action modify_int(switch_inc, lat_inc, occ_inc) {
+    add_to_field(int_switch_id.switch_id, switch_inc);
+    add_to_field(int_hop_latency.hop_latency, lat_inc);
+    add_to_field(int_q_occupancy.q_occupancy3, occ_inc);
 }
 
 table update_dup {
@@ -236,7 +236,7 @@ table update_dup {
         modify_int;
         nop;
     }
-    default_action: modify_int;
+    //default_action: modify_int; // XXX set this from control plane with params
     size: 64;
 }
 
