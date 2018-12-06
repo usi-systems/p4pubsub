@@ -46,11 +46,11 @@ size_t make_int_payload(char *buf, uint8_t remaining_hop_cnt) { // returns size 
     ofst += sizeof(struct int_header);
 
     struct int_switch_id *swid = (struct int_switch_id *) (buf + ofst);
-    swid->switch_id = htonl(0xAAAAAAAA);
+    swid->switch_id = htonl(22);
     ofst += sizeof(struct int_switch_id);
 
     struct int_hop_latency *hl = (struct int_hop_latency *) (buf + ofst);
-    hl->hop_latency = htonl(0xBBBBBBBB);
+    hl->hop_latency = htonl(8000);
     ofst += sizeof(struct int_hop_latency);
 
     struct int_q_occupancy *qo = (struct int_q_occupancy *) (buf + ofst);
