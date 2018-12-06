@@ -86,7 +86,10 @@ header_type int_switch_id_t {
 
 header_type int_hop_latency_t {
     fields {
-        hop_latency: 32;
+        // XXX We ignore these 12 MSB because the TCAM can only do a range
+        // match on the first 20 bits
+        hop_latency_msb: 12;
+        hop_latency: 20;
     }
 }
 
@@ -96,6 +99,12 @@ header_type int_q_occupancy_t {
         q_occupancy1: 8;
         q_occupancy2: 8;
         q_occupancy3: 8;
+    }
+}
+
+header_type camus_meta_t {
+    fields {
+        state: 16;
     }
 }
 
@@ -176,6 +185,8 @@ header int_switch_id_t int_switch_id;
 header int_hop_latency_t int_hop_latency;
 header int_q_occupancy_t int_q_occupancy;
 
+metadata camus_meta_t camus_meta;
+
 parser parse_int {
     extract(int_probe_marker);
     extract(intl4_shim);
@@ -191,7 +202,9 @@ parser parse_int {
 //            INGRESS
 // *********************************
 
-action nop() { }
+action set_next_state(next_state) {
+    modify_field(camus_meta.state, next_state);
+}
 
 action set_mgid(mgid) {
     modify_field(ig_intr_md_for_tm.mcast_grp_a, mgid);
@@ -201,19 +214,69 @@ action set_egress_port(port) {
     modify_field(ig_intr_md_for_tm.ucast_egress_port, port);
 }
 
-table forward {
-    reads {
-        int_header.remaining_hop_cnt: exact;
-    }
-    actions {
-        set_mgid;
-        set_egress_port;
-    }
+action query_drop() {
+    drop();
+}
+
+table query_actions {
+    reads { camus_meta.state: exact; }
+    actions { query_drop; set_egress_port; set_mgid; }
+    default_action: query_drop;
+    size: 1024;
+}
+
+table query_int_hop_latency_hop_latency_exact {
+    reads { camus_meta.state: exact; int_hop_latency.hop_latency: exact; }
+    actions { set_next_state; }
+    size: 1024;
+}
+table query_int_hop_latency_hop_latency_range {
+    reads { camus_meta.state: exact; int_hop_latency.hop_latency: range; }
+    actions { set_next_state; }
+    size: 1024;
+}
+table query_int_hop_latency_hop_latency_miss {
+    reads { camus_meta.state: exact; }
+    actions { set_next_state; }
+    size: 1024;
+}
+
+table query_int_switch_id_switch_id_exact {
+    reads { camus_meta.state: exact; int_switch_id.switch_id: exact; }
+    actions { set_next_state; }
+    size: 1024;
+}
+table query_int_switch_id_switch_id_range {
+    reads { camus_meta.state: exact; int_switch_id.switch_id: range; }
+    actions { set_next_state; }
+    size: 1024;
+}
+table query_int_switch_id_switch_id_miss {
+    reads { camus_meta.state: exact; }
+    actions { set_next_state; }
+    size: 1024;
 }
 
 control ingress {
-    if (valid(int_header))
-        apply(forward);
+    if (valid(int_header)) {
+        apply(query_int_switch_id_switch_id_exact) {
+            miss {
+                apply(query_int_switch_id_switch_id_miss);
+            }
+        }
+
+        apply(query_int_hop_latency_hop_latency_range) {
+            miss {
+                apply(query_int_hop_latency_hop_latency_exact) {
+                    miss {
+                        apply(query_int_hop_latency_hop_latency_miss);
+                    }
+                }
+            }
+        }
+
+        apply(query_actions);
+  }
 }
 
 
@@ -221,50 +284,3 @@ control ingress {
 //            EGRESS
 // *********************************
 
-action modify_int() {
-    add_to_field(int_switch_id.switch_id, 1);
-    add_to_field(int_hop_latency.hop_latency, 1);
-    add_to_field(int_q_occupancy.q_occupancy3, 1);
-}
-
-table from_loopback {
-    reads {
-        eg_intr_md.egress_port: exact;
-    }
-    actions {
-        modify_int;
-        nop;
-    }
-    default_action: nop;
-}
-
-
-action decr_hop_cnt() { subtract_from_field(int_header.remaining_hop_cnt, 1); }
-table update_hop_cnt { actions { decr_hop_cnt; } default_action: decr_hop_cnt; }
-
-action set_dst(mac, ip) {
-    modify_field(ethernet.dstAddr, mac);
-    modify_field(ipv4.dstAddr, ip);
-    modify_field(udp.checksum, 0);
-    modify_field(ipv4.srcAddr, 0x0a00000a);
-    modify_field(ethernet.srcAddr, 0x00000000ff);
-}
-
-table rewrite_dst {
-    reads {
-        eg_intr_md.egress_port: exact;
-    }
-    actions {
-        set_dst;
-    }
-}
-
-control egress {
-    if (valid(ipv4))
-        apply(rewrite_dst);
-
-    if (valid(int_header)) {
-        apply(update_hop_cnt);
-        apply(from_loopback);
-    }
-}
