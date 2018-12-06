@@ -16,14 +16,6 @@ IntSwitchId = p4HeaderToScapyPacket(p4_headers['int_switch_id_t'])
 IntHopLatency = p4HeaderToScapyPacket(p4_headers['int_hop_latency_t'])
 IntQOccupancy = p4HeaderToScapyPacket(p4_headers['int_q_occupancy_t'])
 
-#class NetGrepHdr(Packet):
-#    MAX_LEN=3
-#    name="netgrep_state"
-#    fields_desc = [
-#            ByteField('state', 0),
-#            ByteField('matched', 0),
-#            ]
-
 
 def verify_packet(test, pkt, port_id, timeout=2):
     """
@@ -49,9 +41,7 @@ def maskPkt(exp_pkt):
     m.set_do_not_care_scapy(IP, 'len')
     m.set_do_not_care_scapy(IP, 'chksum')
     m.set_do_not_care_scapy(UDP, 'sport') # the P4 program stores state in this field
-    #m.set_do_not_care_scapy(NetGrepHdr, 'state0')
-    #m.set_do_not_care_scapy(NetGrepHdr, 'state1')
-    #m.set_do_not_care_scapy(NetGrepHdr, 'state2')
+    #m.set_do_not_care_scapy(IntHeader, 'remaining_hop_cnt')
     return m
 
 def int_packet(remaining_hop_cnt=1, switch_id=0, hop_latency=0, q_occupancy3=0,

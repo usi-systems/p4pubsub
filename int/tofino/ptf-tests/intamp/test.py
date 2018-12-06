@@ -119,9 +119,14 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
             self.egress_port =  133 # ens2f0
 
         self.mgid = 5
+        self.loopback_port = 1
 
         self.mirror_sessions = []
         self.loopback_ports = []
+
+        self.mc_sess_hdl = None
+        self.mc_node_hdl = None
+        self.mc_grp_hdl = None
 
 
     def setUp(self):
@@ -156,6 +161,7 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
             for port in self.loopback_ports:
                 self.pal.pal_port_loopback_mode_set(dev_tgt.dev_id, port,
                                         pal_loopback_mod_t.BF_LPBK_NONE)
+            self.teardownMulticast()
         except:
             print("Error while cleaning up. ")
             print("You might need to restart the driver")
@@ -166,17 +172,17 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
             pd_base_tests.ThriftInterfaceDataPlane.tearDown(self)
 
     def popForward(self):
-        self.client.intamp_forward_set_default_action_set_mgid(self.shdl, self.dev_tgt,
+        self.client.forward_set_default_action_set_mgid(self.shdl, self.dev_tgt,
                                 intamp_set_mgid_action_spec_t(self.mgid))
-        self.entries['forward'] = [self.client.intamp_forward_table_add_with_set_egress_port(
+        self.entries['forward'] = [self.client.forward_table_add_with_set_egress_port(
                 self.shdl, self.dev_tgt,
                 intamp_forward_match_spec_t(1),
-                intamp_set_egress_port_action_spec_t(self.egr_port))]
+                intamp_set_egress_port_action_spec_t(self.egress_port))]
 
     def popFromLoopback(self):
-        self.entries['from_loopback'] = [self.client.intamp_from_loopback_table_add_with_modify_int(
+        self.entries['from_loopback'] = [self.client.from_loopback_table_add_with_modify_int(
                 self.shdl, self.dev_tgt,
-                intamp_from_loopback_match_spec_t(LOOPBACK_PORT))]
+                intamp_from_loopback_match_spec_t(self.loopback_port))]
 
 
     def popTables(self):
@@ -187,98 +193,72 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
         rid = 1
         lag_map = set_port_or_lag_bitmap(256, [])
 
+        self.mc_sess_hdl = self.mc.mc_create_session()
+
+        port_map = set_port_or_lag_bitmap(288, [self.loopback_port, self.egress_port])
+        self.mc_node_hdl = self.mc.mc_node_create(self.mc_sess_hdl, dev_id, rid, port_map,
+					lag_map)
+
         self.mc_grp_hdl = self.mc.mc_mgrp_create(self.mc_sess_hdl,
                                                     dev_id,
                                                     self.mgid)
-        port_map = set_port_or_lag_bitmap(288, self.loopback_ports)
-        self.mc_node_hdl = self.mc.mc_node_create(self.mc_sess_hdl, dev_id, rid, port_map,
-					lag_map)
         self.mc.mc_associate_node(self.mc_sess_hdl, dev_id, self.mc_grp_hdl,
                                   self.mc_node_hdl, 0, 0)
 
+        self.mc.mc_complete_operations(self.mc_sess_hdl)
+
+    def teardownMulticast(self):
+        if self.mc_sess_hdl is None: return
+        print "Removing multicast groups"
+        self.mc.mc_dissociate_node(self.mc_sess_hdl, dev_id, self.mc_grp_hdl, self.mc_node_hdl)
+        self.mc.mc_mgrp_destroy(self.mc_sess_hdl, dev_id, self.mc_grp_hdl)
+        self.mc.mc_node_destroy(self.mc_sess_hdl, dev_id, self.mc_node_hdl)
+        self.mc.mc_destroy_session(self.mc_sess_hdl)
+
+    def runTest(self):
+        self.popTables()
+        #self.setupMulticast()
+        self.conn_mgr.complete_operations(self.shdl)
 
 
+        pkt = int_packet(remaining_hop_cnt=1, switch_id=2, hop_latency=3, q_occupancy3=4)
+        send_packet(self, self.ingress_port, pkt)
+        exp_pkt = int_packet(remaining_hop_cnt=0, switch_id=2, hop_latency=3, q_occupancy3=4)
+        verify_packet(self, maskPkt(exp_pkt), self.egress_port)
+
+class OneLoopback(BaseTest):
     def runTest(self):
         self.popTables()
         self.setupMulticast()
         self.conn_mgr.complete_operations(self.shdl)
 
 
-        pkt = int_packet(remaining_hop_cnt=1, switch_id=2, hop_latency=3, q_occupancy3=4)
-        #print repr(pkt)
+        pkt = int_packet(remaining_hop_cnt=2, switch_id=2, hop_latency=3, q_occupancy3=4)
         send_packet(self, self.ingress_port, pkt)
-        exp_pkt = pkt
-        m = maskPkt(exp_pkt)
-        verify_packet(self, m, self.ingress_port)
 
-class SnakeTest(BaseTest):
+        exp_pkt = int_packet(remaining_hop_cnt=1, switch_id=2, hop_latency=3, q_occupancy3=4)
+        verify_packet(self, exp_pkt, self.egress_port)
 
-    def setupMirroring(self):
-        self.mirror_sessions.append(self.mirror.mirror_session_create(
-                self.shdl, self.dev_tgt,
-                mirror_session(mir_type=MirrorType_e.PD_MIRROR_TYPE_NORM,
-                                  mir_dir=Direction_e.PD_DIR_INGRESS,
-                                  sid=self.mir_ses,
-                                  mcast_grp_a=self.mgid,
-                                  mcast_grp_a_v=True,
-                                  max_pkt_len=192)))
+        exp_pkt = int_packet(remaining_hop_cnt=1, switch_id=3, hop_latency=4, q_occupancy3=5)
+        verify_packet(self, exp_pkt, self.loopback_port)
 
-    def setupLoopback(self):
-        for port in self.loopback_ports:
-            self.pal.pal_port_loopback_mode_set(dev_tgt.dev_id, port,
-                                pal_loopback_mod_t.BF_LPBK_MAC_NEAR)
+        # Loop it back through
+        send_packet(self, self.loopback_port, exp_pkt)
 
-    def popMirr(self):
-        self.entries['snake_test_mirror'] = []
-        self.entries['snake_test_mirror'].append(self.client.snake_test_mirror_table_add_with_snake_test_set_mir(
-                    self.shdl, self.dev_tgt,
-                    netgrep_snake_test_mirror_match_spec_t(hex_to_i16(self.server_port)),
-                    netgrep_snake_test_set_mir_action_spec_t(hex_to_byte(self.mir_ses))))
-
-
-    def runTest(self):
-        #return # Comment this line to setup the snake test
-
-        dfas = loadDFAs(os.path.join(this_dir, './snort256.3dfa.json'))
-
-        self.mir_ses = 1
-        self.mgid = 5
-
-        server_fp_port = "1/2"
-        self.server_port = front_panel_to_dev(self, dev_id, server_fp_port)
-        print "The server sends packets on %s (%d)" % (server_fp_port, self.server_port)
-        self.loopback_ports = []
-        for pipe in [0, 1]:
-            for port in range(0, 64):
-                pipe_port = make_port(pipe, port)
-                if pipe_port == self.server_port: continue # don't multicast to the server port
-                self.loopback_ports.append(pipe_port)
-
-        self.mc_sess_hdl = self.mc.mc_create_session()
-
-        self.setupMulticast()
-        self.setupMirroring()
-        self.setupLoopback()
-        self.popMirr()
-
-        self.drop_nomatch = True
-        repopTablesHack(dfas)
-        self.popCopyConsumed()
-        self.conn_mgr.complete_operations(self.shdl)
-
-        print "Configured snake test"
-        raw_input("Hit ENTER to cleanup and exit...")
-
+        exp_pkt = int_packet(remaining_hop_cnt=0, switch_id=3, hop_latency=4, q_occupancy3=5)
+        verify_packet(self, exp_pkt, self.egress_port)
 
 
 class HW(BaseTest):
     """ Just configure the tables on the actual switch """
     def runTest(self):
         if test_param_get('target') == 'asic-model': return # if not running on HW, return
+
+        self.loopback_port = LOOPBACK_PORT
+
         self.popTables()
         self.setupMulticast()
         self.conn_mgr.complete_operations(self.shdl)
 
         print "Finished populating tables."
         raw_input("Hit ENTER to cleanup and exit.")
-

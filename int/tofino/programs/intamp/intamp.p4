@@ -229,7 +229,7 @@ action modify_int() {
 
 table from_loopback {
     reads {
-        ig_intr_md.ingress_port: exact;
+        eg_intr_md.egress_port: exact;
     }
     actions {
         modify_int;
@@ -252,7 +252,7 @@ action set_dst(mac, ip) {
 
 table rewrite_dst {
     reads {
-        ig_intr_md.ingress_port: exact;
+        eg_intr_md.egress_port: exact;
     }
     actions {
         set_dst;

@@ -5,6 +5,10 @@
             "if":"49"
         },
         {
+            "device_port":1,
+            "if":"50"
+        },
+        {
             "device_port":4,
             "if":"52"
         }
