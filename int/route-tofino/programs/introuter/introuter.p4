@@ -86,7 +86,10 @@ header_type int_switch_id_t {
 
 header_type int_hop_latency_t {
     fields {
-        hop_latency: 32;
+        // XXX We ignore these 12 MSB because the TCAM can only do a range
+        // match on the first 20 bits
+        hop_latency_msb: 12;
+        hop_latency: 20;
     }
 }
 
@@ -182,7 +185,7 @@ header int_switch_id_t int_switch_id;
 header int_hop_latency_t int_hop_latency;
 header int_q_occupancy_t int_q_occupancy;
 
-header camus_meta_t camus_meta;
+metadata camus_meta_t camus_meta;
 
 parser parse_int {
     extract(int_probe_marker);
@@ -218,8 +221,8 @@ action query_drop() {
 table query_actions {
     reads { camus_meta.state: exact; }
     actions { query_drop; set_egress_port; set_mgid; }
-    size: 1024;
     default_action: query_drop;
+    size: 1024;
 }
 
 table query_int_hop_latency_hop_latency_exact {
@@ -255,27 +258,25 @@ table query_int_switch_id_switch_id_miss {
 }
 
 control ingress {
-    apply(query_int_switch_id_switch_id_range) {
-        miss {
-            apply(query_int_switch_id_switch_id_exact) {
-                miss {
-                    apply(query_int_switch_id_switch_id_miss);
+    if (valid(int_header)) {
+        apply(query_int_switch_id_switch_id_exact) {
+            miss {
+                apply(query_int_switch_id_switch_id_miss);
+            }
+        }
+
+        apply(query_int_hop_latency_hop_latency_range) {
+            miss {
+                apply(query_int_hop_latency_hop_latency_exact) {
+                    miss {
+                        apply(query_int_hop_latency_hop_latency_miss);
+                    }
                 }
             }
         }
-    }
 
-    apply(query_int_hop_latency_hop_latency_range) {
-        miss {
-            apply(query_int_hop_latency_hop_latency_exact) {
-                miss {
-                    apply(query_int_hop_latency_hop_latency_miss);
-                }
-            }
-        }
-    }
-
-  apply(query_actions);
+        apply(query_actions);
+  }
 }
 
 
