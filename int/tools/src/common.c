@@ -5,11 +5,15 @@
 
 #define STOCK_SIZE 8
 
+void error(const char *msg);
+
 void error(const char *msg) {
     perror(msg);
     exit(0);
 }
 
+
+void pin_thread(int cpu);
 
 void pin_thread(int cpu) {
     cpu_set_t mask;

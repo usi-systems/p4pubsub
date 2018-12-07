@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
         if (i % match_nth == 0)
             switch_id = matching_switch_id;
         else
-            switch_id = matching_switch_id + 123;
+            switch_id = 1; // receiver should not match on this
 
         payload_size = make_int_payload(buf, remaining_hop_cnt, switch_id);
         sendto(sock_fd, buf, payload_size, 0, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
