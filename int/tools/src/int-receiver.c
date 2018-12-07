@@ -20,13 +20,16 @@
 char *progname;
 
 int verbosity = 0;
+int do_pretty_print = 0;
 
 int sockfd = 0;
 int pkt_cnt = 0;
+int match_cnt = 0;
+unsigned num_filters = 0;
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-v VERBOSITY] [-p CPU] [-o OPTIONS] [-B COUNT] [-b SO_RCVBUF] [-m MAX_PKTS] LISTEN_PORT\n\
+            "Usage: %s [-v VERBOSITY] [-p CPU] [-o OPTIONS] [-f NUM_FILTERS] [-B COUNT] [-b SO_RCVBUF] [-m MAX_PKTS] LISTEN_PORT\n\
 \n\
     -p CPU     Pin process to CPU.\n\
 \n\
@@ -42,7 +45,7 @@ void cleanup_and_exit() {
     if (sockfd)
         close(sockfd);
 
-    fprintf(stderr, "\nReceived %d packets\n", pkt_cnt);
+    fprintf(stderr, "\nReceived %d packets (%d matches).\n", pkt_cnt, match_cnt);
     exit(0);
 }
 
@@ -50,7 +53,15 @@ void catch_int(int signo) {
     cleanup_and_exit();
 }
 
-void pp_int(char *buf, size_t size) {
+int matches_filter(uint32_t switch_id, uint32_t hop_latency) {
+    if (num_filters == 0) return 1;
+    for (unsigned i = 0; i < num_filters; i++)
+        if (switch_id == 22+i && hop_latency > 7999 && hop_latency < 8001)
+            return 1;
+    return 0;
+}
+
+void handle_pkt(char *buf, size_t size) {
     size_t ofst = 0;
 
     struct int_probe_marker *probe = (struct int_probe_marker *)buf;
@@ -62,47 +73,55 @@ void pp_int(char *buf, size_t size) {
     assert(ofst < size);
 
     struct intl4_shim *shim = (struct intl4_shim *) (buf + ofst);
-    printf("intl4_shim\n\ttype: %u\n\tlen: %u\n", shim->int_type, shim->len);
     ofst += sizeof(struct intl4_shim);
     assert(ofst < size);
 
     struct int_header *hdr = (struct int_header *) (buf + ofst);
-    printf("int_header\n\tremaining_hop_cnt: %u\n\tins_mask1: %u\n", hdr->remaining_hop_cnt, hdr->instruction_mask_0007);
     ofst += sizeof(struct int_header);
     assert(ofst < size);
 
     struct int_switch_id *swid = (struct int_switch_id *) (buf + ofst);
-    printf("switch_id: %X\n", ntohl(swid->switch_id));
     ofst += sizeof(struct int_switch_id);
     assert(ofst < size);
 
     struct int_hop_latency *hl = (struct int_hop_latency *) (buf + ofst);
-    printf("hop_latency: %X\n", ntohl(hl->hop_latency));
     ofst += sizeof(struct int_hop_latency);
     assert(ofst < size);
 
     struct int_q_occupancy *qo = (struct int_q_occupancy *) (buf + ofst);
     unsigned occ = (qo->q_occupancy1 << 16) | (qo->q_occupancy2 << 8) | qo->q_occupancy3;
-    printf("q_id %d occ: %X\n\n", qo->q_id, occ);
     ofst += sizeof(struct int_q_occupancy);
 
+    if (!matches_filter(ntohl(swid->switch_id), ntohl(hl->hop_latency))) return;
+
+    match_cnt++;
+
+    if (do_pretty_print) {
+        printf("intl4_shim\n\ttype: %u\n\tlen: %u\n", shim->int_type, shim->len);
+        printf("int_header\n\tremaining_hop_cnt: %u\n\tins_mask1: %u\n", hdr->remaining_hop_cnt, hdr->instruction_mask_0007);
+        printf("switch_id: %d\n", ntohl(swid->switch_id));
+        printf("hop_latency: %d\n", ntohl(hl->hop_latency));
+        printf("q_id %d occ: %d\n\n", qo->q_id, occ);
+    }
 }
 
 int main(int argc, char *argv[]) {
     int opt;
     int port;
     char *extra_options = 0;
-    int do_pretty_print = 0;
     int rcvbuf = 0;
     int max_packets = 0;
     int pin_cpu = -1;
 
     progname = basename(argv[0]);
 
-    while ((opt = getopt(argc, argv, "hb:m:o:p:v:")) != -1) {
+    while ((opt = getopt(argc, argv, "hb:f:m:o:p:v:")) != -1) {
         switch (opt) {
             case 'b':
                 rcvbuf = atoi(optarg);
+                break;
+            case 'f':
+                num_filters = atoi(optarg);
                 break;
             case 'm':
                 max_packets = atoi(optarg);
@@ -164,8 +183,10 @@ int main(int argc, char *argv[]) {
     if (bind(sockfd, (struct sockaddr *)&localaddr, sizeof(localaddr)) < 0)
         error("bind()");
 
-    if (verbosity > 0)
+    if (verbosity > 0) {
         fprintf(stderr, "Listenning on port %d\n", port);
+        fprintf(stderr, "Using %d filters.\n", num_filters);
+    }
 
     if (rcvbuf > 0) {
         if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
@@ -185,8 +206,7 @@ int main(int argc, char *argv[]) {
 
         pkt_cnt++;
 
-        if (do_pretty_print)
-            pp_int(buf, size);
+        handle_pkt(buf, size);
 
         if (max_packets && pkt_cnt == max_packets)
             break;
