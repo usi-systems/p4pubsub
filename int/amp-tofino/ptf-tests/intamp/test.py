@@ -113,10 +113,10 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
 
         if test_param_get('target') == 'asic-model': # running on harlyn
             self.ingress_port = 0
-            self.egress_port = 4
+            self.egress_ports = [4]
         else:
-            self.ingress_port = 46 # ens2f1
-            self.egress_port =  168 # ens2f0
+            self.ingress_port = 46
+            self.egress_ports =  [168, 169, 170, 171]
 
         self.mgid = 5
         self.loopback_port = 1
@@ -174,22 +174,30 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
     def popForward(self):
         self.client.forward_set_default_action_set_mgid(self.shdl, self.dev_tgt,
                                 intamp_set_mgid_action_spec_t(self.mgid))
-        self.entries['forward'] = [self.client.forward_table_add_with_set_egress_port(
+        #self.entries['forward'] = [self.client.forward_table_add_with_set_egress_port(
+        #        self.shdl, self.dev_tgt,
+        #        intamp_forward_match_spec_t(1),
+        #        intamp_set_egress_port_action_spec_t(self.egress_port))]
+        self.entries['forward'] = [self.client.forward_table_add_with__drop(
                 self.shdl, self.dev_tgt,
-                intamp_forward_match_spec_t(1),
-                intamp_set_egress_port_action_spec_t(self.egress_port))]
+                intamp_forward_match_spec_t(0))]
 
-    def popUpdateDup(self):
-        self.client.update_dup_set_default_action_modify_int(self.shdl, self.dev_tgt,
-                intamp_modify_int_action_spec_t(hex_to_i32(0), hex_to_i32(1), hex_to_byte(1)))
-        self.entries['update_dup'] = [self.client.update_dup_table_add_with_nop(
-                self.shdl, self.dev_tgt,
-                intamp_update_dup_match_spec_t(self.ingress_port, self.egress_port))]
+    def popUpdateInt(self):
+        self.client.update_int_fields_set_default_action_incr_int_fields(self.shdl, self.dev_tgt,
+                intamp_incr_int_fields_action_spec_t(hex_to_i32(0), hex_to_i32(1), hex_to_byte(1)))
+        #self.entries['update_int_fields'] = [self.client.update_int_fields_table_add_with_nop(
+        #        self.shdl, self.dev_tgt,
+        #        intamp_update_int_fields_match_spec_t(
+        #            self.ingress_port, self.ingress_port, hex_to_byte(0), hex_to_byte(220)), 1)]
+        #self.entries['update_int_fields'] = [self.client.update_int_fields_table_add_with_set_int_fields(
+        #        self.shdl, self.dev_tgt,
+        #        intamp_update_int_fields_match_spec_t(0, 0, hex_to_byte(95), hex_to_byte(96)), 1,
+        #        intamp_set_int_fields_action_spec_t(hex_to_i32(22), hex_to_i32(8000), hex_to_byte(1)))]
 
 
     def popTables(self):
         self.popForward()
-        self.popUpdateDup()
+        self.popUpdateInt()
 
     def setupMulticast(self):
         rid = 1
@@ -197,10 +205,10 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
 
         self.mc_sess_hdl = self.mc.mc_create_session()
 
-        ports = [self.loopback_port, self.egress_port]
-        if test_param_get('target') != 'asic-model': # if running on HW
-            ports += [self.egress_port+i for i in xrange(1, 4)]
+        ports = [self.loopback_port] + self.egress_ports
+
         port_map = set_port_or_lag_bitmap(288, ports)
+        print "MGID", self.mgid, "ports:", ports
         self.mc_node_hdl = self.mc.mc_node_create(self.mc_sess_hdl, dev_id, rid, port_map,
 					lag_map)
 
@@ -228,8 +236,8 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
 
         pkt = int_packet(remaining_hop_cnt=1, switch_id=2, hop_latency=3, q_occupancy3=4)
         send_packet(self, self.ingress_port, pkt)
-        exp_pkt = int_packet(remaining_hop_cnt=0, switch_id=2, hop_latency=3, q_occupancy3=4)
-        verify_packet(self, maskPkt(exp_pkt), self.egress_port)
+        exp_pkt = int_packet(remaining_hop_cnt=0, switch_id=2, hop_latency=4, q_occupancy3=5)
+        verify_packet(self, maskPkt(exp_pkt), self.egress_ports[0])
 
 class OneLoopback(BaseTest):
     def runTest(self):
@@ -241,17 +249,17 @@ class OneLoopback(BaseTest):
         pkt = int_packet(remaining_hop_cnt=2, switch_id=2, hop_latency=3, q_occupancy3=4)
         send_packet(self, self.ingress_port, pkt)
 
-        exp_pkt = int_packet(remaining_hop_cnt=1, switch_id=2, hop_latency=3, q_occupancy3=4)
-        verify_packet(self, exp_pkt, self.egress_port)
+        exp_pkt = int_packet(remaining_hop_cnt=1, switch_id=2, hop_latency=4, q_occupancy3=5)
+        verify_packet(self, exp_pkt, self.egress_ports[0])
 
-        exp_pkt = int_packet(remaining_hop_cnt=1, switch_id=3, hop_latency=4, q_occupancy3=5)
+        exp_pkt = int_packet(remaining_hop_cnt=1, switch_id=2, hop_latency=4, q_occupancy3=5)
         verify_packet(self, exp_pkt, self.loopback_port)
 
         # Loop it back through
         send_packet(self, self.loopback_port, exp_pkt)
 
-        exp_pkt = int_packet(remaining_hop_cnt=0, switch_id=3, hop_latency=4, q_occupancy3=5)
-        verify_packet(self, exp_pkt, self.egress_port)
+        exp_pkt = int_packet(remaining_hop_cnt=0, switch_id=2, hop_latency=5, q_occupancy3=6)
+        verify_packet(self, exp_pkt, self.egress_ports[0])
 
 
 class HW(BaseTest):

@@ -193,6 +193,8 @@ parser parse_int {
 
 action nop() { }
 
+action _drop() { drop(); }
+
 action set_mgid(mgid) {
     modify_field(ig_intr_md_for_tm.mcast_grp_a, mgid);
 }
@@ -208,6 +210,7 @@ table forward {
     actions {
         set_mgid;
         set_egress_port;
+        _drop;
     }
 }
 
@@ -221,22 +224,28 @@ control ingress {
 //            EGRESS
 // *********************************
 
-action modify_int(switch_inc, lat_inc, occ_inc) {
+action incr_int_fields(switch_inc, lat_inc, occ_inc) {
     add_to_field(int_switch_id.switch_id, switch_inc);
     add_to_field(int_hop_latency.hop_latency, lat_inc);
     add_to_field(int_q_occupancy.q_occupancy3, occ_inc);
 }
 
-table update_dup {
+action set_int_fields(switch_id, lat, occ) {
+    modify_field(int_switch_id.switch_id, switch_id);
+    modify_field(int_hop_latency.hop_latency, lat);
+    modify_field(int_q_occupancy.q_occupancy3, occ);
+}
+
+table update_int_fields {
     reads {
-        eg_intr_md.egress_port: exact;
-        ig_intr_md.ingress_port: exact;
+        ig_intr_md.ingress_port: ternary;
+        int_header.remaining_hop_cnt: range;
     }
     actions {
-        modify_int;
+        incr_int_fields;
+        set_int_fields;
         nop;
     }
-    //default_action: modify_int; // XXX set this from control plane with params
     size: 64;
 }
 
@@ -267,6 +276,6 @@ control egress {
 
     if (valid(int_header)) {
         apply(update_hop_cnt);
-        apply(update_dup);
+        apply(update_int_fields);
     }
 }
