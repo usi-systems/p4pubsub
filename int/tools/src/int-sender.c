@@ -17,13 +17,13 @@
 char *progname;
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-c COUNT] [-r REMAINING_HOP_CNT] DST_HOST DST_PORT\n\
+            "Usage: %s [-c COUNT] [-m MATCH_RATIO] [-n REMAINING_HOP_CNT] DST_HOST DST_PORT\n\
 \n\
 ", progname);
     exit(rc);
 }
 
-size_t make_int_payload(char *buf, uint8_t remaining_hop_cnt) { // returns size of payload
+size_t make_int_payload(char *buf, uint8_t remaining_hop_cnt, uint32_t switch_id) { // returns size of payload
     size_t ofst = 0;
 
     struct int_probe_marker *probe = (struct int_probe_marker *)buf;
@@ -46,7 +46,7 @@ size_t make_int_payload(char *buf, uint8_t remaining_hop_cnt) { // returns size 
     ofst += sizeof(struct int_header);
 
     struct int_switch_id *swid = (struct int_switch_id *) (buf + ofst);
-    swid->switch_id = htonl(22);
+    swid->switch_id = htonl(switch_id);
     ofst += sizeof(struct int_switch_id);
 
     struct int_hop_latency *hl = (struct int_hop_latency *) (buf + ofst);
@@ -66,16 +66,20 @@ size_t make_int_payload(char *buf, uint8_t remaining_hop_cnt) { // returns size 
 int main(int argc, char *argv[]) {
     int opt, i, sock_fd;
     struct sockaddr_in sock_addr;
-    int count = 8;
+    unsigned count = 8;
     int remaining_hop_cnt = 2;
+    float match_ratio = 0.01;
 
     progname = basename(argv[0]);
-    while ((opt = getopt(argc, argv, "hc:r:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:m:n:")) != -1) {
         switch (opt) {
             case 'c':
                 count = atoi(optarg);
                 break;
-            case 'r':
+            case 'm':
+                match_ratio = atof(optarg);
+                break;
+            case 'n':
                 remaining_hop_cnt = atoi(optarg);
                 break;
             case 'h':
@@ -107,9 +111,20 @@ int main(int argc, char *argv[]) {
     sock_addr.sin_port = htons(atoi(dst_port));
 
     size_t payload_size;
+    uint32_t matching_switch_id = 22;
+    uint32_t switch_id;
+    int match_nth = 1/match_ratio;
+
+    fprintf(stderr, "Matching on every %d\n", match_nth);
 
     for (i = 0; i < count; i++) {
-        payload_size = make_int_payload(buf, remaining_hop_cnt);
+
+        if (i % match_nth == 0)
+            switch_id = matching_switch_id;
+        else
+            switch_id = matching_switch_id + 123;
+
+        payload_size = make_int_payload(buf, remaining_hop_cnt, switch_id);
         sendto(sock_fd, buf, payload_size, 0, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
 	}
 
