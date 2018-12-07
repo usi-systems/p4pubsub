@@ -111,8 +111,8 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
             self.ingress_port = 0
             self.egress_port = 4
         else:
-            self.ingress_port = 46 # ens2f1
-            self.egress_port =  168 # ens2f0
+            self.ingress_port = 46
+            self.egress_port =  52
 
         self.mgid = 5
 
@@ -170,7 +170,7 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
         with open(entries_file, 'r') as f: entries = json.load(f)
 
         # Debug
-        #egr_port = 171
+        #egr_port = 52
         #self.client.query_actions_set_default_action_set_egress_port(self.shdl, self.dev_tgt,
         #        introuter_set_egress_port_action_spec_t(egr_port))
         #print "Default action: set_egress_port(%d)" % egr_port

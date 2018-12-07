@@ -1,5 +1,8 @@
 [{"table_name": "Camus.query_actions", "match_fields":
         {"meta.query.state": [1]}, "action_name": "Camus.query_drop"},{"table_name": "Camus.query_actions", "match_fields":
-        {"meta.query.state": [2]}, "action_name": "Camus.set_egress_port", "action_params": {"port": 44}},{"table_name": "Camus.query_int_hop_latency_hop_latency_miss", "match_fields":
-        {"meta.query.state": [0]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}},{"table_name": "Camus.query_int_hop_latency_hop_latency_range", "match_fields":
-        {"meta.query.state": [0],"hdr.int_hop_latency.hop_latency": [0, 8999]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 2}, "priority": 9997}]
+        {"meta.query.state": [2]}, "action_name": "Camus.set_egress_port", "action_params": {"port": 52}},{"table_name": "Camus.query_int_hop_latency_hop_latency_miss", "match_fields":
+        {"meta.query.state": [4]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}},{"table_name": "Camus.query_int_hop_latency_hop_latency_range", "match_fields":
+        {"meta.query.state": [4],"hdr.int_hop_latency.hop_latency": [0, 7999]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}, "priority": 9996},{"table_name": "Camus.query_int_hop_latency_hop_latency_range", "match_fields":
+        {"meta.query.state": [4],"hdr.int_hop_latency.hop_latency": [8000, 8001]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 2}, "priority": 9995},{"table_name": "Camus.query_int_switch_id_switch_id_exact", "match_fields":
+        {"meta.query.state": [0],"hdr.int_switch_id.switch_id": [22]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 4}},{"table_name": "Camus.query_int_switch_id_switch_id_miss", "match_fields":
+        {"meta.query.state": [0]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}}]
