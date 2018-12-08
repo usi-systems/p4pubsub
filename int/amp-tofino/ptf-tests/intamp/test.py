@@ -230,7 +230,7 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
 
     def runTest(self):
         self.popTables()
-        #self.setupMulticast()
+        self.setupMulticast()
         self.conn_mgr.complete_operations(self.shdl)
 
 
