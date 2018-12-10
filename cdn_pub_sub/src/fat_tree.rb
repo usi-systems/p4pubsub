@@ -44,7 +44,7 @@ class FatTree
 	def run_camus rules_file, base_name
 		b_name 			= "#{g "output_directory"}commands/#{base_name}"
 		camus_p4_output = "#{g "output_directory"}camus.p4"
-		main_p4_output 	= "#{g "output_directory"}ruby_g.p4"
+		main_p4_output 	= "#{g "output_directory"}pubsub_router.p4"
 		itch_p4_file 	= "#{g "itch_p4"}"
 
 		Config.execute_camus rules_file, b_name, camus_p4_output, itch_p4_file

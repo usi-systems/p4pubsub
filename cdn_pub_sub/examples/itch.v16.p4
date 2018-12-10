@@ -272,9 +272,7 @@ control MyIngress(inout headers hdr,
     apply {
         if (hdr.arp.isValid()){
 			arp_forward.apply();
-		}
-
-        if (hdr.add_order.isValid()) {
+		}else if (hdr.add_order.isValid()) {
             Camus.apply(hdr, standard_metadata);
         }
         else if (hdr.ipv4.isValid() && hdr.ipv4.ttl > 0) {
