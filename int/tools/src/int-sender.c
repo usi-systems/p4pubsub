@@ -14,6 +14,8 @@
 
 #define BUFSIZE 2048
 
+//#define SEND_WAIT_US 1
+
 char *progname;
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
@@ -126,6 +128,10 @@ int main(int argc, char *argv[]) {
 
         payload_size = make_int_payload(buf, remaining_hop_cnt, switch_id);
         sendto(sock_fd, buf, payload_size, 0, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
+
+#if SEND_WAIT_US > 0
+        usleep(SEND_WAIT_US);
+#endif
 	}
 
     close(sock_fd);
