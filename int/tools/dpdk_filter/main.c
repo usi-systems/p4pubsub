@@ -50,6 +50,8 @@
 #define RX_RING_SIZE 4096
 #define TX_RING_SIZE 4096
 
+#define INT_PKT_BYTES 74
+
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 250
 //#define BURST_SIZE 32
@@ -81,7 +83,7 @@ static const struct rte_eth_conf port_conf_default = {
 
 struct rte_mempool *mbuf_pool;
 
-int matches_filter(uint32_t switch_id, uint32_t hop_latency);
+int check_match(uint32_t switch_id, uint32_t hop_latency);
 void cleanup_and_exit(void);
 void catch_int(int signo);
 int handle_pkt(struct rte_mbuf *pkt);
@@ -168,7 +170,7 @@ unsigned total_resent = 0;
 unsigned total_matches = 0;
 
 
-int matches_filter(uint32_t switch_id, uint32_t hop_latency) {
+int check_match(uint32_t switch_id, uint32_t hop_latency) {
     if (num_filters == 0) return 1;
     for (unsigned i = 0; i < num_filters; i++)
         if (switch_id == 22+i && hop_latency > 7999 && hop_latency < 8001)
@@ -201,6 +203,8 @@ int handle_pkt(struct rte_mbuf *pkt) {
     struct ipv4_hdr   *ip_h;
     struct ether_hdr  *eth_h;
 
+    //size_t size = pkt->data_len;
+
     eth_h = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
     eth_type = rte_be_to_cpu_16(eth_h->ether_type);
     l2_len = sizeof(*eth_h);
@@ -217,13 +221,11 @@ int handle_pkt(struct rte_mbuf *pkt) {
 
     short dst_port = rte_be_to_cpu_16(udp_h->dst_port);
     if (dst_port != udp_port) {
+        printf("udp.dst_port = %d\n", dst_port);
         assert(0 && "Unexpected UDP port");
         return 0;
     }
-
-
     char *udp_payload = (char *) ip_h + sizeof(*ip_h) + sizeof(*udp_h);
-    //size_t size = pkt->data_len;
 
     size_t ofst = 0;
 
@@ -261,7 +263,7 @@ int handle_pkt(struct rte_mbuf *pkt) {
     //unsigned occ = (qo->q_occupancy1 << 16) | (qo->q_occupancy2 << 8) | qo->q_occupancy3;
     //printf("q_id %d occ: %X\n\n", qo->q_id, occ);
 
-    if (matches_filter(ntohl(swid->switch_id), ntohl(hl->hop_latency))) {
+    if (check_match(ntohl(swid->switch_id), ntohl(hl->hop_latency))) {
         total_matches++;
     }
 
@@ -289,6 +291,12 @@ receiver(void)
 	printf("\nCore %u (socket %u) receiving packets on port %d (socket %u).\n", rte_lcore_id(), rte_socket_id(),
             receiver_port, rte_eth_dev_socket_id(receiver_port));
 
+    double time_scale_ns = 1e9 / rte_get_tsc_hz();
+    unsigned period_rx;
+    unsigned last_total_rx = 0;
+    uint64_t period_start, now;
+    period_start = rte_rdtsc() * time_scale_ns;
+
     struct rte_eth_stats stats;
     int i;
 	for (;;) {
@@ -305,8 +313,16 @@ receiver(void)
             rte_pktmbuf_free(bufs[i]);
             total_rx++;
             if (unlikely(total_rx % print_interval_pkts == 0)) {
+                now = rte_rdtsc() * time_scale_ns;
+                period_rx = total_rx - last_total_rx;
+                float elapsed_s = (now - period_start) / 1e9;
+                uint64_t period_rx_mb = period_rx * INT_PKT_BYTES / (1024 * 1024);
+                float mbps = 8 * period_rx_mb / elapsed_s;
                 rte_eth_stats_get(receiver_port, &stats);
-                printf("total_rx: %u, ipackets: %lu, imissed: %lu, ierrors: %lu, q_errors: %lu, matches: %u\n", total_rx, stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors[0], total_matches);
+                printf("total_rx: %u, Mbps: %f, ipackets: %lu, imissed: %lu, ierrors: %lu, q_errors: %lu, matches: %u\n", total_rx, mbps, stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors[0], total_matches);
+
+                last_total_rx = total_rx;
+                period_start = now;
             }
         }
 
@@ -323,6 +339,7 @@ static void print_usage(const char *prgname)
     fprintf(stderr,
             "%s [EAL options] --"
             " [-P int]      UDP port for ITCH messages (default: 1234)"
+            " [-f int]      Number of filters for packet matching (default: 0)"
             " [-h]          help"
             "\n",
             prgname);
@@ -387,8 +404,8 @@ main(int argc, char *argv[])
     }
 
 	nb_ports = rte_eth_dev_count();
-	if (nb_ports != 1 && nb_ports != 2)
-		rte_exit(EXIT_FAILURE, "Error: number of ports must be one or two\n");
+	if (nb_ports != 1)
+		rte_exit(EXIT_FAILURE, "Error: number of ports must be one (%d provided)\n", nb_ports);
 
 	/* Creates a new mempool in memory to hold the mbufs. */
 	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS * nb_ports,
@@ -409,15 +426,16 @@ main(int argc, char *argv[])
 
     signal(SIGINT, catch_int);
 
-    RTE_LCORE_FOREACH_SLAVE(lcore_id) {
-        if (rte_eal_remote_launch((int (*)(void *))receiver, NULL, lcore_id) < 0)
-            rte_exit(EXIT_FAILURE, "Cannot start slave core\n");
-    }
-
-    RTE_LCORE_FOREACH_SLAVE(lcore_id) {
-        if (rte_eal_wait_lcore(lcore_id) < 0)
-            rte_exit(EXIT_FAILURE, "Waiting for slave core\n");
-    }
+    (void)lcore_id; // unused
+    //RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+    //    if (rte_eal_remote_launch((int (*)(void *))receiver, NULL, lcore_id) < 0)
+    //        rte_exit(EXIT_FAILURE, "Cannot start slave core\n");
+    //}
+    //RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+    //    if (rte_eal_wait_lcore(lcore_id) < 0)
+    //        rte_exit(EXIT_FAILURE, "Waiting for slave core\n");
+    //}
+    receiver();
 
     cleanup_and_exit();
 
