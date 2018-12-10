@@ -256,7 +256,6 @@ table update_hop_cnt { actions { decr_hop_cnt; } default_action: decr_hop_cnt; }
 action set_dst(mac, ip) {
     modify_field(ethernet.dstAddr, mac);
     modify_field(ipv4.dstAddr, ip);
-    modify_field(udp.checksum, 0);
     modify_field(ipv4.srcAddr, 0x0a00000a);
     modify_field(ethernet.srcAddr, 0x00000000ff);
 }
@@ -270,6 +269,10 @@ table rewrite_dst {
     }
 }
 
+action disable_udp_checksum() { modify_field(udp.checksum, 0); }
+table udp_checksum { actions { disable_udp_checksum; } default_action: disable_udp_checksum; size: 1; }
+
+
 control egress {
     if (valid(ipv4))
         apply(rewrite_dst);
@@ -277,5 +280,6 @@ control egress {
     if (valid(int_header)) {
         apply(update_hop_cnt);
         apply(update_int_fields);
+        apply(udp_checksum);
     }
 }
