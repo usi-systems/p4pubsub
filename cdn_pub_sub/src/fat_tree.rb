@@ -250,9 +250,8 @@ class FatTree
 
 		File.open(file_name, "w") {|file| 
 			1.upto(@pod_size/2) do |host_id|
-				file.puts "table_add send_frame rewrite_mac 0x#{host_id} => #{tor_intf_mac pod_id, tor_id, host_id}"
-				file.puts "table_add ipv4_lpm set_nhop #{host_ip pod_id, tor_id, host_id}/32 => #{host_ip pod_id, tor_id, host_id} 0x#{'%x' % host_id}"
-				file.puts "table_add forward set_dmac 0x#{'%x' % host_id} => #{host_mac pod_id, tor_id, host_id}"
+				file.puts "table_add ipv4_lpm ipv4_forward #{host_ip pod_id, tor_id, host_id}/32 => #{host_mac pod_id, tor_id, host_id} 0x#{'%x' % host_id}"
+				file.puts "table_add arp_forward set_arp_dmac #{host_ip pod_id, tor_id, host_id}/8 => #{tor_intf_mac pod_id, tor_id, host_id} 0x#{'%x' % host_id} 1"
 
 				file.puts "table_add icn_to_ip set_dip 0x#{'%x' % host_id} => #{host_ip pod_id, tor_id, host_id}"
 
@@ -262,9 +261,7 @@ class FatTree
 			# Currently, I just forward pakcets to the first upward interface! Since I don't know the 
 			# swtich's mac address, I use a random value. Let's see if it works!!
 			uplink_port = "0x#{'%02x' % (@pod_size/2 + 1)}"
-			file.puts "table_add send_frame rewrite_mac #{uplink_port} => #{tor_intf_mac pod_id, tor_id, 0}"
-			file.puts "table_add ipv4_lpm set_nhop 10.0.0.0/8 => 10.0.0.100 #{uplink_port}"
-			file.puts "table_add forward set_dmac #{uplink_port} => #{tor_intf_mac pod_id, tor_id, 0}"
+			file.puts "table_add ipv4_lpm ipv4_forward 10.0.0.0/8 => #{tor_intf_mac pod_id, tor_id, 0} #{uplink_port}"
 
 
 			file.puts  ""
@@ -276,18 +273,14 @@ class FatTree
 		File.open(file_name, "w") {|file| 
 			(@pod_size/2 + 1).upto(@pod_size) do |tor_id|
 				intf_id = @pod_size - (tor_id - (@pod_size/2 + 1))
-				file.puts "table_add send_frame rewrite_mac 0x#{tor_id} => #{agg_intf_mac agg_id, tor_id}"
-				file.puts "table_add ipv4_lpm set_nhop #{host_ip pod_id, tor_id, 0}/24 => #{host_ip pod_id, tor_id, 0} 0x#{'%x' % intf_id}"
-				file.puts "table_add forward set_dmac 0x#{'%x' % intf_id} => #{tor_intf_mac pod_id, tor_id, 0}"
+				file.puts "table_add ipv4_lpm ipv4_forward #{host_ip pod_id, tor_id, 0}/24 => #{agg_intf_mac pod_id, tor_id} 0x#{'%x' % intf_id}"
 				file.puts ""
 			end
 
 			# Currently, I just forward pakcets to the first upward interface! Since I don't know the 
 			# swtich's mac address, I use a random value. Let's see if it works!!
 			uplink_port = "0x1"
-			file.puts "table_add send_frame rewrite_mac #{uplink_port} => #{agg_intf_mac pod_id, agg_id}"
-			file.puts "table_add ipv4_lpm set_nhop 10.0.0.0/8 => 10.0.0.100 #{uplink_port}"
-			file.puts "table_add forward set_dmac #{uplink_port} => #{core_intf_mac pod_id, agg_id}"
+			file.puts "table_add ipv4_lpm ipv4_forward 10.0.0.0/8 => #{tor_intf_mac pod_id, agg_id, 0} #{uplink_port}"
 
 
 			file.puts  ""
@@ -298,9 +291,7 @@ class FatTree
 		file_name = switch_command(core_sw_name core_id, agg_id)[:commands].first
 		File.open(file_name, "w") {|file| 
 			1.upto(@pod_size) do |pod_id|
-				file.puts "table_add send_frame rewrite_mac 0x#{pod_id} => #{core_intf_mac pod_id, core_id}"
-				file.puts "table_add ipv4_lpm set_nhop #{host_ip pod_id, 0, 0}/16 => #{host_ip pod_id, 0, 0} 0x#{'%x' % pod_id}"
-				file.puts "table_add forward set_dmac 0x#{'%x' % pod_id} => #{tor_intf_mac pod_id, 0, 0}"
+				file.puts "table_add ipv4_lpm ipv4_forward #{host_ip pod_id, 0, 0}/16 => #{core_intf_mac agg_id, pod_id} 0x#{'%x' % pod_id}"
 				file.puts ""
 			end
 		}
