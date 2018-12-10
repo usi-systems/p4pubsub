@@ -56,7 +56,7 @@ void catch_int(int signo) {
 int matches_filter(uint32_t switch_id, uint32_t hop_latency) {
     if (num_filters == 0) return 1;
     for (unsigned i = 0; i < num_filters; i++)
-        if (switch_id == 22+i && hop_latency > 7999 && hop_latency < 8001)
+        if (switch_id == 22+i && hop_latency > 7999 && hop_latency < 8002)
             return 1;
     return 0;
 }
