@@ -14,16 +14,16 @@ module Config
 		@@CONFIGS = YAML.load_file(@@CONFIG_FILE_NAME)	
 	end	
 
-	def execute_camus rules_file, base_name, ouput_p4_file
+	def execute_camus rules_file, base_name, ouput_p4_file, itch_p4_file
 		command = (g "camus_compiler") % 
 			[
 				rules_file, 
 				base_name,
-				ouput_p4_file
+				ouput_p4_file,
+				itch_p4_file
 			]
 		p command
 		system command
-		CamusPostProcessing.p4pp ouput_p4_file
 	end
 
 	def load_topology topo_file_name, config_file_name

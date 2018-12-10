@@ -16,6 +16,11 @@ const bit<8>  ARP_PLEN_IPV4      = 4;
 const bit<16> ARP_OPER_REQUEST   = 1;
 const bit<16> ARP_OPER_REPLY     = 2;
 
+typedef bit<48>  mac_addr_t;
+typedef bit<32>  ipv4_addr_t;
+typedef bit<9>   port_id_t; 
+
+
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
 *************************************************************************/
@@ -99,7 +104,7 @@ header itch_add_order_t {
 @pragma query_field_exact(add_order.stock, 64)
 
 struct metadata {
-    /* empty */
+    /* EMPTY {} */
 }
 
 struct headers {
@@ -233,9 +238,9 @@ control MyIngress(inout headers hdr,
 			hdr.arp_ipv4.sha     = dmac;
 			hdr.arp_ipv4.spa     = tmpdip;
 
-			meta.nhop_ipv4 = standard_metadata.ingress_port;
+			standard_metadata.egress_spec = standard_metadata.ingress_port;
 		} else {
-			meta.nhop_ipv4 = port;
+			standard_metadata.egress_spec = port;
 		}
 	}
 
@@ -321,6 +326,8 @@ control MyDeparser(packet_out packet, in headers hdr) {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.arp);
         packet.emit(hdr.arp_ipv4);
+
+
         packet.emit(hdr.ipv4);
     }
 }

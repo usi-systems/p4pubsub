@@ -11,6 +11,7 @@ module CamusPostProcessing
 		new_contents.gsub!("ig_intr_md_for_tm", "intrinsic_metadata")
 		new_contents.each_line do |line|
 			new_contents.gsub!(line, "") if line.include? "tofino"
+			new_contents.gsub!(line, "") if line.include? "@pragma"
 		end
 		File.open(file_name, "w") {|file| file.puts new_contents }
 	end

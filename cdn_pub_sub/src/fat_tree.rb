@@ -1,4 +1,5 @@
 require_relative 'config'
+require 'fileutils'
 
 class FatTree
 	attr_accessor :pod_size
@@ -42,9 +43,13 @@ class FatTree
 
 	def run_camus rules_file, base_name
 		b_name 			= "#{g "output_directory"}commands/#{base_name}"
-		p4_output 		= "#{g "output_directory"}ruby_g.p4"
+		camus_p4_output = "#{g "output_directory"}camus.p4"
+		main_p4_output 	= "#{g "output_directory"}ruby_g.p4"
+		itch_p4_file 	= "#{g "itch_p4"}"
 
-		Config.execute_camus rules_file, b_name, p4_output
+		Config.execute_camus rules_file, b_name, camus_p4_output, itch_p4_file
+		FileUtils.cp(itch_p4_file, main_p4_output);
+		CamusPostProcessing.p4pp main_p4_output
 	end
 
 	def handle_queries
