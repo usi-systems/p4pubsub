@@ -1,7 +1,7 @@
 require 'yaml'
 
 module Config
-	@@CONFIG_FILE_NAME = "config.yaml"
+	@@CONFIG_FILE_NAME = ""
 	@@CONFIGS = {}
 	@@TOPOLOGY = {}
 
@@ -26,8 +26,10 @@ module Config
 		CamusPostProcessing.p4pp ouput_p4_file
 	end
 
-	def load_topology file_name
-		topology_file = File.read file_name
+	def load_topology topo_file_name, config_file_name
+		topology_file = File.read topo_file_name
+		@@CONFIG_FILE_NAME = config_file_name
+
 		topo = JSON.parse topology_file
 
 		raise "topology is not supported!" unless topo["target"]["topology"].eql? "fat-tree" # for now, only the 

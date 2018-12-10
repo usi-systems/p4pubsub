@@ -23,10 +23,11 @@ include Config
 
 unless ARGV.empty?
 	topology_file 	= ARGV[0]
-	Config.load_topology topology_file
+	config_file 	= ARGV[1]
+	Config.load_topology topology_file, config_file
 else
 	puts "Invalid number of arguments!"
-	puts "Usage: ruby main.rb path_to_topology_file"
+	puts "Usage: ruby main.rb <path/to/cdn_topo.json> <path/to/config.yaml>"
 end
 
 
