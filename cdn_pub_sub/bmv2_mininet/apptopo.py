@@ -41,7 +41,6 @@ class AppTopo(Topo):
             tor_id = int(host_name.split("_")[2])
             host_id = int(host_name.split("_")[3])
 
-
             host_num = host_names.index(host_name)+1
 
             self.addHost(host_name)
@@ -66,7 +65,7 @@ class AppTopo(Topo):
                         host_ip = "10.%d.%d.%d" % (pod_id, tor_id, host_id),
                         sw = sw,
                         sw_mac = "00:ff:00:%02x:%02x:%02x" % (pod_id, tor_id, host_id),
-                        sw_ip = "10.%d.%d.%d" % (pod_id, tor_id, 100),
+                        sw_ip = "10.%d.%d.%d" % (pod_id, tor_id, host_id),
                         sw_port = self._port_map[sw][host_name]
                         )
                 self._sw_hosts[sw][host_name] = self._host_links[host_name][sw]
