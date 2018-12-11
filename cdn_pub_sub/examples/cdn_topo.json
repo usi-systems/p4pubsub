@@ -6,58 +6,58 @@
 	},
 	"hosts": {
 		"h_1_4_1": {
-			"queries" : "examples/queries/q11.txt"
+			"queries" : "examples/queries/q141.txt"
 		},
 		"h_1_4_2": {
-			"queries" : "examples/queries/q12.txt"
+			"queries" : "examples/queries/q142.txt"
 		},
 		"h_1_3_1": {
-			"queries" : "examples/queries/q13.txt"
+			"queries" : "examples/queries/q131.txt"
 		},
 		"h_1_3_2": {
-			"queries" : "examples/queries/q14.txt"
+			"queries" : "examples/queries/q132.txt"
 		},
 
 
 		"h_2_4_1": {
-			"queries" : "examples/queries/q21.txt"
+			"queries" : "examples/queries/q241.txt"
 		},
 		"h_2_4_2": {
-			"queries" : "examples/queries/q22.txt"
+			"queries" : "examples/queries/q242.txt"
 		},
 		"h_2_3_1": {
-			"queries" : "examples/queries/q23.txt"
+			"queries" : "examples/queries/q231.txt"
 		},
 		"h_2_3_2": {
-			"queries" : "examples/queries/q24.txt"
+			"queries" : "examples/queries/q232.txt"
 		},
 
 
 		"h_3_4_1": {
-			"queries" : "examples/queries/q31.txt"
+			"queries" : "examples/queries/q341.txt"
 		},
 		"h_3_4_2": {
-			"queries" : "examples/queries/q32.txt"
+			"queries" : "examples/queries/q342.txt"
 		},
 		"h_3_3_1": {
-			"queries" : "examples/queries/q33.txt"
+			"queries" : "examples/queries/q331.txt"
 		},
 		"h_3_3_2": {
-			"queries" : "examples/queries/q34.txt"
+			"queries" : "examples/queries/q332.txt"
 		},
 
 
 		"h_4_4_1": {
-			"queries" : "examples/queries/q41.txt"
+			"queries" : "examples/queries/q441.txt"
 		},
 		"h_4_4_2": {
-			"queries" : "examples/queries/q42.txt"
+			"queries" : "examples/queries/q442.txt"
 		},
 		"h_4_3_1": {
-			"queries" : "examples/queries/q43.txt"
+			"queries" : "examples/queries/q431.txt"
 		},
 		"h_4_3_2": {
-			"queries" : "examples/queries/q44.txt"
+			"queries" : "examples/queries/q432.txt"
 		}
 	}
 }
