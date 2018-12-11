@@ -1,1 +1,2 @@
-add_order.price = 3
+add_order.price < 50
+add_order.price > 20

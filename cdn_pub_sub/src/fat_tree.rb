@@ -251,9 +251,8 @@ class FatTree
 		File.open(file_name, "w") {|file| 
 			1.upto(@pod_size/2) do |host_id|
 				file.puts "table_add ipv4_lpm ipv4_forward #{host_ip pod_id, tor_id, host_id}/32 => #{host_mac pod_id, tor_id, host_id} 0x#{'%x' % host_id}"
+				file.puts "table_add send_frame set_dmac_dip 0x#{'%x' % host_id} => #{host_mac pod_id, tor_id, host_id} #{host_ip pod_id, tor_id, host_id}"
 				file.puts "table_add arp_forward set_arp_dmac #{host_ip pod_id, tor_id, host_id}/8 => #{tor_intf_mac pod_id, tor_id, host_id} 0x#{'%x' % host_id} 1"
-
-				file.puts "table_add icn_to_ip set_dip 0x#{'%x' % host_id} => #{host_ip pod_id, tor_id, host_id}"
 
 				file.puts ""
 			end

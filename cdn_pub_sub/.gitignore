@@ -1,3 +1,5 @@
 *.pcap
 generated/
 *.sh
+*.bin
+../itch_tools/

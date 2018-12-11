@@ -253,7 +253,7 @@ control MyIngress(inout headers hdr,
             drop;
         }
         size = 1024;
-        default_action = drop();
+        default_action = drop;
     }
 
     table arp_forward {
@@ -288,7 +288,42 @@ control MyIngress(inout headers hdr,
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
-    apply {  }
+
+    action drop() {
+        mark_to_drop();
+    }
+
+    action nop() {
+
+    }
+
+    action set_dmac_dip(macAddr_t dstAddr, ip4Addr_t dstIp) {
+        hdr.ethernet.dstAddr = dstAddr;
+        hdr.ipv4.dstAddr = dstIp;
+        hdr.udp.checksum = 0x0;
+    }
+
+    table send_frame {
+        key = {
+            standard_metadata.egress_port: exact;
+        }
+        actions = {
+            set_dmac_dip;
+            nop;
+        }
+        size = 32;
+        default_action = nop;
+    }
+
+    apply {
+        if(hdr.ipv4.isValid()){
+            send_frame.apply();
+        }
+        if(standard_metadata.ingress_port == standard_metadata.egress_port){
+            if (hdr.add_order.isValid())
+                drop();
+        }
+    }
 }
 
 /*************************************************************************
@@ -296,22 +331,25 @@ control MyEgress(inout headers hdr,
 *************************************************************************/
 
 control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
-     apply {
-	update_checksum(
-	    hdr.ipv4.isValid(),
-            { hdr.ipv4.version,
-	      hdr.ipv4.ihl,
-              hdr.ipv4.diffserv,
-              hdr.ipv4.totalLen,
-              hdr.ipv4.identification,
-              hdr.ipv4.flags,
-              hdr.ipv4.fragOffset,
-              hdr.ipv4.ttl,
-              hdr.ipv4.protocol,
-              hdr.ipv4.srcAddr,
-              hdr.ipv4.dstAddr },
+    apply {
+        update_checksum(
+            hdr.ipv4.isValid(),
+            { 
+                hdr.ipv4.version,
+                hdr.ipv4.ihl,
+                hdr.ipv4.diffserv,
+                hdr.ipv4.totalLen,
+                hdr.ipv4.identification,
+                hdr.ipv4.flags,
+                hdr.ipv4.fragOffset,
+                hdr.ipv4.ttl,
+                hdr.ipv4.protocol,
+                hdr.ipv4.srcAddr,
+                hdr.ipv4.dstAddr 
+            },
             hdr.ipv4.hdrChecksum,
-            HashAlgorithm.csum16);
+            HashAlgorithm.csum16
+        );
     }
 }
 
@@ -324,9 +362,12 @@ control MyDeparser(packet_out packet, in headers hdr) {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.arp);
         packet.emit(hdr.arp_ipv4);
-
-
         packet.emit(hdr.ipv4);
+        packet.emit(hdr.udp);
+        packet.emit(hdr.mold_hdr);
+        packet.emit(hdr.mold_msg);
+        packet.emit(hdr.itch_msg_type);
+        packet.emit(hdr.add_order);
     }
 }
 
