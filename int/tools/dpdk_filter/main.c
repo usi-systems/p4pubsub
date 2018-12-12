@@ -60,7 +60,7 @@
 #define MIN_BURST_SIZE 4
 
 static const struct rte_eth_conf port_conf_default = {
-    .link_speeds = ETH_LINK_SPEED_10G,
+    .link_speeds = ETH_LINK_SPEED_100G,
     .rxmode = {
         .mq_mode        = ETH_MQ_RX_RSS,
         .max_rx_pkt_len = ETHER_MAX_LEN,
