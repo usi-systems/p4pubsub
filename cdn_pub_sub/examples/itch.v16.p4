@@ -96,12 +96,22 @@ header itch_add_order_t {
     bit<32> shares;
     bit<64> stock;
     bit<32> price;
+
+    bit<32> x1;
+    bit<32> x2;
+    bit<32> x3;
+    bit<32> x4;
 }
 
 @pragma query_field(add_order.buy_sell_indicator, 8)
 @pragma query_field(add_order.price, 32)
 @pragma query_field(add_order.shares, 32)
 @pragma query_field_exact(add_order.stock, 64)
+
+@pragma query_field(add_order.x1, 32)
+@pragma query_field(add_order.x2, 32)
+@pragma query_field(add_order.x3, 32)
+@pragma query_field(add_order.x4, 32)
 
 struct metadata {
     /* EMPTY {} */

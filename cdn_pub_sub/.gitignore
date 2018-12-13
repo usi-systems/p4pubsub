@@ -3,3 +3,4 @@ generated/
 *.sh
 *.bin
 ../itch_tools/
+results
