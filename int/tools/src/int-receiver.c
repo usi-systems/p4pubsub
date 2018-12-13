@@ -26,6 +26,7 @@ int sockfd = 0;
 int pkt_cnt = 0;
 int match_cnt = 0;
 unsigned num_filters = 0;
+uint32_t *filter_switch_ids = 0;
 
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
@@ -46,6 +47,8 @@ void cleanup_and_exit() {
         close(sockfd);
 
     fprintf(stderr, "\nReceived %d packets (%d matches).\n", pkt_cnt, match_cnt);
+    if (filter_switch_ids)
+        free(filter_switch_ids);
     exit(0);
 }
 
@@ -53,10 +56,10 @@ void catch_int(int signo) {
     cleanup_and_exit();
 }
 
-int matches_filter(uint32_t switch_id, uint32_t hop_latency) {
+int check_match(uint32_t switch_id, uint32_t hop_latency) {
     if (num_filters == 0) return 1;
     for (unsigned i = 0; i < num_filters; i++)
-        if (switch_id == 22+i && hop_latency > 7999 && hop_latency < 8002)
+        if (switch_id == filter_switch_ids[i] && hop_latency > 7999 && hop_latency < 8002)
             return 1;
     return 0;
 }
@@ -92,7 +95,7 @@ void handle_pkt(char *buf, size_t size) {
     unsigned occ = (qo->q_occupancy1 << 16) | (qo->q_occupancy2 << 8) | qo->q_occupancy3;
     ofst += sizeof(struct int_q_occupancy);
 
-    if (!matches_filter(ntohl(swid->switch_id), ntohl(hl->hop_latency))) return;
+    if (!check_match(ntohl(swid->switch_id), ntohl(hl->hop_latency))) return;
 
     match_cnt++;
 
@@ -187,6 +190,10 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Listenning on port %d\n", port);
         fprintf(stderr, "Using %d filters.\n", num_filters);
     }
+
+    filter_switch_ids = (uint32_t *)malloc(sizeof(uint32_t) * num_filters);
+    for (i = 0; i < num_filters; i++)
+        filter_switch_ids[i] = 22 + i;
 
     if (rcvbuf > 0) {
         if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0)
