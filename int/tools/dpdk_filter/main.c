@@ -47,12 +47,12 @@
 #include <rte_udp.h>
 #include <assert.h>
 
-#define RX_RING_SIZE 4096
+#define RX_RING_SIZE 16384
 #define TX_RING_SIZE 4096
 
 #define INT_PKT_BYTES 74
 
-#define NUM_MBUFS 8191
+#define NUM_MBUFS 16384
 #define MBUF_CACHE_SIZE 250
 //#define BURST_SIZE 32
 #define BURST_SIZE 16
@@ -155,10 +155,11 @@ port_init(uint16_t port)
 
 uint16_t receiver_port;
 unsigned num_filters = 0;
+uint32_t *filter_switch_ids;
 
 int udp_port = 1234;
 
-int print_interval_pkts = 1 * 1000 * 1000;
+int print_interval_pkts = 10 * 1000 * 1000;
 
 
 const char dst_mac[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
@@ -173,7 +174,7 @@ unsigned total_matches = 0;
 int check_match(uint32_t switch_id, uint32_t hop_latency) {
     if (num_filters == 0) return 1;
     for (unsigned i = 0; i < num_filters; i++)
-        if (switch_id == 22+i && hop_latency > 7999 && hop_latency < 8002)
+        if (switch_id == filter_switch_ids[i] && hop_latency > 7999 && hop_latency < 8002)
             return 1;
     return 0;
 }
@@ -184,6 +185,9 @@ void cleanup_and_exit(void) {
 
     rte_eth_stats_get(receiver_port, &stats);
     printf("\ntotal_rx: %u, ipackets: %lu, imissed: %lu, ierrors: %lu, q_errors: %lu, matches: %u\n", total_rx, stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors[0], total_matches);
+
+    if (filter_switch_ids)
+        free(filter_switch_ids);
 }
 
 void catch_int(int signo) {
@@ -220,10 +224,15 @@ int handle_pkt(struct rte_mbuf *pkt) {
     udp_h = (struct udp_hdr *) ((char *) ip_h + sizeof(*ip_h));
 
     short dst_port = rte_be_to_cpu_16(udp_h->dst_port);
-    if (dst_port != udp_port) {
-        printf("udp.dst_port = %d\n", dst_port);
+    if (unlikely(dst_port != udp_port)) {
+        fprintf(stderr, "udp.dst_port = %d\n", dst_port);
         assert(0 && "Unexpected UDP port");
-        return 0;
+    }
+
+    short udp_len = rte_be_to_cpu_16(udp_h->dgram_len);
+    if (unlikely(udp_len != 32 + sizeof(struct udp_hdr))) {
+        fprintf(stderr, "udp.dgram_len = %d\n", udp_len);
+        assert(0 && "Expected 32 bytes of INT headers");
     }
     char *udp_payload = (char *) ip_h + sizeof(*ip_h) + sizeof(*udp_h);
 
@@ -425,6 +434,13 @@ main(int argc, char *argv[])
     printf("Using %d cores\n", rte_lcore_count());
 
     signal(SIGINT, catch_int);
+
+    // Setup filters:
+    filter_switch_ids = (uint32_t *)malloc(sizeof(uint32_t) * num_filters);
+    for (unsigned i = 0; i < num_filters; i++)
+        filter_switch_ids[i] = 22 + i;
+
+    receiver_port = 0;
 
     (void)lcore_id; // unused
     //RTE_LCORE_FOREACH_SLAVE(lcore_id) {

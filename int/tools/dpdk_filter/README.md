@@ -4,12 +4,12 @@
 
 Extract the dpdk source dir, set the ENV, and run `dpdk-setup.sh`:
 
-    cd ~/dpdk-17.11
-    cat env.sh 
-    export RTE_TARGET=build
-    export RTE_SDK=$HOME/dpdk-17.11
+    cd ~/dpdk-17.11.4
+    cat env.sh
+    export RTE_TARGET=x86_64-native-linuxapp-gcc
+    export RTE_SDK=$HOME/dpdk-17.11.4
     source env.sh
-    sudo ~/dpdk-17.11/usertools/dpdk-setup.sh
+    sudo ~/dpdk-17.11.4/usertools/dpdk-setup.sh
 
 Build DPDK (option 14):
 
@@ -32,12 +32,17 @@ Add NICs to driver:
     [23] Bind Ethernet/Crypto device to IGB UIO module
 
 
-Edit `main.c` and change `dst_mac` to the NIC that should receive (and filter) the feed.
+Edit `main.c` and ensure the NIC link settings are correct:
 
-    cd p4pubsub/int/tools/dpdk_sender
+    cd p4pubsub/int/tools/dpdk_filter
     vim main.c
 
 Then, build the tool:
 
     make
 
+## Receiving and Filtering Packets
+
+Filter incoming packets, matching on `128` different values:
+
+    sudo ./build/main -l 8 -w 83:00.0 -- -P 1234 -f 128
