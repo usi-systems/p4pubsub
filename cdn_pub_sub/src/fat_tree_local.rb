@@ -1,7 +1,7 @@
 require_relative 'config'
 require 'fileutils'
 
-class FatTree
+class FatTreeLocal
 	attr_accessor :pod_size
 	attr_accessor :host_size
 	attr_accessor :host_names

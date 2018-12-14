@@ -32,7 +32,12 @@ module Config
 
 		topo = JSON.parse topology_file
 
-		raise "topology is not supported!" unless topo["target"]["topology"].eql? "fat-tree" # for now, only the 
-		@@TOPOLOGY = FatTree.new topo
+		raise "topology is not supported!" unless topo["target"]["topology"].start_with? "fat-tree" # for now, only the 
+
+		if(topo["target"]["topology"].eql? "fat-tree-local")
+			@@TOPOLOGY = FatTreeLocal.new topo
+		else
+			@@TOPOLOGY = FatTreeGlobal.new topo
+		end
 	end
 end

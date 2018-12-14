@@ -1,5 +1,6 @@
 require 'json'
-require_relative 'fat_tree'
+require_relative 'fat_tree_local'
+require_relative 'fat_tree_global'
 require_relative 'config'
 
 module CamusPostProcessing 
