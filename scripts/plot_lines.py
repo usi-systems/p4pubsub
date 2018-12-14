@@ -72,7 +72,8 @@ colors = itertools.cycle(('r', 'g', 'b', 'c', 'm', 'y', 'k'))
 hatches = itertools.cycle(('x', '/', 'o', '\\', '*', 'o', 'O', '.'))
 
 
-def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_error=True, show_legend=False):
+def plot_bar(data, conf=None, title=None, ylabel=None, show_error=True, show_legend=False,
+        fontsize=None, xlabel=None, yscale='linear', label_names=None, label_order=None):
     field_names = data.dtype.names[1:]
     N = len(field_names)
     ind = np.arange(N)  # the x locations for the groups
@@ -80,20 +81,24 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
 
     labels = set([r[0] for r in data])
 
-    local_label_order = []
+    local_label_order = label_order if label_order else []
     if conf and 'linestyle' in conf:
         for lbl, style in conf['linestyle'].items()[1:]:
             if lbl not in labels: continue
-            local_label_order.append(lbl)
+            if lbl not in local_label_order: local_label_order.append(lbl)
             label_style_hist[lbl] = dict(zip(['color', 'line', 'marker'], style.split()))
     if conf and 'style' in conf:
-        if 'fontsize' in conf['style']: plt.rc('font', size=conf['style']['fontsize'])
+        if fontsize is None and 'fontsize' in conf['style']:
+            fontsize = conf['style']['fontsize']
         if 'showtitle' in conf['style'] and conf['style']['showtitle'].lower() in ['no', 'false', '0']:
             title = None
         if 'fontweight' in conf['style']:
             plt.rc('font', weight=conf['style']['fontweight'])
             plt.rc('axes', labelweight=conf['style']['fontweight'])
         if 'fontfamily' in conf['style']: plt.rc('font', family=conf['style']['fontfamily'])
+
+    if fontsize is not None:
+        plt.rc('font', size=fontsize)
 
     if not local_label_order:
         local_label_order = [l for l in label_order] if label_order else label_order_hist
@@ -108,8 +113,8 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     ax.yaxis.grid()
 
     i = 0
-    label_names = []
-    for lbl in local_label_order:
+    formatted_label_names = []
+    for idx,lbl in enumerate(local_label_order):
         vals = [list(r)[1:] for r in data if r[0] == lbl]
         avgs = np.mean(vals, axis=0)
         errs = np.std(vals, axis=0)
@@ -123,8 +128,10 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
         label_name = lbl
         if conf and 'labels' in conf:
             if lbl in conf['labels']: label_name = conf['labels'][lbl]
+        if label_names:
+            label_name = label_names[idx]
         label_name = formatLabel(str(label_name))
-        label_names.append(label_name)
+        formatted_label_names.append(label_name)
 
         plot_handles.append(rects)
         i += 1
@@ -132,11 +139,15 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     if ylabel: ax.set_ylabel(formatLabel(ylabel))
     if title: ax.set_title(title)
     ax.set_xticks(ind + width)
+    if not xlabel is None: ax.set_xlabel(formatLabel(xlabel), fontsize=fontsize)
+
+    if yscale: ax.set_yscale(yscale)
 
     if conf and 'labels' in conf:
         field_titles = [conf['labels'][l] if l in conf['labels'] else l for l in field_names]
     else: field_titles = field_names
-    ax.set_xticklabels(field_titles, rotation=30)
+    xtick_rot = 0
+    ax.set_xticklabels(field_titles, rotation=xtick_rot)
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -145,7 +156,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
 
     showlegend = show_legend or conf['showlegend'] if conf and 'showlegend' in conf else True
     if showlegend:
-        ax.legend([r[0] for r in plot_handles], label_names,
+        ax.legend([r[0] for r in plot_handles], formatted_label_names,
                 loc='upper center',
                 bbox_to_anchor=(0.5, 1.12),
                 handletextpad=0.2,
@@ -409,6 +420,11 @@ if __name__ == '__main__':
             conf=conf,
             show_error=not args.no_error,
             show_legend=args.legend,
+            label_names=args.label_names,
+            fontsize=args.font_size,
+            xlabel=args.xlabel,
+            yscale=args.yscale,
+            label_order=_tolist(args.label_order) if args.label_order else None,
             ylabel=args.ylabel)
     else:
         fig = plot_lines(data, title=title,
