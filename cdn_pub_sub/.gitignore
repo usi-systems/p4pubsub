@@ -2,5 +2,4 @@
 generated/
 *.sh
 *.bin
-../itch_tools/
-results
+results/out
