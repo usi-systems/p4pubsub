@@ -64,7 +64,8 @@ def make_the_experiment distro, attr_size, conj_size, num_query
     # main ruby files!
     FileUtils.cp "./cdn_topo.json", src_dir
     FileUtils.cp_r "#{@main_source_dir}/main.rb", src_dir
-    FileUtils.cp_r "#{@main_source_dir}/fat_tree.rb", src_dir
+    FileUtils.cp_r "#{@main_source_dir}/fat_tree_local.rb", src_dir
+    FileUtils.cp_r "#{@main_source_dir}/fat_tree_global.rb", src_dir
     FileUtils.cp_r "#{@main_source_dir}/config.rb", src_dir
     FileUtils.cp_r "ssbg_camus.py", dir
 

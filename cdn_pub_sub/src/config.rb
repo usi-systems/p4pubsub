@@ -34,10 +34,7 @@ module Config
 
 		raise "topology is not supported!" unless topo["target"]["topology"].start_with? "fat-tree" # for now, only the 
 
-		if(topo["target"]["topology"].eql? "fat-tree-local")
-			@@TOPOLOGY = FatTreeLocal.new topo
-		else
-			@@TOPOLOGY = FatTreeGlobal.new topo
-		end
+		@@TOPOLOGY = FatTreeLocal.new(topo) if(topo["target"]["topology"].eql? "fat-tree-local")
+		@@TOPOLOGY = FatTreeGlobal.new(topo) if(topo["target"]["topology"].eql? "fat-tree-global")
 	end
 end

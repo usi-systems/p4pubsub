@@ -1,7 +1,7 @@
 {
 	"version" : "0.0.1",
 	"target" : {
-		"topology": "fat-tree",
+		"topology": "fat-tree-local",
 		"pod_size" : 4
 	},
 	"hosts": {
