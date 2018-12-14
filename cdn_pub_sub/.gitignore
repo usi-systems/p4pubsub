@@ -1,5 +1,5 @@
 *.pcap
 generated/
-*.sh
 *.bin
 results/out
+results/runner.sh
