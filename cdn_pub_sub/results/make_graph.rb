@@ -13,7 +13,11 @@ else
     return
 end
 
-puts "distro \t attr_size \t conj_size \t num_query \t switch_d \t time"
+def get_table_entries file
+    `wc -l "#{file}"`.split(" ")[0]
+end
+
+puts "distro \t attr_size \t conj_size \t num_query \t switch_d \t time \t table_entries"
 Dir[@result_dir + "*"].each do |_dir|
     dir = "#{_dir}/" unless _dir[-1].eql? "/"
     distro = attr_size = conj_size = num_query = nil
@@ -36,10 +40,15 @@ Dir[@result_dir + "*"].each do |_dir|
         time_ = (line.split(" ")[-1] if line.start_with? "Made") || time_
         
         if(time_ && switch_id)
-            puts "#{distro} \t #{attr_size} \t #{conj_size} \t #{num_query} \t #{switch_id.to_s[0..-5]} \t #{time_}"
+            switch_id = switch_id.to_s[0..-5]
+            time_ = time_[0..-2]
+
+            table_entries = get_table_entries "#{dir}out/commands/#{switch_id}_commands.txt"
+            puts "#{distro} \t #{attr_size} \t #{conj_size} \t #{num_query} \t #{switch_id} \t #{time_} \t #{table_entries}"
             time_ = switch_id = nil
         end
     end
 
+    
 
 end
