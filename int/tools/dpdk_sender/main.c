@@ -364,8 +364,6 @@ sender(void)
             printf("total_tx: %u, opackets: %lu, oerrors: %lu, q_opackets: %lu, total_resent: %u\n", total_tx, stats.opackets, stats.oerrors, stats.q_opackets[0], total_resent);
         }
 
-        usleep(1);
-
 #ifdef ENABLE_THROTTLE
         period_tx += nb_tx;
         if (unlikely(period_tx >= pkts_per_period && send_rate_pps != 0)) {
