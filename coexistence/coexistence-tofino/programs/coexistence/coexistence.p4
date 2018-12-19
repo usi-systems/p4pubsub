@@ -376,7 +376,11 @@ control ingress {
         apply(itch_query_actions);
     }
     else if (valid(ipv4)) {
-        apply(ipv4_lpm);
+        apply(ipv4_lpm) {
+            miss {
+                apply(dmac);
+            }
+        }
     }
     else if (valid(ethernet)) {
         apply(dmac);
