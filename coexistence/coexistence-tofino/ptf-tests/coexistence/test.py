@@ -114,11 +114,11 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
 
 
         self.dmac_tbl = {
-                '00:11:22:33:44:55': 1
+                '00:11:22:33:44:01': 53
                 }
 
         self.ipv4_lpm_tbl = {
-                '10.0.0.98': 1
+                '10.0.0.2': 54
                 }
 
         self.mgid = 5
