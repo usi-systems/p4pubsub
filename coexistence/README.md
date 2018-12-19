@@ -16,6 +16,7 @@ Camus pipeline. Otherwise, it executes some basic switch tables:
 
 Compile the rules for both ITCH and INT:
 
+    mkdir out/
     ../camus-compiler/camus.exe -rules int-rules.txt -rt-out out/int int-spec.p4
     ../camus-compiler/camus.exe -rules itch-rules.txt -rt-out out/itch itch-spec.p4
 
@@ -82,3 +83,12 @@ Send an INT packet that should match the filter and be forwarded out port 52:
 Generate and send an ITCH packet that should also be forwarded out port 52:
 
     ./mold_feed.py -m 1 -M 1 -c 1 -f Price=301,Shares=1 | ./send_mold_messages -v 3 -r - 10.0.0.1:1234
+
+## Generality: Camus for IPv4
+
+To demonstrate generality, we can enable a Camus pipeline that forwards IPv4
+packets. To enable this pipeline, toggle the `ENABLE_CAMUS_IPV4` flag in
+`coexistence.p4` and the PTF test. Use the compiler to generate entries for
+IPv4 forwarding with Camus:
+
+    ../camus-compiler/camus.exe -rules ipv4-rules.txt -rt-out out/ipv4 ipv4-spec.p4
