@@ -16,6 +16,9 @@ Camus pipeline. Otherwise, it executes some basic switch tables:
 
 Compile the rules for both ITCH and INT:
 
+    ../camus-compiler/camus.exe -rules int-rules.txt -rt-out out/int int-spec.p4
+    ../camus-compiler/camus.exe -rules itch-rules.txt -rt-out out/itch itch-spec.p4
+
 The generated `*_entries.json` files should be placed in
 `coexistence-tofino/ptf-tests/coexistence/`.
 
