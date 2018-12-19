@@ -1,6 +1,8 @@
 #include <tofino/constants.p4>
 #include <tofino/intrinsic_metadata.p4>
 
+#define ENABLE_CAMUS_IPV4     0
+
 #define ITCH_UDP_PORT         1234
 #define INT_UDP_PORT          1337
 
@@ -127,6 +129,8 @@ header_type add_order_t {
         shares:32;
         ticker1:32;
         ticker2:32;
+        // XXX We ignore these 12 MSB because the TCAM can only do a range
+        // match on the first 20 bits
         price_extra:12;
         price:20;
     }
@@ -324,6 +328,23 @@ table itch_query_actions {
     size: 1024;
 }
 
+table query_ipv4_dstAddr_exact {
+    reads { camus_meta.state: exact; ipv4.dstAddr: exact; }
+    actions { set_next_state; }
+    size: 1024;
+}
+table query_ipv4_dstAddr_miss {
+    reads { camus_meta.state: exact; }
+    actions { set_next_state; }
+    size: 1024;
+}
+table ipv4_query_actions {
+    reads { camus_meta.state: exact; }
+    actions { query_drop; set_egress_port; set_mgid; }
+    default_action: query_drop;
+    size: 1024;
+}
+
 table dmac {
     reads { ethernet.dstAddr: exact; }
     actions { set_egress_port; }
@@ -376,11 +397,21 @@ control ingress {
         apply(itch_query_actions);
     }
     else if (valid(ipv4)) {
+#if ENABLE_CAMUS_IPV4
+        apply(query_ipv4_dstAddr_exact) {
+            miss {
+                apply(query_ipv4_dstAddr_miss);
+            }
+        }
+
+        apply(ipv4_query_actions);
+#else
         apply(ipv4_lpm) {
             miss {
                 apply(dmac);
             }
         }
+#endif
     }
     else if (valid(ethernet)) {
         apply(dmac);

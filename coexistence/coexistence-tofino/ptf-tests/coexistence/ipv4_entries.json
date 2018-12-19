@@ -1,0 +1,5 @@
+[{"table_name": "Camus.query_actions", "match_fields":
+        {"meta.query.state": [1]}, "action_name": "Camus.query_drop"},{"table_name": "Camus.query_actions", "match_fields":
+        {"meta.query.state": [2]}, "action_name": "Camus.set_egress_port", "action_params": {"port": 54}},{"table_name": "Camus.query_ipv4_dstAddr_exact", "match_fields":
+        {"meta.query.state": [0],"hdr.ipv4.dstAddr": [167772162]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 2}},{"table_name": "Camus.query_ipv4_dstAddr_miss", "match_fields":
+        {"meta.query.state": [0]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}}]

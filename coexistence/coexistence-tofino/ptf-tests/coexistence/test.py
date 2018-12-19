@@ -45,6 +45,9 @@ from pal_rpc.ttypes import *
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
+# Use a Camus pipeline to forward IPv4
+ENABLE_CAMUS_IPV4     = False
+
 dev_id = 0
 dev_tgt = DevTarget_t(dev_id, hex_to_i16(0xFFFF))
 
@@ -179,7 +182,8 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
             field_val = [(k.split('.')[-1], v) for k,v in d.iteritems()]
             for k,v in field_val:
                 if k == 'state': matches = map(hex_to_byte, v) + matches
-                else: matches += map(hex_to_i16, v)
+                elif v >= 2**16: matches += map(hex_to_i32, v)
+                else:            matches += map(hex_to_i16, v)
             return matches
 
         for e in entries:
@@ -221,6 +225,11 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
         with open(entries_file, 'r') as f: entries = json.load(f)
         self.popCamusEntries('itch', entries)
 
+    def popCamusIpv4(self):
+        entries_file = os.path.join(this_dir, "ipv4_entries.json")
+        with open(entries_file, 'r') as f: entries = json.load(f)
+        self.popCamusEntries('ipv4', entries)
+
     def popDmac(self):
         self.entries['dmac'] = []
         for dmac,egr in self.dmac_tbl.iteritems():
@@ -243,8 +252,11 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
     def popTables(self):
         self.popInt()
         self.popItch()
+
+        if ENABLE_CAMUS_IPV4: self.popCamusIpv4()
+        else:                 self.popIpv4Lpm()
+
         self.popDmac()
-        self.popIpv4Lpm()
 
     def setupMulticast(self):
         rid = 1
