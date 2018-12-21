@@ -83,6 +83,7 @@ static const struct rte_eth_conf port_conf_default = {
 
 struct rte_mempool *mbuf_pool;
 
+uint64_t start_ns = 0;
 int check_match(uint32_t switch_id, uint32_t hop_latency);
 void cleanup_and_exit(void);
 void catch_int(int signo);
@@ -184,7 +185,10 @@ void cleanup_and_exit(void) {
     struct rte_eth_stats stats;
 
     rte_eth_stats_get(receiver_port, &stats);
-    printf("\ntotal_rx: %u, ipackets: %lu, imissed: %lu, ierrors: %lu, q_errors: %lu, matches: %u\n", total_rx, stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors[0], total_matches);
+    float elapsed_s = (ns_since_midnight() - start_ns) / 1e9;
+    float mpps = (total_rx / 1e6) / elapsed_s;
+
+    printf("\ntotal_rx: %u, ipackets: %lu, imissed: %lu, ierrors: %lu, q_errors: %lu, matches: %u, Mpps: %f\n", total_rx, stats.ipackets, stats.imissed, stats.ierrors, stats.q_errors[0], total_matches, mpps);
 
     if (filter_switch_ids)
         free(filter_switch_ids);
@@ -316,6 +320,9 @@ receiver(void)
 
         if (unlikely(nb_rx == 0))
             continue;
+
+        if (unlikely(start_ns == 0))
+            start_ns = ns_since_midnight();
 
         for (i = 0; i < nb_rx; i++) {
             handle_pkt(bufs[i]);

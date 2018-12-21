@@ -21,6 +21,7 @@ char *progname;
 
 int verbosity = 0;
 int do_pretty_print = 0;
+uint64_t start_ns = 0;
 
 int sockfd = 0;
 int pkt_cnt = 0;
@@ -46,7 +47,10 @@ void cleanup_and_exit() {
     if (sockfd)
         close(sockfd);
 
-    fprintf(stderr, "\nReceived %d packets (%d matches).\n", pkt_cnt, match_cnt);
+    float elapsed_s = (ns_since_midnight() - start_ns) / 1e9;
+    float mpps = (pkt_cnt / 1e6) / elapsed_s;
+
+    fprintf(stderr, "\nReceived %d packets (%d matches). Mpps: %f\n", pkt_cnt, match_cnt, mpps);
     if (filter_switch_ids)
         free(filter_switch_ids);
     exit(0);
@@ -208,6 +212,8 @@ int main(int argc, char *argv[]) {
 
         size = recvfrom(sockfd, buf, BUFSIZE, 0,
                 (struct sockaddr *)&remoteaddr, &remoteaddr_len);
+        if (start_ns == 0)
+            start_ns = ns_since_midnight();
         if (size < 0)
             error("recvfrom()");
 
