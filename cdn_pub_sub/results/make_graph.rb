@@ -49,6 +49,6 @@ Dir[@result_dir + "*"].each do |_dir|
         end
     end
 
-    
-
+rescue
+    next    
 end
