@@ -112,6 +112,19 @@ header itch_add_order_t {
 @pragma query_field(add_order.x2, 32)
 @pragma query_field(add_order.x3, 32)
 @pragma query_field(add_order.x4, 32)
+@pragma query_field(add_order.x5, 32)
+@pragma query_field(add_order.x6, 32)
+@pragma query_field(add_order.x7, 32)
+@pragma query_field(add_order.x8, 32)
+@pragma query_field(add_order.x9, 32)
+@pragma query_field(add_order.x10, 32)
+@pragma query_field(add_order.x11, 32)
+@pragma query_field(add_order.x12, 32)
+@pragma query_field(add_order.x13, 32)
+@pragma query_field(add_order.x14, 32)
+@pragma query_field(add_order.x15, 32)
+@pragma query_field(add_order.x16, 32)
+@pragma query_field(add_order.x17, 32)
 
 struct metadata {
     /* EMPTY {} */
