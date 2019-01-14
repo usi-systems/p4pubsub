@@ -37,6 +37,7 @@ class FatTreeLocal
 			1.upto(@pod_size/2) do |core_sw_id|
 				query_file = switch_queries(core_sw_name core_sw_id, agg_sw_id)
 				run_camus query_file, (core_sw_name core_sw_id, agg_sw_id)
+				return
 			end
 		end
 	end

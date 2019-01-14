@@ -17,7 +17,7 @@ def get_table_entries file
     `wc -l "#{file}"`.split(" ")[0]
 end
 
-puts "INSERT INTO varsize_opt (distro, attr_size, conj_size, num_query, switch_id, time, table_entries, local_global) values "
+puts "INSERT INTO final_results (distro, attr_size, conj_size, num_query, switch_id, time, table_entries, local_global) values "
 
 Dir[@result_dir + "*"].each do |_dir|
     dir = "#{_dir}/" unless _dir[-1].eql? "/"
@@ -45,7 +45,7 @@ Dir[@result_dir + "*"].each do |_dir|
             time_ = time_[0..-2]
 
             table_entries = get_table_entries "#{dir}out/commands/#{switch_id}_commands.txt"
-            puts "('#{distro}', #{attr_size}, #{conj_size}, #{num_query}, '#{switch_id}', #{time_}, #{table_entries}, 'conjeqvarsize'), "
+            puts "('#{distro}', #{attr_size}, #{conj_size}, #{num_query}, '#{switch_id}', #{time_}, #{table_entries}, 'final_1'), "
             time_ = switch_id = nil
         end
     end
