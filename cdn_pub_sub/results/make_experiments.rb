@@ -89,9 +89,9 @@ end
 
 
 distribution_array = ["--zipf"]
-attr_space_size_array = [2,3,4,5,6]
+attr_space_size_array = [2,3]
 conj_size_array = [2]
-number_of_queries_array = [10,20,30,40,50]
+number_of_queries_array = [40, 50]
 
 
 distribution_array.each do |distro|

@@ -25,11 +25,11 @@ class FatTreeLocal
 			@pod_size.downto(@pod_size/2 + 1) do |tor_id|
 				sw_name = tor_sw_name p_id, tor_id
 				query_file = switch_queries sw_name
-				run_camus query_file, sw_name
+				# run_camus query_file, sw_name
 			end
 			1.upto(@pod_size/2) do |agg_id|
 				query_file = switch_queries(agg_sw_name p_id, agg_id)
-				run_camus query_file, (agg_sw_name p_id, agg_id)
+				# run_camus query_file, (agg_sw_name p_id, agg_id)
 			end
 		end
 

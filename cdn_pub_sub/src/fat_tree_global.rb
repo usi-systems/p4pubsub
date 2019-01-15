@@ -26,19 +26,23 @@ class FatTreeGlobal
 				sw_name = tor_sw_name p_id, tor_id
 				query_file = switch_queries sw_name
 				run_camus query_file, sw_name
+				break
 			end
 			1.upto(@pod_size/2) do |agg_id|
 				query_file = switch_queries(agg_sw_name p_id, agg_id)
 				run_camus query_file, (agg_sw_name p_id, agg_id)
+				break
 			end
+			break
 		end
 
 		1.upto(@pod_size/2) do |agg_sw_id|
 			1.upto(@pod_size/2) do |core_sw_id|
 				query_file = switch_queries(core_sw_name core_sw_id, agg_sw_id)
 				run_camus query_file, (core_sw_name core_sw_id, agg_sw_id)
-				return
+				break
 			end
+			break
 		end
 	end
 

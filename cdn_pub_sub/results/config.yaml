@@ -1,6 +1,6 @@
 base_directory: "/home/ali/cdn_pub_sub/"
 output_directory: "/home/ali/cdn_pub_sub/generated/"
-camus_compiler: "~/camus-compiler/camus.exe -rules %s -rt-out %s -prog-out %s %s"
+camus_compiler: "~/camus-compiler/camus.exe -rules %s %s"
 itch_p4: "/home/ali/cdn_pub_sub/results/itch.v16.p4"
 p4_compiler: "/usr/local/bin/p4c-bm2-ss --p4v 14"
 

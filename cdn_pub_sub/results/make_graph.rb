@@ -45,7 +45,7 @@ Dir[@result_dir + "*"].each do |_dir|
             time_ = time_[0..-2]
 
             table_entries = get_table_entries "#{dir}out/commands/#{switch_id}_commands.txt"
-            puts "('#{distro}', #{attr_size}, #{conj_size}, #{num_query}, '#{switch_id}', #{time_}, #{table_entries}, 'final_1'), "
+            puts "('#{distro}', #{attr_size}, #{conj_size}, #{num_query}, '#{switch_id}', #{time_}, #{table_entries}, 'final_global'), "
             time_ = switch_id = nil
         end
     end
