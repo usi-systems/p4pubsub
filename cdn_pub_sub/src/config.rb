@@ -18,6 +18,7 @@ module Config
 		command = (g "camus_compiler") % 
 			[
 				rules_file, 
+				base_name,
 				itch_p4_file
 			]
 		p command

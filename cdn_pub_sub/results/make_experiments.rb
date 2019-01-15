@@ -89,15 +89,15 @@ end
 
 
 distribution_array = ["--zipf"]
-attr_space_size_array = [2,3]
+attr_space_size_array = [2,3,4]
 conj_size_array = [2]
-number_of_queries_array = [40, 50]
+number_of_queries_array = [10,20,30,40, 50, 60, 70, 80, 90, 100]
 
 
-distribution_array.each do |distro|
-    attr_space_size_array.each do |attr_size|
-        conj_size_array.each do |conj_size|
-            number_of_queries_array.each do |num_query|
+attr_space_size_array.each do |attr_size|
+    number_of_queries_array.each do |num_query|
+        distribution_array.each do |distro|
+            conj_size_array.each do |conj_size|
                 #make_the_experiment distro, attr_size, conj_size, num_query
                 #make_runner_sh distro, attr_size, conj_size, num_query
 
