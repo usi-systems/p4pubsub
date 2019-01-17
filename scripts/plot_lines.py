@@ -67,7 +67,7 @@ label_style_hist = {} # keep history of styles for labels
 label_order_hist = [] # keep history of the order of labels
 
 markers = itertools.cycle(('o', 'x', 'D', 's', '+', '^', '*' ))
-linestyles = itertools.cycle(("-","-","--","-.",":"))
+linestyles = itertools.cycle(("-","-","-","--","-.",":"))
 colors = itertools.cycle(('r', 'g', 'b', 'c', 'm', 'y', 'k'))
 hatches = itertools.cycle(('x', '/', 'o', '\\', '*', 'o', 'O', '.'))
 
@@ -178,7 +178,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, show_error=True, show_leg
 
 def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None, xscale='linear', yscale='linear',
         title=None, plot_labels=None, label_order=None, label_names=None,
-        show_error=True, show_legend=False, legend_title=None,
+        show_error=True, show_grid=True, show_legend=False, legend_title=None,
         conf=None, linewidth=2, markersize=2, fontsize=None):
     """Plots a 2D array with the format: [[label, x, y, y-dev]]
     """
@@ -286,13 +286,13 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
 
     if not xscale and conf and 'style' in conf and 'xscale' in conf['style']:
         xscale = conf['style']['xscale']
-    if xscale: ax.set_xscale(xscale, nonposx='clip')
+    if xscale: ax.set_xscale(xscale)
 
     if not yscale and conf and 'style' in conf and 'yscale' in conf['style']:
         yscale = conf['style']['yscale']
-    if yscale: ax.set_yscale(yscale, nonposx='clip')
+    if yscale: ax.set_yscale(yscale)
 
-    showgrid = True
+    showgrid = show_grid
     if conf and 'style' in conf and 'showgrid' in conf['style']:
         showgrid = conf['style']['showgrid'] == 'True'
     if showgrid:
@@ -386,6 +386,8 @@ if __name__ == '__main__':
             type=_tolist, default=None, required=False)
     parser.add_argument('--no-error', help='Do not display error bars on the plot',
             action='store_true', default=False)
+    parser.add_argument('--no-grid', help='Do not display grid lines on the plot',
+            action='store_true', default=False)
     parser.add_argument('--show', help='Open the plot in a new window',
             action='store_true', default=False)
     parser.add_argument('--legend', help='Add a legend to the plot',
@@ -403,7 +405,7 @@ if __name__ == '__main__':
         title = os.path.splitext(args.filename)[0]
         file_out = os.path.splitext(args.filename)[0] + '.' + args.format
 
-    data = np.genfromtxt(file_in, delimiter='\t', names=True, dtype=None, encoding=None)
+    data = np.genfromtxt(file_in, delimiter='\t', names=True, dtype=None)
 
     if args.title is not None: title = args.title if args.title else None
 
@@ -431,6 +433,7 @@ if __name__ == '__main__':
             conf=conf,
             linewidth=args.linewidth,
             show_error=not args.no_error,
+            show_grid=not args.no_grid,
             show_legend=args.legend is not False,
             legend_title=args.legend,
             xlim=args.xlim, ylim=args.ylim, xticks=args.xticks,
