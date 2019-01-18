@@ -36,7 +36,7 @@ Dir[@result_dir + "*"].each do |_dir|
 
     switch_id = nil
     time_ = nil
-    File.readlines("#{dir}result.txt").each do |line|
+    File.readlines("#{dir}result_local.txt").each do |line|
         switch_id = /([a-z0-9_]+)\.txt/.match(line) || switch_id
         time_ = (line.split(" ")[-1] if line.start_with? "Made") || time_
         
@@ -44,8 +44,22 @@ Dir[@result_dir + "*"].each do |_dir|
             switch_id = switch_id.to_s[0..-5]
             time_ = time_[0..-2]
 
-            table_entries = get_table_entries "#{dir}out/commands/#{switch_id}_commands.txt"
+            table_entries = get_table_entries "#{dir}out_local/commands/#{switch_id}_commands.txt"
             puts "('#{distro}', #{attr_size}, #{conj_size}, #{num_query}, '#{switch_id}', #{time_}, #{table_entries}, 'final_local'), "
+            time_ = switch_id = nil
+        end
+    end
+
+    File.readlines("#{dir}result_global.txt").each do |line|
+        switch_id = /([a-z0-9_]+)\.txt/.match(line) || switch_id
+        time_ = (line.split(" ")[-1] if line.start_with? "Made") || time_
+        
+        if(time_ && switch_id)
+            switch_id = switch_id.to_s[0..-5]
+            time_ = time_[0..-2]
+
+            table_entries = get_table_entries "#{dir}out_global/commands/#{switch_id}_commands.txt"
+            puts "('#{distro}', #{attr_size}, #{conj_size}, #{num_query}, '#{switch_id}', #{time_}, #{table_entries}, 'final_global'), "
             time_ = switch_id = nil
         end
     end

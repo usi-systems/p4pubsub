@@ -3,3 +3,5 @@ generated/
 *.bin
 results/out
 results/runner.sh
+cdn_topo_g.json
+cdn_topo_l.json

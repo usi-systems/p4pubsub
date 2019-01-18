@@ -25,20 +25,24 @@ class FatTreeLocal
 			@pod_size.downto(@pod_size/2 + 1) do |tor_id|
 				sw_name = tor_sw_name p_id, tor_id
 				query_file = switch_queries sw_name
-				# run_camus query_file, sw_name
+				run_camus query_file, sw_name
+				break
 			end
 			1.upto(@pod_size/2) do |agg_id|
 				query_file = switch_queries(agg_sw_name p_id, agg_id)
-				# run_camus query_file, (agg_sw_name p_id, agg_id)
+				run_camus query_file, (agg_sw_name p_id, agg_id)
+				break
 			end
+			break
 		end
 
 		1.upto(@pod_size/2) do |agg_sw_id|
 			1.upto(@pod_size/2) do |core_sw_id|
 				query_file = switch_queries(core_sw_name core_sw_id, agg_sw_id)
 				run_camus query_file, (core_sw_name core_sw_id, agg_sw_id)
-				return
+				break
 			end
+			break
 		end
 	end
 
@@ -109,7 +113,7 @@ class FatTreeLocal
 			end
 
 			uplink_port = (@pod_size/2 + 1)
-			upward_query = "add_order.price < 99999999: fwd(#{uplink_port});"
+			upward_query = "add_order.x1 < 101: fwd(#{uplink_port});"
 
 			queries = File.open(switch_queries(tor_sw_name pod_id, tor_id), "r").read
 			return if queries.include? upward_query
@@ -136,7 +140,7 @@ class FatTreeLocal
 				end
 
 				uplink_port = 1
-				upward_query = "add_order.price < 99999999: fwd(#{uplink_port});"
+				upward_query = "add_order.x1 < 101: fwd(#{uplink_port});"
 				queries = File.open(file_name_, "r").read
 				next if queries.include? upward_query
 				File.open(file_name_, "a") do |file|

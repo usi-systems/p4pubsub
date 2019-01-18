@@ -49,20 +49,26 @@ def make_the_experiment distro, attr_size, conj_size, num_query
         file.puts "cd #{dir}"
         file.puts "mkdir -p queries"
         @host_query_files_array.each do |host_file|
-            file.puts("python ssbg_camus.py #{distro} --attr-space-size #{attr_size} --disj-size 1 --conj-size #{conj_size} --messages 0 --filters #{num_query} > queries/#{host_file}")
+            file.puts("python ssbg_camus.py #{distro} --attr-space-size #{attr_size + 1} --disj-size 1 --conj-size #{conj_size + 1} --messages 0 --filters #{num_query} > queries/#{host_file}")
         end
     }
 
     # creating the src and dst files!
     src_dir = "#{dir}src/"
-    out_dir = "#{dir}out/"
+    out_dir_l = "#{dir}out_local/"
+    out_dir_g = "#{dir}out_global/"
+
     FileUtils.chmod 0755, run_sh
     FileUtils.mkdir_p src_dir
-    FileUtils.mkdir_p "#{out_dir}commands"
-    FileUtils.mkdir_p "#{out_dir}queries"
+
+    FileUtils.mkdir_p "#{out_dir_l}commands"
+    FileUtils.mkdir_p "#{out_dir_l}queries"
+    FileUtils.mkdir_p "#{out_dir_g}commands"
+    FileUtils.mkdir_p "#{out_dir_g}queries"
 
     # main ruby files!
-    FileUtils.cp "./cdn_topo.json", src_dir
+    FileUtils.cp "./cdn_topo_g.json", src_dir
+    FileUtils.cp "./cdn_topo_l.json", src_dir
     FileUtils.cp_r "#{@main_source_dir}/main.rb", src_dir
     FileUtils.cp_r "#{@main_source_dir}/fat_tree_local.rb", src_dir
     FileUtils.cp_r "#{@main_source_dir}/fat_tree_global.rb", src_dir
@@ -72,11 +78,15 @@ def make_the_experiment distro, attr_size, conj_size, num_query
     # config.yaml
     config_file = YAML::load_file("./config.yaml")
     config_file["base_directory"] = dir
-    config_file["output_directory"] = "./out/"
-    File.open("#{src_dir}config.yaml", 'w') {|f| f.write config_file.to_yaml }
+    config_file["output_directory"] = "./out_local/"
+    File.open("#{src_dir}config_local.yaml", 'w') {|f| f.write config_file.to_yaml }
+
+    config_file["output_directory"] = "./out_global/"
+    File.open("#{src_dir}config_global.yaml", 'w') {|f| f.write config_file.to_yaml }
 
     File.open(run_sh, 'a') { |file| 
-        file.puts "ruby ./src/main.rb ./src/cdn_topo.json ./src/config.yaml > result.txt"
+        file.puts "ruby ./src/main.rb ./src/cdn_topo_g.json ./src/config_global.yaml > result_global.txt"
+        file.puts "ruby ./src/main.rb ./src/cdn_topo_l.json ./src/config_local.yaml > result_local.txt"
     }
 end
 
@@ -89,21 +99,21 @@ end
 
 
 distribution_array = ["--zipf"]
-attr_space_size_array = [2,3,4]
-conj_size_array = [2]
-number_of_queries_array = [10,20,30,40, 50, 60, 70, 80, 90, 100]
+attr_space_size_array = [1,2,3]
+# conj_size_array = [2]
+number_of_queries_array = [10, 20, 30, 40, 50,60,70,80,90,100]
 
 
 attr_space_size_array.each do |attr_size|
     number_of_queries_array.each do |num_query|
         distribution_array.each do |distro|
-            conj_size_array.each do |conj_size|
+            # conj_size_array.each do |conj_size|
                 #make_the_experiment distro, attr_size, conj_size, num_query
                 #make_runner_sh distro, attr_size, conj_size, num_query
-
-                make_the_experiment distro, attr_size, attr_size, num_query
-                make_runner_sh distro, attr_size, attr_size, num_query
-            end
+                conj_size = attr_size
+                make_the_experiment distro, attr_size, conj_size, num_query
+                make_runner_sh distro, attr_size, conj_size, num_query
+            # end
         end
     end
 end
