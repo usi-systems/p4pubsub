@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
         if (payload_bytes < 0)
             break;
 
-        printf("Received %ld bytes\n", payload_bytes);
+        printf("Received %ld bytes from %s\n", payload_bytes, inet_ntoa(sa.sin_addr));
     }
 
 }
