@@ -92,3 +92,35 @@ packets. To enable this pipeline, toggle the `ENABLE_CAMUS_IPV4` flag in
 IPv4 forwarding with Camus:
 
     ../camus-compiler/camus.exe -rules ipv4-rules.txt -rt-out out/ipv4 ipv4-spec.p4
+
+
+## Kafka Publish Throughput Experiment
+
+In this experiment, we show that running a switch with only IPv4 has the same
+overhead of running with IPv4 + Camus. We connect two servers via a switch. A
+kafka server runs on one server, and the publisher (librdkafka) runs on the
+other server.
+
+### Running
+
+First, configure the network on both hosts (adjust script for each host):
+
+    ./conf_net.sh
+
+Start the Kafka server. On the other host run the producer:
+
+    git clone https://github.com/edenhill/librdkafka
+    cd librdkafka
+    ./configure
+    make -j8
+    ./examples/rdkafka_performance -P -b 10.0.0.98 -s 512 -p 0 -t test -r 240000 -u | stdbuf -o0 tee rdkafka_baseline.tsv
+    ./examples/rdkafka_performance -P -b 10.0.0.98 -s 512 -p 0 -t test -r 240000 -u | stdbuf -o0 tee rdkafka_camus.tsv
+
+Parse and plot the results:
+
+    cat rdkafka_baseline.tsv | ~/s/rdkafka_rates.py | ~/s/shift.py -29 - | tail -n+30 | head -n61  > baseline.tsv
+    cat rdkafka_camus.tsv | ~/s/rdkafka_rates.py | ~/s/shift.py -29 - | tail -n+30 | head -n61  > camus.tsv
+    ~/s/plot_xy.py baseline.tsv camus.tsv
+
+
+
