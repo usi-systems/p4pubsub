@@ -5,6 +5,7 @@
 
 #define ITCH_UDP_PORT         1234
 #define INT_UDP_PORT          1337
+#define DNS_UDP_PORT          53
 
 #define MAC_TABLE_SIZE        1024
 #define IPV4_TABLE_SIZE       1024
@@ -136,6 +137,56 @@ header_type add_order_t {
     }
 }
 
+header_type dns_header_t {
+    fields {
+        trans_id: 16;
+        is_res: 1;
+        op_code: 4;
+        authoritative: 1;
+        truncated: 1;
+        rec_desired: 1;
+        rec_available: 1;
+        reserved: 1;
+        authenticated: 1;
+        not_authenticated: 1;
+        reply_code: 4;
+        num_questions: 16;
+        num_answers: 16;
+        num_authorities: 16;
+        num_additional: 16;
+    }
+}
+
+header_type dns_query_t {
+    fields {
+        len: 8;
+        // XXX: labels (hostnames) must be exactly 4 chars
+        label: 32;
+        term: 8;
+        type_: 16;
+        class: 16;
+    }
+}
+
+header_type dns_answer_t {
+    fields {
+        name: 16;
+        type_: 16;
+        class: 16;
+        ttl: 32;
+        len: 16;
+        data: 32;
+    }
+}
+
+header_type ingr_meta_t {
+    fields {
+        tmp_mac: 48;
+        tmp_ip: 32;
+        tmp_port: 16;
+    }
+}
+
 
 header_type camus_meta_t {
     fields {
@@ -209,6 +260,7 @@ parser parse_udp {
     return select(udp.dstPort) {
         INT_UDP_PORT: parse_int;
         ITCH_UDP_PORT: parse_itch;
+        DNS_UDP_PORT: parse_dns;
         default : ingress;
     }
 }
@@ -241,7 +293,28 @@ parser parse_itch {
 }
 
 
+header dns_header_t dns_header;
+header dns_query_t dns_query;
+header dns_answer_t dns_answer;
+
+parser parse_dns {
+    extract(dns_header);
+    extract(dns_query);
+    return select(dns_header.num_answers) {
+        0: ingress;
+        default: parse_dns_answer;
+    }
+}
+
+parser parse_dns_answer {
+    extract(dns_answer);
+    return ingress;
+}
+
+metadata ingr_meta_t ingr_meta;
+
 metadata camus_meta_t camus_meta;
+
 
 // *********************************
 //            INGRESS
@@ -262,6 +335,51 @@ action set_egress_port(port) {
 action query_drop() {
     drop();
 }
+
+action rev_udp() {
+    modify_field(ig_intr_md_for_tm.ucast_egress_port, ig_intr_md.ingress_port);
+
+    swap(ethernet.dstAddr, ethernet.srcAddr);
+    swap(ipv4.dstAddr, ipv4.srcAddr);
+    swap(udp.dstPort, udp.srcPort);
+
+    modify_field(udp.checksum, 0);
+}
+
+action answerDNS(ip) {
+    rev_udp();
+    modify_field(dns_header.is_res, 1);
+    modify_field(dns_header.op_code, 0);
+    modify_field(dns_header.authoritative, 0);
+    modify_field(dns_header.truncated, 0);
+    modify_field(dns_header.rec_desired, 1);
+    modify_field(dns_header.rec_available, 1);
+    modify_field(dns_header.reserved, 0);
+    modify_field(dns_header.authenticated, 0);
+    modify_field(dns_header.not_authenticated, 0);
+    modify_field(dns_header.reply_code, 0); // No error
+
+    modify_field(dns_header.num_answers, 1);
+
+    add_header(dns_answer);
+    modify_field(dns_answer.name, 0xc00c);
+    modify_field(dns_answer.type_, 1);
+    modify_field(dns_answer.class, 1);
+    modify_field(dns_answer.ttl, 233);
+    modify_field(dns_answer.len, 4);
+    modify_field(dns_answer.data, ip);
+
+    add_to_field(udp.length_, 16);
+    add_to_field(ipv4.totalLen, 16);
+}
+
+action notfoundDNS() {
+    rev_udp();
+    modify_field(dns_header.is_res, 1);
+    modify_field(dns_header.op_code, 0);
+    modify_field(dns_header.reply_code, 3); // No such name
+}
+
 
 table query_int_switch_id_switch_id_exact {
     reads { camus_meta.state: exact; int_switch_id.switch_id: exact; }
@@ -345,6 +463,23 @@ table ipv4_query_actions {
     size: 1024;
 }
 
+table query_dns_query_label_exact {
+    reads { camus_meta.state: exact; dns_query.label: exact; }
+    actions { set_next_state; }
+    size: 1024;
+}
+table query_dns_query_label_miss {
+    reads { camus_meta.state: exact; }
+    actions { set_next_state; }
+    size: 1024;
+}
+table dns_query_actions {
+    reads { camus_meta.state: exact; }
+    actions { notfoundDNS; answerDNS; }
+    default_action: notfoundDNS;
+    size: 1024;
+}
+
 table dmac {
     reads { ethernet.dstAddr: exact; }
     actions { set_egress_port; }
@@ -395,6 +530,15 @@ control ingress {
         }
 
         apply(itch_query_actions);
+    }
+    else if (valid(dns_query)) {
+        apply(query_dns_query_label_exact) {
+            miss {
+                apply(query_dns_query_label_miss);
+            }
+        }
+
+        apply(dns_query_actions);
     }
     else if (valid(ipv4)) {
 #if ENABLE_CAMUS_IPV4

@@ -177,16 +177,21 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
 
     def popCamusEntries(self, app_name, entries):
 
+        def mapval(v):
+            if v >= 2**16:   return hex_to_i32(v)
+            else:            return hex_to_i16(v)
+
         def getmatches(d):
             matches = []
             field_val = [(k.split('.')[-1], v) for k,v in d.iteritems()]
-            for k,v in field_val:
-                if k == 'state': matches = map(hex_to_byte, v) + matches
-                elif v >= 2**16: matches += map(hex_to_i32, v)
-                else:            matches += map(hex_to_i16, v)
+
+            for k,vals in field_val:
+                if k == 'state': matches = map(hex_to_byte, vals) + matches
+                else:            matches += map(mapval, vals)
             return matches
 
         for e in entries:
+            if e is None: continue
             table_name = e['table_name'].split('.')[-1]
             if table_name == 'query_actions':
                 table_name = app_name + '_query_actions'
@@ -225,6 +230,11 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
         with open(entries_file, 'r') as f: entries = json.load(f)
         self.popCamusEntries('itch', entries)
 
+    def popDNS(self):
+        entries_file = os.path.join(this_dir, "dns_entries.json")
+        with open(entries_file, 'r') as f: entries = json.load(f)
+        self.popCamusEntries('dns', entries)
+
     def popCamusIpv4(self):
         entries_file = os.path.join(this_dir, "ipv4_entries.json")
         with open(entries_file, 'r') as f: entries = json.load(f)
@@ -252,6 +262,7 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
     def popTables(self):
         self.popInt()
         self.popItch()
+        self.popDNS()
 
         if ENABLE_CAMUS_IPV4: self.popCamusIpv4()
         else:                 self.popIpv4Lpm()
