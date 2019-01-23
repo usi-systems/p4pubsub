@@ -6,6 +6,7 @@ addition to basic switch functions.
 We used Camus to compile a pipeline for:
  - INT filtering
  - ITCH filtering
+ - DNS answers
 
 If the packet contains an application header, it executes the corresponding
 Camus pipeline. Otherwise, it executes some basic switch tables:
@@ -14,11 +15,12 @@ Camus pipeline. Otherwise, it executes some basic switch tables:
 
 ## Compiling Rules
 
-Compile the rules for both ITCH and INT:
+Compile the rules for ITCH, INT and DNS:
 
     mkdir out/
     ../camus-compiler/camus.exe -rules int-rules.txt -rt-out out/int int-spec.p4
     ../camus-compiler/camus.exe -rules itch-rules.txt -rt-out out/itch itch-spec.p4
+    ../camus-compiler/camus.exe -rules dns-rules.txt -rt-out out/dns dns-spec.p4
 
 The generated `*_entries.json` files should be placed in
 `coexistence-tofino/ptf-tests/coexistence/`.
@@ -83,6 +85,10 @@ Send an INT packet that should match the filter and be forwarded out port 52:
 Generate and send an ITCH packet that should also be forwarded out port 52:
 
     ./mold_feed.py -m 1 -M 1 -c 1 -f Price=301,Shares=1 | ./send_mold_messages -v 3 -r - 10.0.0.1:1234
+
+The switch should also answer DNS queries:
+
+    dig @10.0.0.2 no97
 
 ## Generality: Camus for IPv4
 
