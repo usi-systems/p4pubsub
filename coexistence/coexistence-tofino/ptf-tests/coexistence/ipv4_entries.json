@@ -1,5 +1,14 @@
-[{"table_name": "Camus.query_actions", "match_fields":
-        {"meta.query.state": [1]}, "action_name": "Camus.query_drop"},{"table_name": "Camus.query_actions", "match_fields":
-        {"meta.query.state": [2]}, "action_name": "Camus.set_egress_port", "action_params": {"port": 54}},{"table_name": "Camus.query_ipv4_dstAddr_exact", "match_fields":
-        {"meta.query.state": [0],"hdr.ipv4.dstAddr": [167772162]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 2}},{"table_name": "Camus.query_ipv4_dstAddr_miss", "match_fields":
-        {"meta.query.state": [0]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}}]
+[{"table_name": "Camus.query_actions", "match_fields": {"meta.query.state": [1]}, "action_name": "Camus.query_drop"},
+{"table_name": "Camus.query_actions", "match_fields": {"meta.query.state": [2]}, "action_name": "Camus.set_egress_port", "action_params": {"port": 28}},
+{"table_name": "Camus.query_actions", "match_fields": {"meta.query.state": [4]}, "action_name": "Camus.set_egress_port", "action_params": {"port": 36}},
+{"table_name": "Camus.query_actions", "match_fields": {"meta.query.state": [7]}, "action_name": "Camus.set_egress_port", "action_params": {"port": 168}},
+{"table_name": "Camus.query_actions", "match_fields": {"meta.query.state": [9]}, "action_name": "Camus.set_egress_port", "action_params": {"port": 52}},
+{"table_name": "Camus.query_actions", "match_fields": {"meta.query.state": [12]}, "action_name": "Camus.set_egress_port", "action_params": {"port": 54}},
+{"table_name": "Camus.query_ipv4_dstAddr_exact", "match_fields": {"meta.query.state": [0],"hdr.ipv4.dstAddr": [167772358]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 2}},
+{"table_name": "Camus.query_ipv4_dstAddr_exact", "match_fields": {"meta.query.state": [0],"hdr.ipv4.dstAddr": [167772258]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 4}},
+{"table_name": "Camus.query_ipv4_dstAddr_exact", "match_fields": {"meta.query.state": [0],"hdr.ipv4.dstAddr": [167772257]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 7}},
+{"table_name": "Camus.query_ipv4_dstAddr_exact", "match_fields": {"meta.query.state": [0],"hdr.ipv4.dstAddr": [167772255]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 9}},
+{"table_name": "Camus.query_ipv4_dstAddr_exact", "match_fields": {"meta.query.state": [0],"hdr.ipv4.dstAddr": [167772162]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 12}},
+{"table_name": "Camus.query_ipv4_dstAddr_miss", "match_fields": {"meta.query.state": [0]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}},
+
+null]

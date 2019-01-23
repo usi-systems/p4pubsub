@@ -1,0 +1,6 @@
+[{"table_name": "Camus.query_actions", "match_fields": {"meta.query.state": [1]}, "action_name": "Camus.notfoundDNS"},
+{"table_name": "Camus.query_actions", "match_fields": {"meta.query.state": [2]}, "action_name": "Camus.answerDNS", "action_params": {"arg1": 167772257}},
+{"table_name": "Camus.query_dns_query_label_exact", "match_fields": {"meta.query.state": [0],"hdr.dns_query.label": [1852782903]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 2}},
+{"table_name": "Camus.query_dns_query_label_miss", "match_fields": {"meta.query.state": [0]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}},
+
+null]
