@@ -1,0 +1,1 @@
+car.lat > 10 and car.lat < 20 and car.long > 10 and car.long < 20 and car.speed > 100 : fwd(36);
