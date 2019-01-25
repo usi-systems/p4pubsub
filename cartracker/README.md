@@ -33,3 +33,10 @@ When the PTF script is ready, run it:
 
     sudo -E ./run_p4_tests.sh -t ~/p4pubsub/cartracker/cartracker-tofino/ptf-tests/cartracker --target hw -s test.HW
 
+
+## Sending packets
+
+    cd tools
+    make
+    ./send-car-position -c 1 -s 20 10.0.0.1 1234
+
