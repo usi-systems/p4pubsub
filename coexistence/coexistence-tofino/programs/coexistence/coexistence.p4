@@ -179,14 +179,6 @@ header_type dns_answer_t {
     }
 }
 
-header_type ingr_meta_t {
-    fields {
-        tmp_mac: 48;
-        tmp_ip: 32;
-        tmp_port: 16;
-    }
-}
-
 
 header_type camus_meta_t {
     fields {
@@ -310,8 +302,6 @@ parser parse_dns_answer {
     extract(dns_answer);
     return ingress;
 }
-
-metadata ingr_meta_t ingr_meta;
 
 metadata camus_meta_t camus_meta;
 
