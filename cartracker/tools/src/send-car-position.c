@@ -13,7 +13,7 @@
 
 #define BUFSIZE 2048
 
-#define SEND_WAIT_US 1
+#define SEND_WAIT_US 0
 
 void error(const char *msg);
 
@@ -25,7 +25,7 @@ void error(const char *msg) {
 char *progname;
 void usage(int rc) {
     fprintf(rc == 0 ? stdout : stderr,
-            "Usage: %s [-c COUNT] [-s SPEED] DST_HOST DST_PORT\n\
+            "Usage: %s [-c COUNT] [-s SPEED] [-l LAT] [-L LON] DST_HOST DST_PORT\n\
 \n\
 ", progname);
     exit(rc);
@@ -47,13 +47,20 @@ int main(int argc, char *argv[]) {
     unsigned count = 8;
     int remaining_hop_cnt = 2;
     int speed = 10;
+    int lat = 12, lon = 12;
     float match_ratio = 0.01;
 
     progname = basename(argv[0]);
-    while ((opt = getopt(argc, argv, "hc:s:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:l:L:s:")) != -1) {
         switch (opt) {
             case 'c':
                 count = atoi(optarg);
+                break;
+            case 'l':
+                lat = atoi(optarg);
+                break;
+            case 'L':
+                lon = atoi(optarg);
                 break;
             case 's':
                 speed = atoi(optarg);
@@ -90,7 +97,7 @@ int main(int argc, char *argv[]) {
 
     for (i = 0; i < count; i++) {
 
-        payload_size = make_car_payload(buf, 12, 12, speed);
+        payload_size = make_car_payload(buf, lat, lon, speed);
         sendto(sock_fd, buf, payload_size, 0, (struct sockaddr *)&sock_addr, sizeof(sock_addr));
 
 #if SEND_WAIT_US > 0
