@@ -68,7 +68,7 @@ label_order_hist = [] # keep history of the order of labels
 
 markers = itertools.cycle(('o', 'x', 'D', 's', '+', '^', '*' ))
 linestyles = itertools.cycle(("-","-","-","--","-.",":"))
-colors = itertools.cycle(('r', 'g', 'b', 'c', 'm', 'y', 'k'))
+colors = itertools.cycle(('r', 'b', 'c', 'm', 'y', 'k', 'g'))
 hatches = itertools.cycle(('x', '/', 'o', '\\', '*', 'o', 'O', '.'))
 
 
@@ -179,7 +179,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, show_error=True, show_leg
 def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None, xscale='linear', yscale='linear',
         title=None, plot_labels=None, label_order=None, label_names=None,
         show_error=True, show_grid=True, show_legend=False, legend_title=None,
-        conf=None, linewidth=2, markersize=2, fontsize=None):
+        conf=None, linewidth=2, markersize=2, fontsize=None, twinx=False):
     """Plots a 2D array with the format: [[label, x, y, y-dev]]
     """
     if conf and 'units' in conf:
@@ -235,6 +235,10 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
         from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, inset_axes
         axins = inset_axes(ax, 3.2, 3.2, loc=3, bbox_to_anchor=(0.33, 0.2), bbox_transform=ax.figure.transFigure)
 
+    if xlabel is not None: ax.set_xlabel(formatLabel(xlabel), fontsize=fontsize)
+    if not twinx:
+        if not ylabel is None: ax.set_ylabel(formatLabel(ylabel), fontsize=fontsize)
+
 
     all_x, all_y = [], []
     for ith_label,label in enumerate([l for l in local_label_order if l in labels]):
@@ -254,10 +258,12 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
             label_name = label_names[ith_label]
 
         label_name = formatLabel(str(label_name))
+        color = label_style_hist[label]['color']
+
 
         (_, caps, _) = ax.errorbar(x, y, label=label_name, linewidth=linewidth, markersize=markersize,
                 elinewidth=1, yerr=yerr if show_error else None,
-                color=label_style_hist[label]['color'],
+                color=color,
                 linestyle=label_style_hist[label]['line'], marker=label_style_hist[label]['marker'])
 
         if zoom:
@@ -267,6 +273,12 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
 
         for cap in caps:
             cap.set_markeredgewidth(2)
+
+        if twinx:
+            ax.set_ylabel(label_name, color=color)
+            if ith_label == 0:
+                ax = ax.twinx()
+
 
     if zoom:
         axins.set_xlim(10, 1000)
@@ -281,8 +293,6 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
         mark_inset(ax, axins, loc1=3, loc2=4, fc="none", ec="0.3")
 
     if not title is None: ax.set_title(title)
-    if not xlabel is None: ax.set_xlabel(formatLabel(xlabel), fontsize=fontsize)
-    if not ylabel is None: ax.set_ylabel(formatLabel(ylabel), fontsize=fontsize)
 
     if not xscale and conf and 'style' in conf and 'xscale' in conf['style']:
         xscale = conf['style']['xscale']
@@ -390,6 +400,8 @@ if __name__ == '__main__':
             action='store_true', default=False)
     parser.add_argument('--show', help='Open the plot in a new window',
             action='store_true', default=False)
+    parser.add_argument('--twinx', help='Plot with two axes (only two labels)',
+            action='store_true', default=False)
     parser.add_argument('--legend', help='Add a legend to the plot',
             action='store', default=False, const=None, nargs='?')
     parser.add_argument('--bar', help='Plot a bar chart',
@@ -441,6 +453,7 @@ if __name__ == '__main__':
             ylabel=args.ylabel or data.dtype.names[2],
             xscale=args.xscale,
             yscale=args.yscale,
+            twinx=args.twinx,
             fontsize=args.font_size,
             markersize=args.markersize,
             plot_labels=args.labels,
