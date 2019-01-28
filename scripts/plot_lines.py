@@ -176,7 +176,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, show_error=True, show_leg
     fig.tight_layout()
     return fig
 
-def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None, xscale='linear', yscale='linear',
+def plot_lines(data, xlabel=None, xlim=None, xticks=None, yticks=None, ylabel=None, ylim=None, xscale='linear', yscale='linear',
         title=None, plot_labels=None, label_order=None, label_names=None,
         show_error=True, show_grid=True, show_legend=False, legend_title=None,
         conf=None, linewidth=2, markersize=2, fontsize=None, twinx=False):
@@ -325,6 +325,13 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
             loc = plticker.MultipleLocator(base=xticks) # this locator puts ticks at regular intervals
             ax.xaxis.set_major_locator(loc)
 
+    if yticks:
+        if isinstance(yticks, list):
+            ax.set_yticks(yticks)
+        else:
+            loc = plticker.MultipleLocator(base=yticks) # this locator puts ticks at regular intervals
+            ax.yaxis.set_major_locator(loc)
+
 
     #if _should_use_log(all_x):
     #    ax.set_xscale('symlog', linthreshx=1)
@@ -369,6 +376,8 @@ if __name__ == '__main__':
     parser.add_argument('--xlim', help='x-axis limits',
             type=get_lim, default=None, required=False)
     parser.add_argument('--xticks', help='x-axis tick frequency',
+            type=one_or_more_numbers, default=None, required=False)
+    parser.add_argument('--yticks', help='y-axis tick frequency',
             type=one_or_more_numbers, default=None, required=False)
     parser.add_argument('--ylim', help='y-axis limits',
             type=get_lim, default=None, required=False)
@@ -448,7 +457,8 @@ if __name__ == '__main__':
             show_grid=not args.no_grid,
             show_legend=args.legend is not False,
             legend_title=args.legend,
-            xlim=args.xlim, ylim=args.ylim, xticks=args.xticks,
+            xlim=args.xlim, ylim=args.ylim,
+            xticks=args.xticks, yticks=args.yticks,
             xlabel=args.xlabel or data.dtype.names[1],
             ylabel=args.ylabel or data.dtype.names[2],
             xscale=args.xscale,
