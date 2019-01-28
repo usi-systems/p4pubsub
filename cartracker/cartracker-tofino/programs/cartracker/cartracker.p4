@@ -47,8 +47,8 @@ header_type udp_t {
 
 header_type car_tracker_t {
     fields {
-        long: 16;
         lat: 16;
+        long: 16;
         speed: 16;
     }
 }

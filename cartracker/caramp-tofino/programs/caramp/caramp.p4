@@ -44,8 +44,8 @@ header_type udp_t {
 
 header_type car_tracker_t {
     fields {
-        long: 16;
         lat: 16;
+        long: 16;
         speed: 16;
     }
 }
@@ -166,14 +166,14 @@ control ingress {
 //            EGRESS
 // *********************************
 
-action decr_car_fields(speed_decr) {
-    subtract_from_field(car.speed, speed_decr);
+action decr_car_fields() {
+    subtract_from_field(car.speed, 1);
 }
 
-action set_car_fields(speed, lat, lon) {
+action set_car_fields(speed, lat, long) {
     modify_field(car.speed, speed);
     modify_field(car.lat, lat);
-    modify_field(car.lon, lon);
+    modify_field(car.long, long);
 }
 
 table update_car_fields {

@@ -181,8 +181,7 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
                 caramp_forward_match_spec_t(0))]
 
     def popUpdateCar(self):
-        self.client.update_car_fields_set_default_action_decr_car_fields(self.shdl, self.dev_tgt,
-                caramp_decr_car_fields_action_spec_t(hex_to_i16(1)))
+        self.client.update_car_fields_set_default_action_decr_car_fields(self.shdl, self.dev_tgt)
         #self.entries['update_car_fields'] = [self.client.update_car_fields_table_add_with_nop(
         #        self.shdl, self.dev_tgt,
         #        caramp_update_car_fields_match_spec_t(
