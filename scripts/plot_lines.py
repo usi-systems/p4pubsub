@@ -294,6 +294,7 @@ def plot_lines(data, xlabel=None, xlim=None, ylabel=None, ylim=None,
         if twinx:
             ax.set_ylabel(label_name, color=color)
             if ith_label == 0:
+                if ytick_bins is not None: ax.locator_params(axis='y', nbins=ytick_bins)
                 ax = ax.twinx()
 
 
