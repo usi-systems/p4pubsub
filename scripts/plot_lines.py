@@ -188,7 +188,8 @@ def plot_bar(data, conf=None, title=None, ylabel=None, show_error=True, show_leg
     fig.tight_layout()
     return fig
 
-def plot_lines(data, xlabel=None, xlim=None, xticks=None, yticks=None, ylabel=None, ylim=None,
+def plot_lines(data, xlabel=None, xlim=None, ylabel=None, ylim=None,
+        xticks=None, yticks=None, xtick_bins=None, ytick_bins=None,
         xscale='linear', yscale='linear', humanx=False, humany=False,
         title=None, plot_labels=None, label_order=None, label_names=None,
         show_error=True, show_grid=True, show_legend=False, legend_title=None, legend_loc=None,
@@ -340,6 +341,8 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, yticks=None, ylabel=No
         else:
             loc = plticker.MultipleLocator(base=xticks) # this locator puts ticks at regular intervals
             ax.xaxis.set_major_locator(loc)
+    elif xtick_bins is not None:
+        ax.locator_params(axis='x', nbins=xtick_bins)
 
     if yticks:
         if isinstance(yticks, list):
@@ -347,6 +350,8 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, yticks=None, ylabel=No
         else:
             loc = plticker.MultipleLocator(base=yticks) # this locator puts ticks at regular intervals
             ax.yaxis.set_major_locator(loc)
+    elif ytick_bins is not None:
+        ax.locator_params(axis='y', nbins=ytick_bins)
 
 
     #if _should_use_log(all_x):
@@ -396,8 +401,12 @@ if __name__ == '__main__':
             type=get_lim, default=None, required=False)
     parser.add_argument('--xticks', help='x-axis tick frequency',
             type=one_or_more_numbers, default=None, required=False)
+    parser.add_argument('--xtick-bins', help='number of tick bins on x-axis',
+            type=int, default=None, required=False)
     parser.add_argument('--yticks', help='y-axis tick frequency',
             type=one_or_more_numbers, default=None, required=False)
+    parser.add_argument('--ytick-bins', help='number of tick bins on y-axis',
+            type=int, default=None, required=False)
     parser.add_argument('--ylim', help='y-axis limits',
             type=get_lim, default=None, required=False)
     parser.add_argument('--ylabel', '-y', help='y-axis label',
@@ -434,10 +443,12 @@ if __name__ == '__main__':
             action='store_true', default=False)
     parser.add_argument('--humany', help='Use human formatting for y ticks (e.g. 200K, 4M, etc.)',
             action='store_true', default=False)
-    parser.add_argument('--legend', help='Add a legend to the plot',
+    parser.add_argument('--legend', help='Add a legend to the plot (optionally with title)',
             action='store', default=False, const=None, nargs='?')
     parser.add_argument('--legend-loc', help='Location for legend: best, upper right, etc.',
             type=str, required=False, default=None)
+    parser.add_argument('--tex', help='Use LaTeX to render text',
+            action='store_true', default=False)
     parser.add_argument('--bar', help='Plot a bar chart',
             action='store_true', default=False)
     args = parser.parse_args()
@@ -457,7 +468,7 @@ if __name__ == '__main__':
 
     conf = load_conf(args.conf) if args.conf else {}
 
-    if args.format == 'pdf':
+    if args.tex: #if args.format == 'pdf':
         matplotlib.rcParams['text.usetex'] = True
 
     if 'style' in conf and 'usetex' in conf['style']:
@@ -485,6 +496,7 @@ if __name__ == '__main__':
             legend_loc=args.legend_loc,
             xlim=args.xlim, ylim=args.ylim,
             xticks=args.xticks, yticks=args.yticks,
+            xtick_bins=args.xtick_bins, ytick_bins=args.ytick_bins,
             xlabel=args.xlabel or data.dtype.names[1],
             ylabel=args.ylabel or data.dtype.names[2],
             xscale=args.xscale,
