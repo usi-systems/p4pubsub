@@ -52,8 +52,7 @@ colormap = dict(NewOrder='r', Payment='g', OrderStatus='b', StockLevel='c', Deli
 
 for lbl in labels:
     xs, ys = cdfs[lbl]
-    plt.plot(xs, ys, label=lbl, linestyle=next(linestyles), color=next(colors), linewidth=4)
-    c = colormap[lbl] if lbl in colormap else next(color)
+    c = colormap[lbl] if lbl in colormap else next(colors)
     plt.plot(xs, ys, label=lbl, linestyle=next(linestyles), color=c, linewidth=3)
 
 
