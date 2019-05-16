@@ -27,11 +27,13 @@ labels = sys.argv[2::2]
 assert len(filenames) == len(labels)
 
 cdfs = {}
+percentiles = {}
 
 def mk_cdf(label, filename):
     data = np.loadtxt(filename)
-    data = [x / 1000 for x in data] # change unit of x axis
+    #data = [x / 1000 for x in data] # change unit of x axis
     sorted_data = np.sort(data)
+    percentiles[label] = np.percentile(sorted_data, [99.99, 99.9, 99, 95, 90, 75, 50])
     yvals=np.arange(len(sorted_data))/float(len(sorted_data)-1)
     cdfs[label] = (sorted_data, yvals)
 
@@ -41,13 +43,18 @@ for t in threads: t.join()
 
 #colors = cycle(['r', 'b', 'r', 'c', 'y', 'k', 'm'])
 colors = cycle(('#b2abd2', '#e66101', '#5e3c99', '#fdb863'))
+for lbl,pctls in percentiles.iteritems(): print lbl, list(pctls)
 #linestyles = cycle(("-","-.","--",":"))
 linestyles = cycle(("-"))
+
+colormap = dict(NewOrder='r', Payment='g', OrderStatus='b', StockLevel='c', Delivery='y')
 
 
 for lbl in labels:
     xs, ys = cdfs[lbl]
     plt.plot(xs, ys, label=lbl, linestyle=next(linestyles), color=next(colors), linewidth=4)
+    c = colormap[lbl] if lbl in colormap else next(color)
+    plt.plot(xs, ys, label=lbl, linestyle=next(linestyles), color=c, linewidth=3)
 
 
 # Display grid
