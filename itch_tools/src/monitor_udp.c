@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
 
     port = atoi(argv[optind]);
 
-    sprintf(line_filter, ":%02X ", port);
+    sprintf(line_filter, ":%04X ", port);
 
     while (1) {
         fh = fopen("/proc/net/udp", "r");
