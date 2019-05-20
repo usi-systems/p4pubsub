@@ -23,7 +23,7 @@ long calc_avg(std::vector<long>::iterator begin, std::vector<long>::iterator end
 
 char *progname;
 void usage() {
-  std::cerr << "Usage: " << progname << " FILE.TSV NUM_BINS" << endl << endl;
+  std::cerr << "Usage: " << progname << " FILE.TSV|- NUM_BINS" << endl << endl;
   exit(1);
 }
 
@@ -36,12 +36,13 @@ int main(int argc, char * argv[]) {
   std::string fn = argv[1];
   unsigned num_bins = atoi(argv[2]);
 
-  std::fstream tsvfile(fn, std::ios_base::in);
   std::vector<long> data;
-
   unsigned a;
-  while (tsvfile >> a)
-    data.push_back(a);
+
+  if (fn == "-")
+    while (std::cin >> a) data.push_back(a);
+  else
+    while (std::fstream(fn, std::ios_base::in) >> a) data.push_back(a);
 
   std::sort(data.begin(), data.end());
 
