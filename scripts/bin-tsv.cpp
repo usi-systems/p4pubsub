@@ -41,8 +41,10 @@ int main(int argc, char * argv[]) {
 
   if (fn == "-")
     while (std::cin >> a) data.push_back(a);
-  else
-    while (std::fstream(fn, std::ios_base::in) >> a) data.push_back(a);
+  else {
+    std::fstream is = std::fstream(fn, std::ios_base::in);
+    while (is >> a) data.push_back(a);
+  }
 
   std::sort(data.begin(), data.end());
 
