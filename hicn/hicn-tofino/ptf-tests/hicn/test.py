@@ -44,6 +44,8 @@ from mirror_pd_rpc.ttypes import *
 from res_pd_rpc.ttypes import *
 from pal_rpc.ttypes import *
 
+from camus import CamusCompiler
+
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
 dev_id = 0
@@ -118,6 +120,14 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
 
         self.mcast_groups = {}
         self.mc_hdls = {}
+        self.mc_sess_hdl = None
+
+        self.camus_rules = []
+        self.camus_entries = []
+
+        self.camus_spec_file = os.path.join(this_dir, "spec.p4")
+        self.camus_rules_file = os.path.join(this_dir, "rules.txt")
+        self.camus_compiler = CamusCompiler(self.camus_spec_file)
 
 
     def setUp(self):
@@ -138,6 +148,12 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
         while len(self.entries[table]):
             entry = self.entries[table].pop()
             exec delete_func + "(self.shdl, self.dev, entry)"
+
+    def clearTables(self):
+        for table in self.entries.keys():
+            self.clearTable(table)
+        self.entries = {}
+        self.conn_mgr.complete_operations(self.shdl)
 
     def tearDown(self):
         try:
@@ -161,9 +177,19 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
             print("Closed Session %d" % self.shdl)
             pd_base_tests.ThriftInterfaceDataPlane.tearDown(self)
 
+    def importCamusEntries(self, entries_file):
+        with open(entries_file, 'r') as f:
+            self.camus_entries = json.load(f)
+
+    def importCamusRules(self, rules_file):
+        self.camus_rules = []
+        with open(rules_file, 'r') as f:
+            for l in f:
+                l = l.strip()
+                if len(l) == 0: continue
+                self.camus_rules.append(l)
+
     def popTables(self):
-        entries_file = os.path.join(this_dir, "entries.json")
-        with open(entries_file, 'r') as f: entries = json.load(f)
 
         # Debug
         #egr_port = 52
@@ -182,7 +208,7 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
                 else: matches += map(hex_to_i16, v)
             return matches
 
-        for e in entries:
+        for e in self.camus_entries:
             if not e: continue
             table_name = e['table_name'].split('.')[-1]
             act_name = e['action_name'].split('.')[-1]
@@ -213,40 +239,44 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
 
     def setupMulticast(self):
 
-        mcast_file = os.path.join(this_dir, "mcast.txt")
-        self.loadMulticastGroups(mcast_file)
+        if self.mc_sess_hdl is None:
+            self.mc_sess_hdl = self.mc.mc_create_session()
 
         for mgid, ports in self.mcast_groups.items():
             if len(ports) < 2: continue
             rid = 1
             lag_map = set_port_or_lag_bitmap(256, [])
 
-            mc_sess_hdl = self.mc.mc_create_session()
-
             port_map = set_port_or_lag_bitmap(288, ports)
-            mc_node_hdl = self.mc.mc_node_create(mc_sess_hdl, dev_id, rid, port_map, lag_map)
+            mc_node_hdl = self.mc.mc_node_create(self.mc_sess_hdl, dev_id, rid, port_map, lag_map)
 
-            mc_grp_hdl = self.mc.mc_mgrp_create(mc_sess_hdl,
+            mc_grp_hdl = self.mc.mc_mgrp_create(self.mc_sess_hdl,
                                                         dev_id,
                                                         mgid)
-            self.mc.mc_associate_node(mc_sess_hdl, dev_id, mc_grp_hdl,
+            self.mc.mc_associate_node(self.mc_sess_hdl, dev_id, mc_grp_hdl,
                                       mc_node_hdl, 0, 0)
 
-            self.mc_hdls[mgid] = (mc_sess_hdl, mc_node_hdl, mc_grp_hdl)
+            self.mc_hdls[mgid] = (mc_node_hdl, mc_grp_hdl)
 
-            self.mc.mc_complete_operations(mc_sess_hdl)
+            self.mc.mc_complete_operations(self.mc_sess_hdl)
 
             print "mgid", mgid, "=>", ports
 
+    def clearMulticast(self):
+        for mc_node_hdl,mc_grp_hdl in self.mc_hdls.values():
+            self.mc.mc_dissociate_node(self.mc_sess_hdl, dev_id, mc_grp_hdl, mc_node_hdl)
+            self.mc.mc_mgrp_destroy(self.mc_sess_hdl, dev_id, mc_grp_hdl)
+            self.mc.mc_node_destroy(self.mc_sess_hdl, dev_id, mc_node_hdl)
+        self.mc_hdls = {}
+
     def teardownMulticast(self):
         print "Removing multicast groups"
-        for mc_sess_hdl,mc_node_hdl,mc_grp_hdl in self.mc_hdls.values():
-            self.mc.mc_dissociate_node(mc_sess_hdl, dev_id, mc_grp_hdl, mc_node_hdl)
-            self.mc.mc_mgrp_destroy(mc_sess_hdl, dev_id, mc_grp_hdl)
-            self.mc.mc_node_destroy(mc_sess_hdl, dev_id, mc_node_hdl)
-            self.mc.mc_destroy_session(mc_sess_hdl)
+        self.clearMulticast()
+        if self.mc_sess_hdl:
+            self.mc.mc_destroy_session(self.mc_sess_hdl)
 
-    def loadMulticastGroups(self, filename):
+    def importMulticastGroups(self, filename):
+        self.mcast_groups = {}
         with open(filename, 'r') as f:
             for line in f:
                 a,b = line.split(':')
@@ -254,11 +284,22 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
                 ports = map(int, b.split())
                 self.mcast_groups[mgid] = ports
 
-    def runTest(self):
+    def reloadCamusRules(self):
+        self.clearMulticast()
+        self.clearTables()
+
+        entries_file, mcast_file = self.camus_compiler.compileRuntime(self.camus_rules)
+
+        #entries_file, mcast_file = os.path.join(this_dir, "entries.json"), os.path.join(this_dir, "mcast.txt")
+
+        self.importCamusEntries(entries_file)
+        self.importMulticastGroups(mcast_file)
+
         self.popTables()
         self.setupMulticast()
         self.conn_mgr.complete_operations(self.shdl)
 
+    def runTest(self):
         raise NotImplementedError
 
 
@@ -267,10 +308,11 @@ class HW(BaseTest):
     def runTest(self):
         if test_param_get('target') == 'asic-model': return # if not running on HW, return
 
+        self.importCamusRules(self.camus_rules_file)
+        self.camus_rules.append('ipv6.dstAddr = b001:0000:0000:0000:0000:0000:0000:0000/64 : fwd(37);')
+        self.camus_rules.append('ipv6.dstAddr = b001:0000:0000:0000:0000:0000:0000:0000/64 and tcp.seqNo = 0: fwd(192);')
 
-        self.popTables()
-        self.setupMulticast()
-        self.conn_mgr.complete_operations(self.shdl)
+        self.reloadCamusRules()
 
         print "Finished populating tables."
         raw_input("Hit ENTER to cleanup and exit...")

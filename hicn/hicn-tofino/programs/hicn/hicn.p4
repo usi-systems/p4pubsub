@@ -43,6 +43,21 @@ header_type ipv6_t {
     }
 }
 
+header_type tcp_t {
+    fields {
+        srcPort : 16;
+        dstPort : 16;
+        seqNo : 32;
+        ackNo : 32;
+        dataOffset : 4;
+        res : 3;
+        ecn : 3;
+        ctrl : 6;
+        window : 16;
+        checksum : 16;
+        urgentPtr : 16;
+    }
+}
 
 header_type camus_meta_t {
     fields {
@@ -60,6 +75,7 @@ parser start {
 
 #define ETHERTYPE_IPV4 0x0800
 #define ETHERTYPE_IPV6 0x86dd
+#define IP_PROTOCOLS_TCP 6
 
 header ethernet_t ethernet;
 
@@ -67,13 +83,14 @@ parser parse_ethernet {
     extract(ethernet);
     return select(latest.etherType) {
         ETHERTYPE_IPV4 : parse_ipv4;
-        ETHERTYPE_IPV6: parse_ipv6;
+        ETHERTYPE_IPV6 : parse_ipv6;
         default: ingress;
     }
 }
 
 header ipv4_t ipv4;
 header ipv6_t ipv6;
+header tcp_t tcp;
 
 field_list ipv4_checksum_list {
         ipv4.version;
@@ -104,15 +121,24 @@ calculated_field ipv4.hdrChecksum  {
 
 parser parse_ipv4 {
     extract(ipv4);
-    return ingress;
+    return select(latest.protocol) {
+        IP_PROTOCOLS_TCP : parse_tcp;
+        default : ingress;
+    }
 }
 
 parser parse_ipv6 {
     extract(ipv6);
-    return ingress;
+    return select(latest.nextHdr) {
+        IP_PROTOCOLS_TCP : parse_tcp;
+        default : ingress;
+    }
 }
 
-
+parser parse_tcp {
+    extract(tcp);
+    return ingress;
+}
 
 metadata camus_meta_t camus_meta;
 
@@ -155,11 +181,28 @@ table query_ipv6_dstAddr_miss {
     size: 1024;
 }
 
+table query_tcp_seqNo_exact {
+    reads { camus_meta.state: exact; tcp.seqNo: exact; }
+    actions { set_next_state; }
+    size: 1024;
+}
+table query_tcp_seqNo_miss {
+    reads { camus_meta.state: exact; }
+    actions { set_next_state; }
+    size: 1024;
+}
+
 control ingress {
     if (valid(ipv6)) {
         apply(query_ipv6_dstAddr_lpm) {
             miss {
                 apply(query_ipv6_dstAddr_miss);
+            }
+        }
+
+        apply(query_tcp_seqNo_exact) {
+            miss {
+                apply(query_tcp_seqNo_miss);
             }
         }
 
