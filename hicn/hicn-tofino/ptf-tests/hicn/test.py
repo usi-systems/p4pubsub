@@ -187,6 +187,7 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
             for l in f:
                 l = l.strip()
                 if len(l) == 0: continue
+                if l[0] == '#': continue
                 self.camus_rules.append(l)
 
     def popTables(self):
@@ -196,6 +197,10 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
         #self.client.query_actions_set_default_action_set_egress_port(self.shdl, self.dev_tgt,
         #        hicn_set_egress_port_action_spec_t(egr_port))
         #print "Default action: set_egress_port(%d)" % egr_port
+
+        yellow_bps = 1
+        red_bps    = 10000
+        bytes_meter_spec = hicn_bytes_meter_spec_t(yellow_bps, 2, red_bps, 10, False)
 
         def getmatches(d):
             matches = []
@@ -220,15 +225,21 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
                 act_spec = globals()['hicn_%s_action_spec_t' % act_name]
                 assert len(e['action_params']) == 1
                 param = e['action_params'].values()[0]
+                args = [self.shdl, self.dev_tgt, match_spec(*matches)]
+
                 if 'priority' in e:
                     priority = hex_to_i16(e['priority'])
                     print table_name, matches, priority, act_name, param
-                    entry = table_add(self.shdl, self.dev_tgt,
-                            match_spec(*matches), priority, act_spec(param))
+                    args.append(priority)
                 else:
                     print table_name, matches, act_name, param
-                    entry = table_add(self.shdl, self.dev_tgt,
-                            match_spec(*matches), act_spec(param))
+
+                args.append(act_spec(param))
+
+                if table_name == 'query_ipv6_dstAddr_lpm': # hack
+                    args.append(bytes_meter_spec)
+
+                entry = table_add(*args)
             else:
                 print table_name, matches, act_name
                 entry = table_add(self.shdl, self.dev_tgt, match_spec(*matches))

@@ -1,5 +1,6 @@
 #include <tofino/constants.p4>
 #include <tofino/intrinsic_metadata.p4>
+#include "tofino/lpf_blackbox.p4"
 
 // *********************************
 //            HEADERS
@@ -59,9 +60,39 @@ header_type tcp_t {
     }
 }
 
+header_type udp_t {
+    fields {
+        srcPort: 16;
+        dstPort: 16;
+        length_: 16;
+        checksum: 16;
+    }
+}
+
+header_type icmp_t {
+    fields {
+        typeCode : 16;
+        hdrChecksum : 16;
+    }
+}
+
+header_type icmp_ping_t {
+    fields {
+        id: 16;
+        seqNo0: 8;
+        seqNo1: 8;
+    }
+}
+
 header_type camus_meta_t {
     fields {
         state: 16;
+    }
+}
+
+header_type stful_t {
+    fields {
+        color: 8;
     }
 }
 
@@ -75,7 +106,10 @@ parser start {
 
 #define ETHERTYPE_IPV4 0x0800
 #define ETHERTYPE_IPV6 0x86dd
-#define IP_PROTOCOLS_TCP 6
+#define IP_PROTOCOLS_ICMP              1
+#define IP_PROTOCOLS_TCP               6
+#define IP_PROTOCOLS_UDP               17
+#define IP_PROTOCOLS_ICMPV6            58
 
 header ethernet_t ethernet;
 
@@ -91,6 +125,9 @@ parser parse_ethernet {
 header ipv4_t ipv4;
 header ipv6_t ipv6;
 header tcp_t tcp;
+header udp_t udp;
+header icmp_t icmp;
+header icmp_ping_t icmp_ping;
 
 field_list ipv4_checksum_list {
         ipv4.version;
@@ -122,7 +159,9 @@ calculated_field ipv4.hdrChecksum  {
 parser parse_ipv4 {
     extract(ipv4);
     return select(latest.protocol) {
+        IP_PROTOCOLS_ICMP : parse_icmp;
         IP_PROTOCOLS_TCP : parse_tcp;
+        IP_PROTOCOLS_UDP : parse_udp;
         default : ingress;
     }
 }
@@ -130,7 +169,9 @@ parser parse_ipv4 {
 parser parse_ipv6 {
     extract(ipv6);
     return select(latest.nextHdr) {
+        IP_PROTOCOLS_ICMPV6 : parse_icmp6;
         IP_PROTOCOLS_TCP : parse_tcp;
+        IP_PROTOCOLS_UDP : parse_udp;
         default : ingress;
     }
 }
@@ -140,7 +181,34 @@ parser parse_tcp {
     return ingress;
 }
 
+parser parse_udp {
+    extract(udp);
+    return ingress;
+}
+
+parser parse_icmp {
+    extract(icmp);
+    return select(latest.typeCode) {
+        0x0800 : parse_icmp_ping;
+        default : ingress;
+    }
+}
+
+parser parse_icmp6 {
+    extract(icmp);
+    return select(latest.typeCode) {
+        0x8000 : parse_icmp_ping;
+        default : ingress;
+    }
+}
+
+parser parse_icmp_ping {
+    extract(icmp_ping);
+    return ingress;
+}
+
 metadata camus_meta_t camus_meta;
+metadata stful_t stful;
 
 
 // *********************************
@@ -181,15 +249,21 @@ table query_ipv6_dstAddr_miss {
     size: 1024;
 }
 
-table query_tcp_seqNo_exact {
-    reads { camus_meta.state: exact; tcp.seqNo: exact; }
+table query_stful_color_exact {
+    reads { camus_meta.state: exact; stful.color: exact; }
     actions { set_next_state; }
     size: 1024;
 }
-table query_tcp_seqNo_miss {
+table query_stful_color_miss {
     reads { camus_meta.state: exact; }
     actions { set_next_state; }
     size: 1024;
+}
+
+meter meter1 {
+    type: bytes;
+    direct: query_ipv6_dstAddr_lpm;
+    result: stful.color;
 }
 
 control ingress {
@@ -200,13 +274,12 @@ control ingress {
             }
         }
 
-        apply(query_tcp_seqNo_exact) {
+        apply(query_stful_color_exact) {
             miss {
-                apply(query_tcp_seqNo_miss);
+                apply(query_stful_color_miss);
             }
         }
 
         apply(query_actions);
     }
 }
-
