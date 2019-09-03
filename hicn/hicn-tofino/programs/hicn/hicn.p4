@@ -300,3 +300,16 @@ control ingress {
         apply(query_actions);
     }
 }
+
+action set_dmac(mac) {
+    modify_field(ethernet.dstAddr, mac);
+}
+table rewrite_dmac {
+    reads { eg_intr_md.egress_port: exact; }
+    actions { set_dmac; }
+    size: 1024;
+}
+
+control egress {
+    apply(rewrite_dmac);
+}

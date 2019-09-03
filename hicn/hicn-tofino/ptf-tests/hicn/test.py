@@ -129,6 +129,12 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
         self.camus_rules_file = os.path.join(this_dir, "rules.txt")
         self.camus_compiler = CamusCompiler(self.camus_spec_file)
 
+        # rewrite ethernet.dstAddr when sending to these ports:
+        self.mac_tbl = {
+                168: '0c:c4:7a:a3:25:d1',
+                36: '0c:c4:7a:a3:25:c8'
+                }
+
 
     def setUp(self):
         pd_base_tests.ThriftInterfaceDataPlane.setUp(self)
@@ -191,6 +197,15 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
                 self.camus_rules.append(l)
 
     def popTables(self):
+
+        self.entries['rewrite_dmac'] = []
+        for port,dmac in self.mac_tbl.iteritems():
+            self.entries['rewrite_dmac'].append(
+                    self.client.rewrite_dmac_table_add_with_set_dmac(self.shdl, self.dev_tgt,
+                        hicn_rewrite_dmac_match_spec_t(hex_to_i16(port)),
+                        hicn_set_dmac_action_spec_t(macAddr_to_string(dmac))))
+            print "port %d => set_dmac(%s)" % (port, dmac)
+
 
         # Debug
         #egr_port = 52
