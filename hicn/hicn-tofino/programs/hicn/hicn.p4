@@ -260,6 +260,17 @@ table query_stful_color_miss {
     size: 1024;
 }
 
+table query_ig_intr_md_ingress_port_exact {
+    reads { camus_meta.state: exact; ig_intr_md.ingress_port: exact; }
+    actions { set_next_state; }
+    size: 1024;
+}
+table query_ig_intr_md_ingress_port_miss {
+    reads { camus_meta.state: exact; }
+    actions { set_next_state; }
+    size: 1024;
+}
+
 meter meter1 {
     type: bytes;
     direct: query_ipv6_dstAddr_lpm;
@@ -277,6 +288,12 @@ control ingress {
         apply(query_stful_color_exact) {
             miss {
                 apply(query_stful_color_miss);
+            }
+        }
+
+        apply(query_ig_intr_md_ingress_port_exact) {
+            miss {
+                apply(query_ig_intr_md_ingress_port_miss);
             }
         }
 

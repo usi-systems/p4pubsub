@@ -321,7 +321,6 @@ class HW(BaseTest):
 
         self.importCamusRules(self.camus_rules_file)
         self.camus_rules.append('ipv6.dstAddr = b001:0000:0000:0000:0000:0000:0000:0000/64 : fwd(37);')
-        self.camus_rules.append('ipv6.dstAddr = b001:0000:0000:0000:0000:0000:0000:0000/64 and tcp.seqNo = 0: fwd(192);')
 
         self.reloadCamusRules()
 

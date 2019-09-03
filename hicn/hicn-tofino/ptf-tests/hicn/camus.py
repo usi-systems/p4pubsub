@@ -21,7 +21,7 @@ class CamusCompiler:
 
         p = subprocess.Popen([self.bin_path, '-rules', '-', '-rt-out', out_prefix, self.spec_path], stdin=subprocess.PIPE)
         p.communicate(input=rules_str)
-        assert p.returncode == 0
+        assert p.returncode == 0, "Compiler exited with error"
 
         entries_out = out_prefix + '_entries.json'
         mcast_out = out_prefix + '_mcast_groups.txt'
