@@ -131,9 +131,13 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
 
         # rewrite ethernet.dstAddr when sending to these ports:
         self.mac_tbl = {
-                168: '0c:c4:7a:a3:25:d1',
-                36: '0c:c4:7a:a3:25:c8'
+                36: '0c:c4:7a:a3:25:c9', # node96
+                37: '0c:c4:7a:a3:25:35'  # node98
                 }
+
+        self.rewrite_ip6dst = {
+                (168, 37): '9001::1' # ingr 168 to egr 37 => rewrite dstAddr to 9001::1
+        }
 
 
     def setUp(self):
@@ -205,6 +209,14 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
                         hicn_rewrite_dmac_match_spec_t(hex_to_i16(port)),
                         hicn_set_dmac_action_spec_t(macAddr_to_string(dmac))))
             print "port %d => set_dmac(%s)" % (port, dmac)
+
+        self.entries['rewrite_ip6dst'] = []
+        for (ingr,egr),dst in self.rewrite_ip6dst.iteritems():
+            self.entries['rewrite_ip6dst'].append(
+                    self.client.rewrite_ip6dst_table_add_with_set_ip6dst(self.shdl, self.dev_tgt,
+                        hicn_rewrite_ip6dst_match_spec_t(hex_to_i16(ingr), hex_to_i16(egr)),
+                        hicn_set_ip6dst_action_spec_t(ipv6Addr_to_string(dst))))
+            print "port %d->%d => set_ip6dst(%s)" % (ingr, egr, dst)
 
 
         # Debug

@@ -310,6 +310,16 @@ table rewrite_dmac {
     size: 1024;
 }
 
+action set_ip6dst(dst) {
+    modify_field(ipv6.dstAddr, dst);
+}
+table rewrite_ip6dst {
+    reads { ig_intr_md.ingress_port: exact; eg_intr_md.egress_port: exact; }
+    actions { set_ip6dst; }
+    size: 1024;
+}
+
 control egress {
     apply(rewrite_dmac);
+    apply(rewrite_ip6dst);
 }
