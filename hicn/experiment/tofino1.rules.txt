@@ -1,0 +1,102 @@
+# ports 37, 38, 39 are nodes96, 97 and 98. 168 is tofino2
+ipv6.dstAddr = ff02:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+ipv6.dstAddr = ff02:0000:0000:0000:0000:0000:0000:0000/16 : fwd(38);
+ipv6.dstAddr = ff02:0000:0000:0000:0000:0000:0000:0000/16 : fwd(39);
+! ig_intr_md.ingress_port = 168 and ipv6.dstAddr = ff02:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = 9001:0000:0000:0000:0000:0000:0000:0005/128 : fwd(168);
+ipv6.dstAddr = 9001:0000:0000:0000:0000:0000:0000:0006/128 : fwd(37);
+ipv6.dstAddr = 9001:0000:0000:0000:0000:0000:0000:0007/128 : fwd(38);
+ipv6.dstAddr = 9001:0000:0000:0000:0000:0000:0000:0008/128 : fwd(39);
+
+#ipv6.dstAddr = b001:0000:0000:0000:0000:0000:0000:0000/64 : fwd(168);
+! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = b001:0000:0000:0000:0000:0000:0000:0000/64 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = b001:0000:0000:0000:0000:0000:0000:0000/64 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = b001:0000:0000:0000:0000:0000:0000:0000/64 and ! stful.color = 0 : fwd(37);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = b001:0000:0000:0000:0000:0000:0000:0000/64 : fwd(168);
+
+#ipv6.dstAddr = c000:0000:0000:0000:0000:0000:0000:0000/8 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c000:0000:0000:0000:0000:0000:0000:0000/8 : fwd(37);
+
+# Bypass the forwarder and go directly to the origin
+ipv6.dstAddr = c001:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c002:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c003:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c004:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c005:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c006:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c007:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c008:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c009:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c00a:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c00b:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c00c:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c00d:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c00e:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ipv6.dstAddr = c00f:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c001:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c002:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c003:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c004:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c005:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c006:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c007:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c008:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c009:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00a:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00b:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00c:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00d:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00e:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00f:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
+
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c001:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c002:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c003:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c004:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c005:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c006:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c007:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c008:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c009:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00a:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00b:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00c:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00d:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00e:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00f:0000:0000:0000:0000:0000:0000:0000/16 : fwd(168);
+
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c001:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c001:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c002:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c002:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c003:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c003:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c004:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c004:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c005:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c005:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c006:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c006:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c007:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c007:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c008:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c008:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c009:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c009:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00a:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00a:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00b:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00b:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00c:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00c:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00d:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00d:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00e:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00e:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00f:0000:0000:0000:0000:0000:0000:0000/16 and stful.color = 0 : fwd(168);
+#! ig_intr_md.ingress_port = 37 and ipv6.dstAddr = c00f:0000:0000:0000:0000:0000:0000:0000/16 and ! stful.color = 0 : fwd(37);
+
+
+# For Antonio's mirroring:
+#ipv6.srcAddr = c001:0000:0000:0000:0000:0000:0000:0000/16 : fwd(37);
