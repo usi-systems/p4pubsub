@@ -181,6 +181,40 @@ Plot the results:
     ~/s/cdf.py baseline.tsv Baseline camus.tsv Camus
 
 
+
+## Misc
+
+### Data bypass optimization
+
+Normally, data packets pass through the last hICN hop before arriving at the
+client. Antonio suggested mirroring the data packets to the clients. This
+reduces the latency experienced by the client, while also allowing the data to
+be cached at forwarders. However, in its most basic implementation, it would
+cause the client to receive duplicate data packets: the original mirrored data
+packet, as well as the packet that passed through the forwarder.
+
+For this optimization to work, we need to preserve the client's IP address in
+the interest packet. This can be done by preventing the forwarder from
+rewriting the srcAddr of the interest packet before sending it to the
+producer. Simply recomplie the hICN forwarder with this line commented:
+
+    diff --git a/hicn-plugin/src/faces/ip/face_ip_node.c b/hicn-plugin/src/faces/ip/face_ip_node.c
+    index 6592dc0..b02e9dc 100644
+    --- a/hicn-plugin/src/faces/ip/face_ip_node.c
+    +++ b/hicn-plugin/src/faces/ip/face_ip_node.c
+    @@ -473,8 +473,8 @@ hicn_face_rewrite_interest (vlib_main_t * vm, vlib_buffer_t * b0,
+       ip46_address_t temp_addr;
+       ip46_address_reset (&temp_addr);
+       hicn_type_t type = hicn_get_buffer (b0)->type;
+    -  hicn_ops_vft[type.l1]->rewrite_interest (type, &hicn->protocol,
+    -                                          &ip_face->local_addr, &temp_addr);
+    +  //hicn_ops_vft[type.l1]->rewrite_interest (type, &hicn->protocol,
+    +  //                      &ip_face->local_addr, &temp_addr);
+
+And add a rule to the switch that sends all data packets (i.e. by subscribing
+to the ipv6.srcAddr) to both the client and forwarder.
+
+
 ## IPv6 Misc
 
 Set interface address:
