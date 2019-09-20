@@ -1,0 +1,8 @@
+ucli
+pm
+port-del -/-
+port-add 6/0 100G NONE
+port-add 12/0 10G NONE
+an-set -/- 2
+port-enb -/-
+show

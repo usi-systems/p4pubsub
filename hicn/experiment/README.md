@@ -137,6 +137,17 @@ Then, from another shell, run `sudo vppctl` to configure hICN. e.g. on node96:
     vpp# hicn fib add prefix c000::/8 face 0
 
 
+### Setup Tofinos
+
+Compile the hicn program following the instructions in `../README.md`
+
+Edit the PTF `test.py` for each tofino, and adjust the `self.mac_tbl` to match
+the MAC/port mapping in your setup.
+
+Launch bfswitchd, bring up the ports using `tofinoX.ports.txt`, and run the PTF
+test. Make sure to copy the coresponding `tofinoX.rules.txt` into
+`hicn-tofino/ptf-tests/hicn/`.
+
 ### Publisher
 
 Start VPP on the publisher (node95), and configure it with vppctl. Then launch

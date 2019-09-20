@@ -1,0 +1,10 @@
+show int
+set int state TenGigabitEthernet1/0/1 up
+set interface ip address TenGigabitEthernet1/0/1 9001::5/64
+hicn control param cs size 8192
+hicn control start
+hicn punting add prefix b001::/64 intfc TenGigabitEthernet1/0/1 type ip
+hicn punting add prefix d001::/64 intfc TenGigabitEthernet1/0/1 type ip
+hicn punting add prefix c000::/8 intfc TenGigabitEthernet1/0/1 type ip
+hicn show
+hicn face show

@@ -1,0 +1,11 @@
+show int
+set int state TenGigabitEthernet1/0/0 up
+set interface ip address TenGigabitEthernet1/0/0 9001::8/64
+hicn control start
+hicn punting add prefix b001::/64 intfc TenGigabitEthernet1/0/0 type ip
+hicn punting add prefix c000::/8 intfc TenGigabitEthernet1/0/0 type ip
+hicn show
+hicn face show
+hicn face ip add local 9001::8 remote 9001::5 intfc TenGigabitEthernet1/0/0
+hicn fib add prefix b001::/64 face 0
+hicn fib add prefix c000::/8 face 0
