@@ -131,12 +131,13 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
 
         # rewrite ethernet.dstAddr when sending to these ports:
         self.mac_tbl = {
-                36: '0c:c4:7a:a3:25:c9', # node96
-                37: '0c:c4:7a:a3:25:35'  # node98
+                37: '0c:c4:7a:a3:25:c8', # node96
+                38: '0c:c4:7a:a3:25:38', # node97
+                39: '0c:c4:7a:a3:25:34'  # node98
                 }
 
         self.rewrite_ip6dst = {
-                (168, 37): '9001::1' # ingr 168 to egr 37 => rewrite dstAddr to 9001::1
+                #(168, 37): '9001::1' # ingr 168 to egr 37 => rewrite dstAddr to 9001::1
         }
 
 
@@ -225,15 +226,17 @@ class BaseTest(pd_base_tests.ThriftInterfaceDataPlane):
         #        hicn_set_egress_port_action_spec_t(egr_port))
         #print "Default action: set_egress_port(%d)" % egr_port
 
-        yellow_bps = 1
-        red_bps    = 10000
+        yellow_bps = 1000000
+        red_bps    = 10000000
+        #yellow_bps = 1
+        #red_bps    = 10000
         bytes_meter_spec = hicn_bytes_meter_spec_t(yellow_bps, 2, red_bps, 10, False)
 
         def getmatches(d):
             matches = []
             field_val = [(k.split('.')[-1], v) for k,v in d.iteritems()]
             for k,v in field_val:
-                if k == 'state': matches = map(hex_to_byte, v) + matches
+                if k == 'state': matches = map(hex_to_i16, v) + matches
                 elif v[0] > 2**32:
                     ip = ipaddr.IPv6Address(v[0])
                     matches += [ipv6Addr_to_string(str(ip))] + map(hex_to_i16, v[1:])
@@ -347,7 +350,7 @@ class HW(BaseTest):
         if test_param_get('target') == 'asic-model': return # if not running on HW, return
 
         self.importCamusRules(self.camus_rules_file)
-        self.camus_rules.append('ipv6.dstAddr = b001:0000:0000:0000:0000:0000:0000:0000/64 : fwd(37);')
+        #self.camus_rules.append('ipv6.dstAddr = b001:0000:0000:0000:0000:0000:0000:0000/64 : fwd(37);')
 
         self.reloadCamusRules()
 
