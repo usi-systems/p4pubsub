@@ -43,13 +43,18 @@ for instance in instances:
     params = parseParams(params_file)
     all_stats = parseAllRepeats(instance_dir)
     total_entries = [st['total_entries'] for st in all_stats]
+    paths = [st['paths'] for st in all_stats]
+    terminal_states = [st['terminal_states'] for st in all_stats]
     res = dict(params)
     res.update(dict(
         n=len(all_stats),
+        terminal_states=np.mean(terminal_states),
         mean_entries=np.mean(total_entries),
         std_entries=np.std(total_entries),
         min_entries=np.min(total_entries),
-        max_entries=np.max(total_entries)
+        max_entries=np.max(total_entries),
+        mean_paths=np.mean(paths),
+        std_paths=np.std(paths),
         ))
     out.append(res)
 

@@ -1,0 +1,20 @@
+{
+    "search.useIgnoreFiles": false,
+    "saveAndRun": {
+        "commands": [
+          {
+            "match": "\\.java$",
+            // "cmd": "javac ${fileBasename}; java -Xmx8560m ${fileBasenameNoExt} ../datasets/d3.txt d3-tree.txt",
+            "useShortcut": false,
+            "silent": false
+          },
+          {
+            "match": "\\.rb$",
+            "cmd": "ruby ${fileBasename} -src . -datasets ../datasets/ -f",
+            "useShortcut": false,
+            "silent": false
+          }
+        ]
+      },
+      "git.ignoreLimitWarning": true
+}

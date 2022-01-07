@@ -1,0 +1,8 @@
+[{"table_name": "Camus.query_actions", "match_fields":
+        {"meta.query.state": [1]}, "action_name": "Camus.query_drop"},{"table_name": "Camus.query_actions", "match_fields":
+        {"meta.query.state": [2]}, "action_name": "Camus.set_egress_port", "action_params": {"port": 52}},{"table_name": "Camus.query_add_order_price_miss", "match_fields":
+        {"meta.query.state": [3]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}},{"table_name": "Camus.query_add_order_price_range", "match_fields":
+        {"meta.query.state": [3],"hdr.add_order.price": [301, 1048575]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 2}, "priority": 9997},{"table_name": "Camus.query_add_order_shares_exact", "match_fields":
+        {"meta.query.state": [0],"hdr.add_order.shares": [10]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 3}},{"table_name": "Camus.query_add_order_shares_exact", "match_fields":
+        {"meta.query.state": [0],"hdr.add_order.shares": [1]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 3}},{"table_name": "Camus.query_add_order_shares_miss", "match_fields":
+        {"meta.query.state": [0]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}}]

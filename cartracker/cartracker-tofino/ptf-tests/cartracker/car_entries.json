@@ -1,0 +1,12 @@
+[{"table_name": "Camus.query_actions", "match_fields": {"meta.query.state": [1]}, "action_name": "Camus.query_drop"},
+{"table_name": "Camus.query_actions", "match_fields": {"meta.query.state": [2]}, "action_name": "Camus.set_egress_port", "action_params": {"port": 36}},
+{"table_name": "Camus.query_car_lat_miss", "match_fields": {"meta.query.state": [0]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}},
+{"table_name": "Camus.query_car_lat_range", "match_fields": {"meta.query.state": [0],"hdr.car.lat": [0, 19]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}, "priority": 9993},
+{"table_name": "Camus.query_car_lat_range", "match_fields": {"meta.query.state": [0],"hdr.car.lat": [11, 19]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 5}, "priority": 9992},
+{"table_name": "Camus.query_car_long_miss", "match_fields": {"meta.query.state": [5]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}},
+{"table_name": "Camus.query_car_long_range", "match_fields": {"meta.query.state": [5],"hdr.car.long": [0, 19]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}, "priority": 9991},
+{"table_name": "Camus.query_car_long_range", "match_fields": {"meta.query.state": [5],"hdr.car.long": [11, 19]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 3}, "priority": 9990},
+{"table_name": "Camus.query_car_speed_miss", "match_fields": {"meta.query.state": [3]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 1}},
+{"table_name": "Camus.query_car_speed_range", "match_fields": {"meta.query.state": [3],"hdr.car.speed": [101, 65535]}, "action_name": "Camus.set_next_state", "action_params": {"next_state": 2}, "priority": 9989},
+
+null]

@@ -1,0 +1,5 @@
+ipv4.dstAddr = 10.0.0.2: fwd(54);
+ipv4.dstAddr = 10.0.0.95: fwd(52);
+ipv4.dstAddr = 10.0.0.97: fwd(168);
+ipv4.dstAddr = 10.0.0.98: fwd(36);
+ipv4.dstAddr = 10.0.0.198: fwd(28);

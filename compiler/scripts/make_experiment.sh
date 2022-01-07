@@ -18,8 +18,11 @@ num_queries=1
 disj_size=1
 for num_vars in 8 #13 14 15 16 17 18 #$(seq 2 10)
 do
+    #for conj_size in 8
     for conj_size in 2 3 4 5 6 7 8 
+    #for conj_size in 9 10 11 12 13 14
     do
+        #for num_queries in 2 16 24 32 40 48
         for num_queries in 32
         do
             exp_name="$num_vars"num_vars_"$num_queries"num_queries_"$disj_size"disj_size_"$conj_size"conj_size

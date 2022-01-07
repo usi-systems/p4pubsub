@@ -19,10 +19,19 @@ matplotlib.rcParams['pdf.use14corefonts'] = True
 
 def formatLabel(l):
     if matplotlib.rcParams['text.usetex']:
-        return l.replace('_', '\\_').replace('%', '\\%')
+        return l.replace('_', '\\_').replace('%', '\\%').replace('#', '\\#')
     return l
 
 #plt.style.use('ggplot')
+
+def human_format(num, prec=0):
+    magnitude = 0
+    while abs(num) >= 1000:
+        magnitude += 1
+        num /= 1000.0
+    # add more suffixes if you need them
+    fmt = '%%.%df%%s' % prec
+    return fmt % (num, ['', 'K', 'M', 'G', 'T', 'P'][magnitude])
 
 def _magnitude(x):
     return int(math.floor(math.log10(x)))
@@ -66,13 +75,17 @@ def one_or_more_numbers(x):
 label_style_hist = {} # keep history of styles for labels
 label_order_hist = [] # keep history of the order of labels
 
-markers = itertools.cycle(('o', '^', 'D', 's', '+', 'x', '*' ))
-linestyles = itertools.cycle(("-.","--","-",":"))
-colors = itertools.cycle(('r', 'g', 'b', 'c', 'm', 'y', 'k'))
+markers = itertools.cycle(('o', 'x', 'D', 's', '+', '^', '*' ))
+linestyles = itertools.cycle(("-","-","-","--","-.",":"))
+#colors = itertools.cycle(('r', 'b', 'c', 'm', 'y', 'k', 'g'))
+colors = itertools.cycle(('#e66101', '#b2abd2', '#5e3c99', '#fdb863'))
+c = matplotlib.cm.viridis.colors
+#colors = itertools.cycle((c[0], c[-40], c[40], c[80], c[-80]))
 hatches = itertools.cycle(('x', '/', 'o', '\\', '*', 'o', 'O', '.'))
 
 
-def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_error=True, show_legend=False):
+def plot_bar(data, conf=None, title=None, ylabel=None, show_error=True, show_legend=False,
+        fontsize=None, xlabel=None, yscale='linear', label_names=None, label_order=None):
     field_names = data.dtype.names[1:]
     N = len(field_names)
     ind = np.arange(N)  # the x locations for the groups
@@ -80,20 +93,24 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
 
     labels = set([r[0] for r in data])
 
-    local_label_order = []
+    local_label_order = label_order if label_order else []
     if conf and 'linestyle' in conf:
         for lbl, style in conf['linestyle'].items()[1:]:
             if lbl not in labels: continue
-            local_label_order.append(lbl)
+            if lbl not in local_label_order: local_label_order.append(lbl)
             label_style_hist[lbl] = dict(zip(['color', 'line', 'marker'], style.split()))
     if conf and 'style' in conf:
-        if 'fontsize' in conf['style']: plt.rc('font', size=conf['style']['fontsize'])
+        if fontsize is None and 'fontsize' in conf['style']:
+            fontsize = conf['style']['fontsize']
         if 'showtitle' in conf['style'] and conf['style']['showtitle'].lower() in ['no', 'false', '0']:
             title = None
         if 'fontweight' in conf['style']:
             plt.rc('font', weight=conf['style']['fontweight'])
             plt.rc('axes', labelweight=conf['style']['fontweight'])
         if 'fontfamily' in conf['style']: plt.rc('font', family=conf['style']['fontfamily'])
+
+    if fontsize is not None:
+        plt.rc('font', size=fontsize)
 
     if not local_label_order:
         local_label_order = [l for l in label_order] if label_order else label_order_hist
@@ -108,8 +125,8 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     ax.yaxis.grid()
 
     i = 0
-    label_names = []
-    for lbl in local_label_order:
+    formatted_label_names = []
+    for idx,lbl in enumerate(local_label_order):
         vals = [list(r)[1:] for r in data if r[0] == lbl]
         avgs = np.mean(vals, axis=0)
         errs = np.std(vals, axis=0)
@@ -123,8 +140,10 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
         label_name = lbl
         if conf and 'labels' in conf:
             if lbl in conf['labels']: label_name = conf['labels'][lbl]
-        label_name = formatLabel(label_name)
-        label_names.append(label_name)
+        if label_names:
+            label_name = label_names[idx]
+        label_name = formatLabel(str(label_name))
+        formatted_label_names.append(label_name)
 
         plot_handles.append(rects)
         i += 1
@@ -132,11 +151,15 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     if ylabel: ax.set_ylabel(formatLabel(ylabel))
     if title: ax.set_title(title)
     ax.set_xticks(ind + width)
+    if not xlabel is None: ax.set_xlabel(formatLabel(xlabel), fontsize=fontsize)
+
+    if yscale: ax.set_yscale(yscale)
 
     if conf and 'labels' in conf:
         field_titles = [conf['labels'][l] if l in conf['labels'] else l for l in field_names]
     else: field_titles = field_names
-    ax.set_xticklabels(field_titles, rotation=30)
+    xtick_rot = 0
+    ax.set_xticklabels(field_titles, rotation=xtick_rot)
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -145,7 +168,7 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
 
     showlegend = show_legend or conf['showlegend'] if conf and 'showlegend' in conf else True
     if showlegend:
-        ax.legend([r[0] for r in plot_handles], label_names,
+        ax.legend([r[0] for r in plot_handles], formatted_label_names,
                 loc='upper center',
                 bbox_to_anchor=(0.5, 1.12),
                 handletextpad=0.2,
@@ -165,9 +188,11 @@ def plot_bar(data, conf=None, title=None, ylabel=None, label_order=None, show_er
     fig.tight_layout()
     return fig
 
-def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None, xscale='linear', yscale='linear',
-        title=None, plot_labels=None, label_order=None, show_error=True, show_legend=False, legend_title=None,
-        conf=None, linewidth=2, markersize=2, fontsize=None):
+def plot_lines(data, xlabel=None, xlim=None, xticks=None, yticks=None, ylabel=None, ylim=None,
+        xscale='linear', yscale='linear', humanx=False, humany=False,
+        title=None, plot_labels=None, label_order=None, label_names=None,
+        show_error=True, show_grid=True, show_legend=False, legend_title=None, legend_loc=None,
+        conf=None, linewidth=2, markersize=2, fontsize=None, twinx=False):
     """Plots a 2D array with the format: [[label, x, y, y-dev]]
     """
     if conf and 'units' in conf:
@@ -178,14 +203,10 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
     ax = fig.add_subplot(111)
 
     if conf and 'style' in conf:
-        if 'linewidth' in conf['style']: linewidth = conf['style']['linewidth']
-        if 'markersize' in conf['style']: markersize = conf['style']['markersize']
+        if 'linewidth' in conf['style']: linewidth = int(conf['style']['linewidth'])
+        if 'markersize' in conf['style']: markersize = int(conf['style']['markersize'])
         if 'fontsize' in conf['style'] and fontsize is None:
             fontsize = conf['style']['fontsize']
-        if fontsize:
-            plt.rc('font', size=fontsize)
-            ax.xaxis.set_tick_params(labelsize=fontsize)
-            ax.yaxis.set_tick_params(labelsize=fontsize)
         if 'showtitle' in conf['style'] and conf['style']['showtitle'].lower() in ['no', 'false', '0']:
             title = None
         if 'fontweight' in conf['style']:
@@ -193,6 +214,11 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
             plt.rc('axes', labelweight=conf['style']['fontweight'])
         if 'fontfamily' in conf['style']:
             plt.rc('font', family=conf['style']['fontfamily'])
+
+    if fontsize:
+        plt.rc('font', size=fontsize)
+        ax.xaxis.set_tick_params(labelsize=fontsize)
+        ax.yaxis.set_tick_params(labelsize=fontsize)
 
     # Only plot some labels
     if plot_labels:
@@ -208,19 +234,30 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
 
     if not local_label_order:
         local_label_order = [l for l in label_order] if label_order else label_order_hist
+
+    if label_order:
+        for l in label_order:
+            if l not in local_label_order: local_label_order.append(l)
     labels = set([r[0] for r in data])
     unseen_labels = [l for l in labels if not l in local_label_order]
     if all(can_cast_to_number(l) for l in unseen_labels): unseen_labels.sort(key=float)
     local_label_order += unseen_labels
+
+    # Replace thousands with 'K', millions with 'M', etc.:
+    human_ticks = plticker.FuncFormatter(lambda val, pos: human_format(val))
 
     zoom = False
     if zoom:
         from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, inset_axes
         axins = inset_axes(ax, 3.2, 3.2, loc=3, bbox_to_anchor=(0.33, 0.2), bbox_transform=ax.figure.transFigure)
 
+    if xlabel is not None: ax.set_xlabel(formatLabel(xlabel), fontsize=fontsize)
+    if not twinx:
+        if not ylabel is None: ax.set_ylabel(formatLabel(ylabel), fontsize=fontsize)
+
 
     all_x, all_y = [], []
-    for label in [l for l in local_label_order if l in labels]:
+    for ith_label,label in enumerate([l for l in local_label_order if l in labels]):
         if not label in label_style_hist:
             label_style_hist[label] = dict(line=linestyles.next(), marker=markers.next(), color=colors.next())
 
@@ -233,11 +270,16 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
         if conf and 'labels' in conf:
             if label in conf['labels']: label_name = conf['labels'][label]
 
-        label_name = formatLabel(label_name)
+        if label_names and ith_label < len(label_names):
+            label_name = label_names[ith_label]
+
+        label_name = formatLabel(str(label_name))
+        color = label_style_hist[label]['color']
+
 
         (_, caps, _) = ax.errorbar(x, y, label=label_name, linewidth=linewidth, markersize=markersize,
                 elinewidth=1, yerr=yerr if show_error else None,
-                color=label_style_hist[label]['color'],
+                color=color,
                 linestyle=label_style_hist[label]['line'], marker=label_style_hist[label]['marker'])
 
         if zoom:
@@ -247,6 +289,12 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
 
         for cap in caps:
             cap.set_markeredgewidth(2)
+
+        if twinx:
+            ax.set_ylabel(label_name, color=color)
+            if ith_label == 0:
+                ax = ax.twinx()
+
 
     if zoom:
         axins.set_xlim(10, 1000)
@@ -261,18 +309,16 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
         mark_inset(ax, axins, loc1=3, loc2=4, fc="none", ec="0.3")
 
     if not title is None: ax.set_title(title)
-    if not xlabel is None: ax.set_xlabel(formatLabel(xlabel))
-    if not ylabel is None: ax.set_ylabel(formatLabel(ylabel))
 
     if not xscale and conf and 'style' in conf and 'xscale' in conf['style']:
         xscale = conf['style']['xscale']
-    if xscale: ax.set_xscale(xscale, nonposx='clip')
+    if xscale: ax.set_xscale(xscale)
 
     if not yscale and conf and 'style' in conf and 'yscale' in conf['style']:
         yscale = conf['style']['yscale']
-    if yscale: ax.set_yscale(yscale, nonposx='clip')
+    if yscale: ax.set_yscale(yscale)
 
-    showgrid = True
+    showgrid = show_grid
     if conf and 'style' in conf and 'showgrid' in conf['style']:
         showgrid = conf['style']['showgrid'] == 'True'
     if showgrid:
@@ -295,13 +341,21 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
             loc = plticker.MultipleLocator(base=xticks) # this locator puts ticks at regular intervals
             ax.xaxis.set_major_locator(loc)
 
+    if yticks:
+        if isinstance(yticks, list):
+            ax.set_yticks(yticks)
+        else:
+            loc = plticker.MultipleLocator(base=yticks) # this locator puts ticks at regular intervals
+            ax.yaxis.set_major_locator(loc)
+
 
     #if _should_use_log(all_x):
     #    ax.set_xscale('symlog', linthreshx=1)
 
-    # Replace thousands with 'K':
-    #ticks_x = plticker.FuncFormatter(lambda x, pos: re.sub('000$', 'K', '{0:g}'.format(x)))
-    #ax.get_xaxis().set_major_formatter(ticks_x)
+    if humany:
+        ax.get_yaxis().set_major_formatter(human_ticks)
+    if humanx:
+        ax.get_xaxis().set_major_formatter(human_ticks)
 
     ax.margins(x=0.1)
 
@@ -311,11 +365,17 @@ def plot_lines(data, xlabel=None, xlim=None, xticks=None, ylabel=None, ylim=None
 
     showlegend = show_legend or showlegend
 
+    if legend_loc is None:
+        legend_loc = 'best'
+
     if showlegend:
         handles, labels = ax.get_legend_handles_labels()
         # remove the errorbars
         handles = [h[0] for h in handles]
-        ax.legend(loc='best', fancybox=True, title=legend_title, framealpha=0.5,
+        ax.legend(loc=legend_loc, fancybox=True, framealpha=0.5,
+                title=formatLabel(legend_title) if legend_title else None,
+                numpoints=1, handlelength=0.5,
+                labelspacing=0.2,
                 handles=handles, labels=labels, prop={'size': fontsize})
 
     fig.tight_layout()
@@ -335,6 +395,8 @@ if __name__ == '__main__':
     parser.add_argument('--xlim', help='x-axis limits',
             type=get_lim, default=None, required=False)
     parser.add_argument('--xticks', help='x-axis tick frequency',
+            type=one_or_more_numbers, default=None, required=False)
+    parser.add_argument('--yticks', help='y-axis tick frequency',
             type=one_or_more_numbers, default=None, required=False)
     parser.add_argument('--ylim', help='y-axis limits',
             type=get_lim, default=None, required=False)
@@ -358,18 +420,30 @@ if __name__ == '__main__':
             type=str, default=None, required=False)
     parser.add_argument('--labels', help='Comma-separated list of labels to plot',
             type=_tolist, default=None, required=False)
+    parser.add_argument('--label-names', help='Comma-separated list of label names to use on plot',
+            type=_tolist, default=None, required=False)
     parser.add_argument('--no-error', help='Do not display error bars on the plot',
+            action='store_true', default=False)
+    parser.add_argument('--no-grid', help='Do not display grid lines on the plot',
             action='store_true', default=False)
     parser.add_argument('--show', help='Open the plot in a new window',
             action='store_true', default=False)
+    parser.add_argument('--twinx', help='Plot with two axes (only two labels)',
+            action='store_true', default=False)
+    parser.add_argument('--humanx', help='Use human formatting for x ticks (e.g. 200K, 4M, etc.)',
+            action='store_true', default=False)
+    parser.add_argument('--humany', help='Use human formatting for y ticks (e.g. 200K, 4M, etc.)',
+            action='store_true', default=False)
     parser.add_argument('--legend', help='Add a legend to the plot',
             action='store', default=False, const=None, nargs='?')
+    parser.add_argument('--legend-loc', help='Location for legend: best, upper right, etc.',
+            type=str, required=False, default=None)
     parser.add_argument('--bar', help='Plot a bar chart',
             action='store_true', default=False)
     args = parser.parse_args()
 
     if args.filename == '-':
-        title = '-'
+        title = None
         file_in = sys.stdin
         file_out = 'out.' + args.format
     else:
@@ -377,7 +451,7 @@ if __name__ == '__main__':
         title = os.path.splitext(args.filename)[0]
         file_out = os.path.splitext(args.filename)[0] + '.' + args.format
 
-    data = np.genfromtxt(file_in, delimiter='\t', names=True, dtype=None, encoding=None)
+    data = np.genfromtxt(file_in, delimiter='\t', names=True, dtype=None)
 
     if args.title is not None: title = args.title if args.title else None
 
@@ -394,22 +468,33 @@ if __name__ == '__main__':
             conf=conf,
             show_error=not args.no_error,
             show_legend=args.legend,
+            label_names=args.label_names,
+            fontsize=args.font_size,
+            xlabel=args.xlabel,
+            yscale=args.yscale,
+            label_order=_tolist(args.label_order) if args.label_order else None,
             ylabel=args.ylabel)
     else:
         fig = plot_lines(data, title=title,
             conf=conf,
             linewidth=args.linewidth,
             show_error=not args.no_error,
+            show_grid=not args.no_grid,
             show_legend=args.legend is not False,
             legend_title=args.legend,
-            xlim=args.xlim, ylim=args.ylim, xticks=args.xticks,
+            legend_loc=args.legend_loc,
+            xlim=args.xlim, ylim=args.ylim,
+            xticks=args.xticks, yticks=args.yticks,
             xlabel=args.xlabel or data.dtype.names[1],
             ylabel=args.ylabel or data.dtype.names[2],
             xscale=args.xscale,
             yscale=args.yscale,
+            twinx=args.twinx,
+            humanx=args.humanx, humany=args.humany,
             fontsize=args.font_size,
             markersize=args.markersize,
             plot_labels=args.labels,
+            label_names=args.label_names,
             label_order=_tolist(args.label_order) if args.label_order else None)
 
     fig.savefig(file_out)

@@ -1,0 +1,1 @@
+dns_query.label = "no97" : answerDNS(10.0.0.97);

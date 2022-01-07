@@ -1,0 +1,1 @@
+int_switch_id.switch_id = 22 and int_hop_latency.hop_latency > 8000 and int_hop_latency.hop_latency < 8010: fwd(52);

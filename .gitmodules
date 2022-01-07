@@ -11,3 +11,6 @@
 [submodule "third-party/librdkafka"]
 	path = third-party/librdkafka
 	url = https://github.com/edenhill/librdkafka
+[submodule "camus-compiler"]
+	path = camus-compiler
+	url = git@github.com:usi-systems/camus-compiler.git

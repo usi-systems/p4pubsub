@@ -1,0 +1,4 @@
+dependencies*.tar
+bf-sde-8.4.0.tar
+sde_build.sh
+p4_build.sh

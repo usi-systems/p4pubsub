@@ -1,9 +1,0 @@
-base_directory: "/home/ali/cdn_pub_sub/"
-camus_compiler: "~/camus-compiler/camus.exe -rules %s -rt-out %s %s"
-itch_p4: "/home/ali/cdn_pub_sub/results/itch.v16.p4"
-p4_compiler: "/usr/local/bin/p4c-bm2-ss --p4v 14"
-
-fat_tree_bmv2_log: true
-fat_tree_pcap_dump: false
-fat_tree_auto_control_plane: false
-fat_tree_cli: true
